@@ -1,0 +1,3619 @@
+/* ============================================================================
+   AVIGEN / PREMIUM RACING PIGEON APP
+   PIPA & Apple Design Award Standartlarında Elit Görsel Tasarım Sistemi
+   - 60+ Yaş Yetiştirici Dostu Yüksek Kontrast & Büyük Tipografi
+   - Özel Vektörel SVG İkonlar, Canlı Göz Merceği (Eye-Sign) & Sıfır Karmaşa
+   ============================================================================ */
+
+:root {
+  --bg-outer: #070b14;
+  --ios-bg: #f4f6fb;
+  --ios-card: #ffffff;
+  --ios-card-alt: #f8fafc;
+  --ios-text: #0f172a;
+  --ios-subtext: #475569;
+  --ios-border: #dde3ee;
+  --ios-blue: #1d4ed8;
+  --ios-navy: #0f172a;
+  --ios-gold: #c59b27;
+  --ios-gold-bright: #f59e0b;
+  --ios-gold-bg: #fef9c3;
+  --ios-green: #15803d;
+  --ios-red: #b91c1c;
+  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+}
+
+/* KARANLIK TEMA (CHAMPIONSHIP DARK MODE) */
+body.dark-theme {
+  --ios-bg: #0b1120;
+  --ios-card: #151f32;
+  --ios-card-alt: #0f172a;
+  --ios-text: #f8fafc;
+  --ios-subtext: #94a3b8;
+  --ios-border: #26354d;
+  --ios-blue: #3b82f6;
+}
+
+body.dark-theme .ios-statusbar,
+body.dark-theme .ios-navbar,
+body.dark-theme .ios-tabbar,
+body.dark-theme .ios-sheet {
+  background: #111927;
+  color: #f8fafc;
+  border-color: #26354d;
+}
+
+body.dark-theme .nav-title,
+body.dark-theme .ios-card-title,
+body.dark-theme .trait-bar-val {
+  color: #f8fafc;
+}
+
+body.dark-theme .ios-input,
+body.dark-theme .ios-select,
+body.dark-theme .ios-textarea,
+body.dark-theme .ios-btn-outline {
+  background: #0b1120;
+  border-color: #2e405c;
+  color: #f8fafc;
+}
+
+body.dark-theme .sub-pills {
+  background: #0b1120;
+}
+
+body.dark-theme .sub-pill {
+  color: #94a3b8;
+}
+
+body.dark-theme .sub-pill.active {
+  background: #1e293b;
+  color: #fbbf24;
+}
+
+body.dark-theme .score-hero-box {
+  background: linear-gradient(135deg, #111827 0%, #1e293b 100%);
+  border-color: #334155;
+}
+
+body.dark-theme .score-circle {
+  background: #0f172a;
+}
+
+body.dark-theme .alt-candidate-card {
+  background: #0f172a;
+  border-color: #26354d;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-main);
+  background: radial-gradient(circle at center, #1e293b 0%, #060911 85%);
+  color: var(--ios-text);
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Masaüstü Üst Simülatör Çubuğu */
+.desktop-helper-bar {
+  width: 100%;
+  background: rgba(11, 17, 32, 0.95);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  color: #e2e8f0;
+  padding: 7px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  flex-shrink: 0;
+}
+
+.helper-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 0.4px;
+}
+
+.helper-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.helper-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f8fafc;
+  padding: 5px 12px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.helper-btn.active {
+  background: linear-gradient(135deg, #f59e0b, #b45309);
+  color: #ffffff;
+  border-color: #f59e0b;
+  font-weight: 800;
+}
+
+/* ============================================================================
+   iPHONE CİHAZ ÇERÇEVESİ (Kaydırmasız %100 Ekrana Sığar)
+   ============================================================================ */
+.device-stage {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.iphone-frame {
+  width: 400px;
+  height: calc(100vh - 54px);
+  max-height: 840px;
+  background: var(--ios-bg);
+  border-radius: 46px;
+  border: 10px solid #1e293b;
+  box-shadow: 0 0 0 2px #64748b, 0 28px 70px rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  transition: width 0.25s ease, border-radius 0.25s ease;
+}
+
+body.wide-mode .iphone-frame {
+  width: 100%;
+  max-width: 1320px;
+  height: calc(100vh - 54px);
+  max-height: none;
+  border-radius: 20px;
+  border-width: 4px;
+}
+
+/* iOS Durum Çubuğu & Dynamic Island */
+.ios-statusbar {
+  background: #ffffff;
+  padding: 6px 22px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  flex-shrink: 0;
+}
+
+.dynamic-island {
+  width: 96px;
+  height: 22px;
+  background: #000;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+}
+
+.island-lens {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1d4ed8 30%, #090d16 70%);
+}
+
+/* AVIGEN Üst Navigasyon Başlığı */
+.ios-navbar {
+  background: #ffffff;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ios-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  box-shadow: 0 3px 10px rgba(126, 34, 206, 0.14);
+}
+
+body.dark-theme .nav-logo {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.nav-title {
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 1.2px;
+  line-height: 1.05;
+}
+
+.nav-subtitle {
+  font-size: 8.5px;
+  color: #7e22ce;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  margin-top: 1px;
+}
+
+body.dark-theme .nav-subtitle {
+  color: #38bdf8;
+}
+
+.nav-btn {
+  background: linear-gradient(135deg, #7e22ce 0%, #c026d3 50%, #2563eb 100%);
+  color: #ffffff;
+  border: none;
+  padding: 8px 13px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 3px 10px rgba(147, 51, 234, 0.3);
+}
+
+/* ============================================================================
+   iOS EKRAN İÇERİĞİ & ALT 5'Lİ VEKTÖREL MENÜ ÇUBUĞU
+   ============================================================================ */
+.ios-screen-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ios-tab-page {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+
+.ios-tab-page.active {
+  display: flex;
+}
+
+.ios-tabbar {
+  background: #ffffff;
+  border-top: 1px solid var(--ios-border);
+  display: flex;
+  justify-content: space-around;
+  padding: 7px 4px 11px;
+  flex-shrink: 0;
+}
+
+.ios-tab-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  flex: 1;
+  padding: 4px 2px;
+  border-radius: 10px;
+  transition: all 0.15s;
+}
+
+.ios-tab-btn svg {
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
+.ios-tab-btn.active {
+  color: #b45309;
+  font-weight: 800;
+}
+
+body.dark-theme .ios-tab-btn.active {
+  color: #fbbf24;
+}
+
+/* En Alttaki GENESIS AI Sekmesi İçin Özel Mor (Purple/Magenta) Vurgu */
+.ios-tab-btn.genesis-tab-btn {
+  color: #7e22ce;
+  font-weight: 800;
+  background: rgba(126, 34, 206, 0.08);
+  border: 1px solid rgba(126, 34, 206, 0.22);
+}
+
+.ios-tab-btn.genesis-tab-btn.active {
+  background: linear-gradient(135deg, #7e22ce 0%, #c026d3 100%);
+  color: #ffffff !important;
+  border-color: #7e22ce;
+  box-shadow: 0 4px 12px rgba(126, 34, 206, 0.35);
+}
+
+body.dark-theme .ios-tab-btn.genesis-tab-btn {
+  color: #d8b4fe;
+  background: rgba(147, 51, 234, 0.16);
+  border-color: rgba(192, 132, 252, 0.3);
+}
+
+/* ============================================================================
+   KARTLAR, FORMLAR VE BÜYÜK OKUNAKLI BUTONLAR (60+ YAŞ ERGONOMİSİ)
+   ============================================================================ */
+.ios-card {
+  background: var(--ios-card);
+  border: 1px solid var(--ios-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.ios-card-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ios-text);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ios-input, .ios-select, .ios-textarea {
+  width: 100%;
+  background: var(--ios-card-alt);
+  border: 1.5px solid #cbd5e1;
+  color: var(--ios-text);
+  padding: 9px 11px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+}
+
+.ios-input:focus, .ios-select:focus, .ios-textarea:focus {
+  border-color: #d97706;
+  background: var(--ios-card);
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ios-btn {
+  padding: 9px 13px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 800;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ios-btn-primary {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.ios-btn-gold {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #fff;
+}
+
+.ios-btn-green {
+  background: #15803d;
+  color: #fff;
+}
+
+.ios-btn-outline {
+  background: var(--ios-card-alt);
+  border-color: var(--ios-border);
+  color: var(--ios-text);
+}
+
+.ios-btn-danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+/* ============================================================================
+   ANA SAYFA: KOMPAKT KÜMES ŞERİDİ & FERAH AI KARAR ASİSTANI
+   ============================================================================ */
+.hero-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.hero-stat-pill {
+  background: var(--ios-card);
+  border: 1px solid var(--ios-border);
+  border-top: 3px solid #d97706;
+  border-radius: 11px;
+  padding: 8px 6px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.hero-stat-pill .num {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--ios-text);
+  line-height: 1.1;
+}
+
+.hero-stat-pill .lbl {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ios-subtext);
+  margin-top: 2px;
+}
+
+/* AVIGEN AI Karar Asistanı (Ferah, Aydınlık, Göz Yormayan Prestij Kart) */
+.ai-assistant-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f0f7ff 55%, #fefce8 100%);
+  color: #0f172a;
+  border-radius: 16px;
+  padding: 13px;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.08);
+  border: 1.5px solid #cbd5e1;
+  flex-shrink: 0;
+}
+
+.ai-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.ai-avatar-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.16);
+}
+
+/* Yatay/Izgara Büyük Dokunmatik Soru Kartları */
+.ai-question-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 9px;
+}
+
+.ai-q-card {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #1e293b;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.3;
+  transition: all 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.ai-q-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.ai-q-card:hover, .ai-q-card.active {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border-color: #1d4ed8;
+  font-weight: 800;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.22);
+}
+
+.ai-input-bar {
+  display: flex;
+  gap: 6px;
+}
+
+.ai-text-input {
+  flex: 1;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #0f172a;
+  padding: 9px 11px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  outline: none;
+}
+
+.ai-text-input:focus {
+  border-color: #2563eb;
+}
+
+.ai-text-input::placeholder {
+  color: #64748b;
+}
+
+.ai-send-btn {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #ffffff;
+  border: none;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ai-answer-box {
+  margin-top: 9px;
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #7e22ce;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #0f172a;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  min-height: 110px;
+  position: relative;
+}
+
+/* 2 Saniyelik Yoğun Genetik Analiz Animasyonu */
+.dna-loading-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 10px;
+  text-align: center;
+  gap: 8px;
+}
+
+.dna-pulse-logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(126, 34, 206, 0.12), rgba(37, 99, 235, 0.15));
+  border: 2px solid #c026d3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  animation: avigenPulse 0.9s infinite alternate ease-in-out;
+  box-shadow: 0 0 20px rgba(192, 38, 211, 0.35);
+}
+
+@keyframes avigenPulse {
+  0% { transform: scale(0.92) rotate(-4deg); box-shadow: 0 0 8px rgba(126, 34, 206, 0.25); }
+  100% { transform: scale(1.08) rotate(4deg); box-shadow: 0 0 24px rgba(37, 99, 235, 0.55); }
+}
+
+.dna-scan-bar {
+  width: 80%;
+  height: 5px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+}
+
+.dna-scan-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #7e22ce, #c026d3, #2563eb, #10b981);
+  animation: dnaProgress 2s linear forwards;
+  transform-origin: left;
+}
+
+@keyframes dnaProgress {
+  0% { transform: scaleX(0.05); }
+  100% { transform: scaleX(1); }
+}
+
+/* Bilimsel Dayanak Küçük ve Zarif Dipnot Stili */
+.sci-footnote {
+  margin-top: 6px;
+  font-size: 9px;
+  line-height: 1.3;
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.1);
+  border-top: 1px dashed #cbd5e1;
+  padding: 4px 6px;
+  border-radius: 5px;
+}
+
+body.dark-theme .sci-footnote {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  border-top-color: #334155;
+}
+
+/* ============================================================================
+   AVIGEN GENESIS AI — PREMIUM MODÜL KART VE PAYWALL STİLLERİ
+   ============================================================================ */
+.genesis-shell-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f5f3ff 55%, #eff6ff 100%);
+  border: 1.5px solid #c4b5fd;
+  border-radius: 16px;
+  padding: 12px 13px;
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.09);
+}
+
+body.dark-theme .genesis-shell-card {
+  background: linear-gradient(145deg, #151f32 0%, #1e1b4b 100%);
+  border-color: #4c1d95;
+}
+
+.genesis-paywall-card {
+  background: linear-gradient(145deg, #0f172a 0%, #2e1065 100%);
+  border: 1.5px solid #f59e0b;
+  border-radius: 16px;
+  padding: 14px;
+  color: #ffffff;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.4);
+}
+
+/* Ana Sayfa Kümes Kimlik Rozeti (4'lü Sayı Kutularının Hemen Üstü) */
+.loft-identity-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 60%, #fef9c3 100%);
+  border: 1.5px solid #d8b4fe;
+  box-shadow: 0 3px 10px rgba(126, 34, 206, 0.08);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+body.dark-theme .loft-identity-banner {
+  background: linear-gradient(135deg, #151f32 0%, #2e1065 100%);
+  border-color: #6d28d9;
+}
+
+.loft-identity-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Ana Sayfa Canlı Uçuş & Atmosferik Uygunluk Şeridi */
+.flight-weather-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 11px;
+  background: linear-gradient(90deg, #f0fdf4 0%, #eff6ff 100%);
+  border: 1px solid #bbf7d0;
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.flight-weather-strip:hover {
+  transform: translateY(-1px);
+}
+
+body.dark-theme .flight-weather-strip {
+  background: linear-gradient(90deg, rgba(21, 128, 61, 0.18) 0%, rgba(29, 78, 216, 0.18) 100%);
+  border-color: #166534;
+}
+
+/* Ana Sayfa Hızlı Güvercin Arama Çubuğu & Açılır Sonuç Kutusu */
+.home-quick-search-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.home-quick-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--ios-card);
+  border: 1.5px solid #7e22ce;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
+  z-index: 80;
+  max-height: 210px;
+  overflow-y: auto;
+  display: none;
+  padding: 6px;
+}
+
+.home-quick-results.open {
+  display: block;
+}
+
+.quick-res-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.quick-res-item:hover {
+  background: var(--ios-card-alt);
+}
+
+/* Karanlık Modda AI Kartı Uyumu */
+body.dark-theme .ai-assistant-card {
+  background: linear-gradient(145deg, #151f32 0%, #1e293b 100%);
+  color: #f8fafc;
+  border-color: #334155;
+}
+body.dark-theme .ai-q-card {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+body.dark-theme .ai-q-card:hover, body.dark-theme .ai-q-card.active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+}
+body.dark-theme .ai-text-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+body.dark-theme .ai-answer-box {
+  background: #0f172a;
+  border-color: #334155;
+  border-left-color: #3b82f6;
+  color: #f8fafc;
+}
+
+/* Ana Sayfa Alt Sekmeli (Tab) Bilgi Kutusu — Apple Reminders Kalitesinde Zarif Kartlar */
+.dash-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--ios-card-alt);
+  border: 1px solid var(--ios-border);
+  border-left: 3.5px solid #cbd5e1;
+  border-radius: 11px;
+  transition: all 0.15s;
+}
+
+.dash-list-item:hover {
+  border-color: #94a3b8;
+  background: var(--ios-card);
+}
+
+.dash-list-item.urgency-red { border-left-color: #dc2626; }
+.dash-list-item.urgency-gold { border-left-color: #d97706; }
+.dash-list-item.urgency-green { border-left-color: #16a34a; }
+.dash-list-item.urgency-blue { border-left-color: #2563eb; }
+
+.dash-list-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  flex: 1;
+}
+
+.dash-mini-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--ios-card);
+  border: 1px solid var(--ios-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.dash-list-title {
+  font-weight: 700;
+  color: var(--ios-text);
+  font-size: 11.5px;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-list-sub {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ios-subtext);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.dash-check-btn {
+  background: var(--ios-card);
+  border: 1.5px solid #cbd5e1;
+  color: #16a34a;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.dash-check-btn:hover {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+}
+
+/* ============================================================================
+   GÖZ İŞARETİ (EYE-SIGN) CANLI BÜYÜTEÇ MERCEĞİ & GÜVERCİN SİLÜETİ
+   ============================================================================ */
+.eye-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.eye-svg-lens {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  border: 2px solid #cbd5e1;
+}
+
+/* ============================================================================
+   PEDİGRE TASARIM & CANLI ŞECERE KAĞIDI
+   ============================================================================ */
+.theme-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.theme-pill {
+  flex-shrink: 0;
+  border: 1.5px solid var(--ios-border);
+  border-radius: 99px;
+  padding: 5px 11px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ios-card);
+  color: var(--ios-text);
+}
+
+.theme-pill.active {
+  border-color: #d97706;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.theme-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.2);
+}
+
+.pedigree-stage-box {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid #334155;
+}
+
+.pedigree-viewport {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow: hidden;
+}
+
+.mypedigre-paper {
+  width: 760px;
+  min-width: 760px;
+  height: 560px;
+  background: #fffdf7;
+  color: #0f172a;
+  border: 4px double #1d4ed8;
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transform-origin: top center;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.35);
+  overflow: hidden;
+}
+
+.paper-watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 72px;
+  font-weight: 900;
+  opacity: 0.04;
+  transform: rotate(-16deg);
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.paper-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--p-accent, #b45309);
+  padding-bottom: 6px;
+  z-index: 2;
+}
+
+.paper-loft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paper-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--p-accent, #b45309);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  overflow: hidden;
+}
+
+.paper-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.paper-loft-title h2 {
+  font-size: 15px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--p-primary, #0f172a);
+}
+
+.paper-loft-title p {
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+.paper-main-bird {
+  background: var(--p-box, rgba(180,83,9,0.08));
+  border: 1.5px solid var(--p-accent, #b45309);
+  border-radius: 7px;
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 245px;
+}
+
+.paper-bird-photo {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid var(--p-accent, #b45309);
+  background: rgba(0,0,0,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.paper-bird-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.paper-tree {
+  display: grid;
+  grid-template-columns: 1.15fr 1.08fr 1fr 0.94fr;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  margin: 5px 0;
+  z-index: 2;
+}
+
+.paper-tree.gen-3-mode {
+  grid-template-columns: 1.15fr 1.1fr 1fr;
+  gap: 8px;
+}
+
+.paper-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  min-height: 0;
+}
+
+.p-box {
+  background: var(--p-node, #ffffff);
+  border: 1.2px solid var(--p-accent, #1d4ed8);
+  border-left: 3.5px solid var(--p-accent, #1d4ed8);
+  border-radius: 4px;
+  padding: 2px 5px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  transition: transform 0.12s;
+  flex: 1;
+  min-height: 0;
+}
+
+.p-box:hover {
+  transform: scale(1.015);
+}
+
+.p-box.male { border-left-color: #0284c7; }
+.p-box.female { border-left-color: #db2777; }
+
+.p-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+}
+
+.p-ring {
+  font-weight: 800;
+  color: var(--p-accent, #1d4ed8);
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.p-name {
+  font-weight: 700;
+  font-size: 9.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.p-notes {
+  font-size: 8px;
+  opacity: 0.85;
+  white-space: pre-line;
+  line-height: 1.15;
+  margin-top: 1px;
+}
+
+.col-g1 .p-box { padding: 6px; }
+.col-g1 .p-ring { font-size: 12px; }
+.col-g1 .p-name { font-size: 11px; margin-top: 2px; }
+.col-g1 .p-notes { font-size: 8.5px; margin-top: 3px; }
+
+.col-g2 .p-box { padding: 4px 6px; }
+.col-g2 .p-ring { font-size: 10px; }
+.col-g2 .p-name { font-size: 9.5px; }
+
+.col-g3 .p-box { padding: 2px 5px; }
+.col-g3 .p-ring { font-size: 8.5px; }
+.col-g3 .p-name { font-size: 8px; }
+.col-g3 .p-notes { font-size: 6.8px; }
+
+.col-g4 .p-box { padding: 1px 4px; border-left-width: 3px; }
+.col-g4 .p-ring { font-size: 7.5px; line-height: 1.05; }
+.col-g4 .p-name { font-size: 6.8px; line-height: 1.05; }
+.col-g4 .p-notes { display: none; }
+
+.paper-footer {
+  border-top: 1.5px solid var(--p-accent, #1d4ed8);
+  padding-top: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.paper-codes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ============================================================================
+   MODAL & GENETİK LABORATUVAR BİLEŞENLERİ
+   ============================================================================ */
+.ios-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+}
+
+.ios-modal-overlay.open {
+  display: flex;
+}
+
+.ios-sheet {
+  background: #ffffff;
+  width: 100%;
+  max-height: 90%;
+  border-radius: 22px 22px 0 0;
+  padding: 16px 16px 22px;
+  overflow-y: auto;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.35);
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.flag-chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.flag-chip {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.flag-chip:hover, .flag-chip.active {
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #92400e;
+}
+
+.sub-pills {
+  display: flex;
+  gap: 5px;
+  background: #e2e8f0;
+  padding: 4px;
+  border-radius: 11px;
+  flex-shrink: 0;
+}
+
+.sub-pill {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 7px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.sub-pill.active {
+  background: #ffffff;
+  color: #b45309;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+}
+
+.sub-panel {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 6px;
+}
+
+.sub-panel.active {
+  display: flex;
+}
+
+.gene-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.gene-gold { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.gene-blue { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.gene-green { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.gene-purple { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+.gene-red { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+.trait-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  margin-bottom: 5px;
+}
+
+.trait-bar-label {
+  width: 105px;
+  font-weight: 800;
+  color: var(--ios-text);
+  flex-shrink: 0;
+}
+
+.trait-bar-track {
+  flex: 1;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.trait-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+}
+
+.trait-bar-val {
+  width: 44px;
+  text-align: right;
+  font-weight: 900;
+  color: var(--ios-text);
+}
+
+.score-hero-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #fef9c3 100%);
+  border: 1.5px solid #fde047;
+  margin-bottom: 10px;
+}
+
+.score-circle {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 5px solid #16a34a;
+  background: #ffffff;
+}
+
+.score-circle .num {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.score-circle .sub {
+  font-size: 9px;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.risk-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.risk-high {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.risk-warn {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.risk-safe {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.alt-candidate-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--ios-card-alt);
+  border: 1px solid var(--ios-border);
+  border-radius: 10px;
+  margin-top: 6px;
+}
+
+/* ============================================================================
+   BARKOD / QR KODLA HIZLI KUŞ EKLEME TARAYICI STİLLERİ
+   ============================================================================ */
+.barcode-scanner-box {
+  position: relative;
+  width: 100%;
+  height: 190px;
+  background: #090d16;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid #7e22ce;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.barcode-scanner-box video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scanner-laser-line {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 2.5px;
+  background: linear-gradient(90deg, transparent, #ef4444, #fbbf24, #ef4444, transparent);
+  box-shadow: 0 0 12px #ef4444;
+  animation: laserScan 1.8s infinite ease-in-out;
+  pointer-events: none;
+}
+
+@keyframes laserScan {
+  0% { top: 18%; }
+  50% { top: 82%; }
+  100% { top: 18%; }
+}
+
+.scanner-frame-corners {
+  position: absolute;
+  width: 76%;
+  height: 62%;
+  border: 2px dashed rgba(251, 191, 36, 0.7);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+/* ============================================================================
+   MODÜL 2: GÜVERCİNLER (ZARİF, İNCE VE KOMPAKT KÜMES LİSTE SATIRLARI)
+   ============================================================================ */
+.bird-dir-card {
+  background: var(--ios-card-alt);
+  border: 1px solid var(--ios-border);
+  border-left: 3.5px solid #2563eb;
+  border-radius: 11px;
+  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: all 0.15s;
+}
+
+.bird-dir-card:hover {
+  background: var(--ios-card);
+  border-color: #94a3b8;
+}
+
+.bird-dir-card.sex-F {
+  border-left-color: #db2777;
+}
+
+.bird-dir-card.sex-U {
+  border-left-color: #9333ea;
+}
+
+.bird-mini-eye {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #0f172a;
+  border: 1.5px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.bird-mini-eye svg {
+  width: 28px;
+  height: 28px;
+}
+
+.bird-dir-ring {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ios-text);
+  white-space: nowrap;
+}
+
+.bird-dir-name {
+  font-size: 12px;
+  font-weight: 900;
+  color: #1e40af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+body.dark-theme .bird-dir-name {
+  color: #93c5fd;
+}
+
+.bird-dir-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.bird-mini-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--ios-border);
+  background: var(--ios-card);
+  color: var(--ios-text);
+  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.bird-mini-btn:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+/* ============================================================================
+   AVIGEN – INDIVIDUAL PERFORMANCE PROFILE ENGINE STİLLERİ
+   ============================================================================ */
+.perf-cat-block {
+  background: var(--ios-card-alt);
+  border: 1px solid var(--ios-border);
+  border-radius: 12px;
+  padding: 9px 11px;
+  margin-bottom: 8px;
+}
+
+.perf-cat-header {
+  font-size: 11.5px;
+  font-weight: 900;
+  color: #581c87;
+  margin-bottom: 7px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--ios-border);
+}
+
+body.dark-theme .perf-cat-header {
+  color: #d8b4fe;
+}
+
+.perf-metric-item {
+  padding: 5px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 3px;
+  transition: background 0.15s;
+}
+
+.perf-metric-item:hover, .perf-metric-item.expanded {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.perf-metric-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.perf-metric-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ios-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.perf-rel-pill {
+  font-size: 9px;
+  font-weight: 800;
+  background: var(--ios-card);
+  border: 1px solid var(--ios-border);
+  padding: 1px 5px;
+  border-radius: 99px;
+}
+
+.perf-metric-score {
+  font-size: 12.5px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.perf-bar-track {
+  width: 100%;
+  height: 7px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+}
+
+body.dark-theme .perf-bar-track {
+  background: #1e293b;
+}
+
+.perf-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.35s ease;
+}
+
+.perf-bar-empty-pattern {
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    rgba(148, 163, 184, 0.25) 4px,
+    rgba(148, 163, 184, 0.25) 8px
+  );
+}
+
+.perf-method-box {
+  margin-top: 6px;
+  background: var(--ios-card);
+  border: 1px solid #bfdbfe;
+  border-left: 3.5px solid #2563eb;
+  border-radius: 7px;
+  padding: 6px 8px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--ios-text);
+}
+
+.seg-group {
+  display: flex;
+  gap: 5px;
+  background: var(--ios-card-alt);
+  border: 1px solid var(--ios-border);
+  padding: 3px;
+  border-radius: 9px;
+}
+
+.seg-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--ios-subtext);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 4px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.seg-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
+}
+
+.seg-btn.sex-f-btn.active {
+  background: #db2777;
+}
+
+.seg-btn.role-gold-btn.active {
+  background: #d97706;
+}
+
+/* ============================================================================
+   AVIGEN – SCIENTIFIC KNOWLEDGE BASE MODULE (SCIENTIFIC LIBRARY)
+   ============================================================================ */
+.sci-article-card {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.sci-article-card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.08);
+}
+
+.sci-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 99px;
+  border: 1px solid var(--ios-border);
+  background: var(--ios-card-alt);
+  color: var(--ios-text);
+}
+
+.sci-tag-cat {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+
+.sci-tag-trait {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  color: #5b21b6;
+}
+
+.sci-tag-perf {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+body.dark-theme .sci-tag-cat {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(147, 197, 253, 0.35);
+  color: #93c5fd;
+}
+
+body.dark-theme .sci-tag-trait {
+  background: rgba(124, 58, 237, 0.18);
+  border-color: rgba(196, 181, 253, 0.35);
+  color: #c4b5fd;
+}
+
+body.dark-theme .sci-tag-perf {
+  background: rgba(22, 163, 74, 0.18);
+  border-color: rgba(134, 239, 172, 0.35);
+  color: #86efac;
+}
+
+.sci-detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sci-detail-block {
+  background: var(--ios-card-alt);
+  border: 1px solid var(--ios-border);
+  border-left: 3.5px solid #2563eb;
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+
+.sci-detail-lbl {
+  font-size: 10px;
+  font-weight: 900;
+  color: #1e3a8a;
+  margin-bottom: 3px;
+}
+
+body.dark-theme .sci-detail-lbl {
+  color: #93c5fd;
+}
+
+.sci-detail-val {
+  font-size: 10.5px;
+  color: var(--ios-text);
+  line-height: 1.42;
+}
+
+.sci-ai-ref-box {
+  margin-top: 7px;
+  background: var(--ios-card-alt);
+  border: 1.5px solid #bfdbfe;
+  border-radius: 9px;
+  padding: 7px 9px;
+}
+
+body.dark-theme .sci-ai-ref-box {
+  border-color: #1e3a8a;
+}
+
+.sci-ai-ref-item {
+  background: var(--ios-card);
+  border: 1px solid var(--ios-border);
+  border-left: 3px solid #2563eb;
+  border-radius: 6px;
+  padding: 5px 7px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.sci-ai-ref-item:hover {
+  border-color: #3b82f6;
+}
+
+/* ============================================================================
+   5 STANDART KARAR SORUSU KARTI (AKILLI ANALİZ MERKEZİ)
+   ============================================================================ */
+.decision-qa-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.decision-qa-item {
+  background: var(--ios-card-alt);
+  border: 1px solid var(--ios-border);
+  border-left: 3.5px solid #2563eb;
+  border-radius: 7px;
+  padding: 5px 8px;
+}
+
+.decision-qa-q {
+  font-size: 9.5px;
+  font-weight: 900;
+  color: #1e40af;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+body.dark-theme .decision-qa-q {
+  color: #93c5fd;
+}
+
+.decision-qa-a {
+  font-size: 10.5px;
+  color: var(--ios-text);
+  line-height: 1.38;
+  margin-top: 2px;
+}
+
+/* ============================================================================
+   AVIGEN GENESIS AI — MOBİL KARE KARTLAR (BENTO GRID) & ODAKLI ANALİZ TASARIMI
+   ============================================================================ */
+.genesis-launcher-hero {
+  background: linear-gradient(135deg, #003d99 0%, #0066ff 58%, #0a2558 100%);
+  border: 1.5px solid #d4af37;
+  border-radius: 14px;
+  padding: 12px;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(0, 102, 255, 0.22);
+  flex-shrink: 0;
+}
+
+.genesis-quick-cta {
+  margin-top: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.genesis-quick-cta:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.genesis-bento-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.genesis-bento-tile {
+  background: var(--ios-card);
+  border: 1.5px solid var(--ios-border);
+  border-radius: 14px;
+  padding: 11px 11px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 122px;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.genesis-bento-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
+}
+
+.genesis-bento-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--ios-card);
+  border: 1.5px solid var(--ios-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.genesis-bento-title {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--ios-text);
+  line-height: 1.25;
+}
+
+.genesis-bento-sub {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ios-subtext);
+  line-height: 1.32;
+  margin-top: 3px;
+}
+
+.genesis-bento-arrow {
+  font-size: 10px;
+  font-weight: 900;
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.genesis-back-pill {
+  background: var(--ios-card-alt);
+  border: 1.5px solid var(--ios-border);
+  color: var(--ios-text);
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 5px 10px;
+  border-radius: 99px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.genesis-back-pill:hover {
+  border-color: #7c3aed;
+  color: #7c3aed;
+}
+
+.genesis-tool-controls {
+  background: var(--ios-card-alt);
+  border: 1px solid var(--ios-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.genesis-hero-score-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--ios-card-alt);
+  border: 1.5px solid var(--ios-border);
+  border-radius: 12px;
+  padding: 9px 11px;
+}
+
+.genesis-score-ring {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3.5px solid #16a34a;
+  background: var(--ios-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.genesis-score-ring .ring-num {
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.genesis-score-ring .ring-sub {
+  font-size: 8.5px;
+  font-weight: 800;
+  opacity: 0.75;
+}
+
+.genesis-verdict-highlight {
+  background: var(--ios-card-alt);
+  border: 1px solid var(--ios-border);
+  border-left: 4px solid #16a34a;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+/* ============================================================================
+   YENİ CYBER-BLUE AI GÖRSEL TEMA (ORİJİNALİ BOZMADAN DEĞİŞTİRİLEBİLİR TEMA)
+   ============================================================================ */
+.cyber-ai-tab-orb {
+  display: contents;
+}
+
+.cyber-ai-tab-orb .ai-chip-txt {
+  display: none;
+}
+
+#homeCyber3x2Grid {
+  display: none;
+}
+
+body.cyber-ai-skin {
+  --ios-bg: #070d1d;
+  --ios-card: rgba(13, 25, 48, 0.88);
+  --ios-card-alt: rgba(18, 35, 68, 0.82);
+  --ios-text: #f8fafc;
+  --ios-subtext: #94a3b8;
+  --ios-border: rgba(56, 189, 248, 0.28);
+  background: radial-gradient(circle at 50% 10%, #10254c 0%, #050a15 70%);
+}
+
+body.cyber-ai-skin .iphone-frame {
+  background: radial-gradient(circle at 80% 18%, #102a5c 0%, #081229 48%, #050a14 100%);
+  border-color: #1e3a8a;
+  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.85), 0 0 30px rgba(56, 189, 248, 0.15);
+}
+
+body.cyber-ai-skin .ios-statusbar {
+  background: transparent;
+  color: #f8fafc;
+}
+
+body.cyber-ai-skin .ios-navbar {
+  background: linear-gradient(180deg, rgba(10, 22, 46, 0.95) 0%, rgba(8, 17, 36, 0.85) 100%);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.22);
+}
+
+body.cyber-ai-skin .nav-title {
+  background: linear-gradient(180deg, #ffffff 0%, #7dd3fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 20px;
+  letter-spacing: 1px;
+}
+
+body.cyber-ai-skin .nav-subtitle {
+  color: #cbd5e1;
+  font-size: 8.5px;
+  letter-spacing: 0.7px;
+}
+
+body.cyber-ai-skin #navExperienceModeBtn {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.4)) !important;
+  border: 1.5px solid #34d399 !important;
+  color: #ecfdf5 !important;
+  border-radius: 99px !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+}
+
+body.cyber-ai-skin #navMembershipBtn {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.85), rgba(15, 23, 42, 0.9)) !important;
+  border: 1.5px solid #60a5fa !important;
+  color: #e0f2fe !important;
+  border-radius: 99px !important;
+}
+
+body.cyber-ai-skin .ios-screen-body {
+  background: transparent;
+}
+
+/* 1. Cyber Kümes Kimlik & Kalkan Arması */
+body.cyber-ai-skin .loft-identity-banner {
+  background: linear-gradient(135deg, rgba(14, 29, 58, 0.82), rgba(8, 18, 38, 0.9));
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 14px;
+  padding: 9px 11px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.cyber-crest-shield {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  background: radial-gradient(circle, rgba(30, 58, 138, 0.7), rgba(9, 13, 22, 0.95));
+  border: 1.5px solid rgba(250, 204, 21, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.25);
+}
+
+.cyber-loft-title {
+  font-size: 14.5px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.4px;
+}
+
+.cyber-loft-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-top: 1px;
+}
+
+.cyber-weather-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: #e2e8f0;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+/* 2. Dört Eşit Büyüklükte Küçük ve Zarif Kuş İstatistik Kartı */
+body.cyber-ai-skin .hero-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+body.cyber-ai-skin .hero-stat-pill.cyber-stat-col {
+  background: linear-gradient(180deg, rgba(16, 33, 66, 0.92) 0%, rgba(10, 21, 44, 0.95) 100%);
+  border: 1.5px solid rgba(0, 102, 255, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+body.cyber-ai-skin .hero-stat-pill.cyber-stat-col:hover {
+  transform: translateY(-1px);
+  border-color: #0066ff;
+}
+
+.cyber-stat-icon {
+  font-size: 14px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+body.cyber-ai-skin .hero-stat-pill .num {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+body.cyber-ai-skin .hero-stat-pill .lbl {
+  color: #cbd5e1;
+  font-size: 9px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+/* 3. Cyber Arama & + Kuş Ekle */
+body.cyber-ai-skin #homeQuickSearchInput {
+  background: rgba(14, 28, 56, 0.9);
+  border: 1.5px solid rgba(56, 189, 248, 0.32);
+  color: #f8fafc;
+  border-radius: 99px;
+}
+
+body.cyber-ai-skin .home-quick-search-wrap .nav-btn {
+  background: linear-gradient(180deg, #38bdf8 0%, #2563eb 100%);
+  border: 1px solid #7dd3fc;
+  color: #ffffff;
+  border-radius: 99px;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+}
+
+/* 4. Cyber AVIGEN GENESIS AI Hero Kartı (Sağda Güvercin + DNA, Solda Altın Buton) */
+.cyber-genesis-hero-card {
+  position: relative;
+  background: linear-gradient(135deg, #0a1938 0%, #0f295c 52%, #09152e 100%);
+  border: 1.5px solid rgba(56, 189, 248, 0.55);
+  border-radius: 16px;
+  padding: 12px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.cyber-hero-left {
+  position: relative;
+  z-index: 2;
+  max-width: 66%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.cyber-hero-brand-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cyber-avigen-lbl {
+  font-size: 11px;
+  font-weight: 900;
+  color: #93c5fd;
+  letter-spacing: 1.5px;
+}
+
+.cyber-crown-ico {
+  font-size: 15px;
+  filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.8));
+}
+
+.cyber-genesis-big-title {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  line-height: 1.08;
+  background: linear-gradient(180deg, #ffffff 0%, #bae6fd 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 10px rgba(56, 189, 248, 0.35);
+}
+
+.cyber-pro-pill {
+  margin-top: 4px;
+  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 50%, #d97706 100%);
+  color: #0f172a;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 2px 9px;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+}
+
+.cyber-hero-tagline {
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #f8fafc;
+  font-style: italic;
+  letter-spacing: 0.3px;
+}
+
+.cyber-hero-bullets {
+  margin-top: 3px;
+  font-size: 8.8px;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.cyber-hero-bullets .gold-dot {
+  color: #fbbf24;
+  margin: 0 1px;
+}
+
+.cyber-gold-cta-btn {
+  margin-top: 8px;
+  background: linear-gradient(180deg, #fde047 0%, #f59e0b 55%, #d97706 100%);
+  border: 1.5px solid #fef08a;
+  color: #090d16;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 6px 14px;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.5);
+}
+
+.cyber-ai-chip-box {
+  background: #0f172a;
+  color: #fde047;
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 2px 5px;
+  border-radius: 5px;
+  border: 1px solid #fde047;
+}
+
+.cyber-hero-right {
+  position: absolute;
+  right: -6px;
+  top: -4px;
+  bottom: -6px;
+  width: 46%;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.cyber-pigeon-dna-svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 5. Ana Sayfa 6 Analiz Modülü: İki Sütunlu (2x3) Zarif Kart Düzeni */
+body.cyber-ai-skin #homeCyber3x2Grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.cyber-3x2-card {
+  background: linear-gradient(180deg, rgba(16, 34, 68, 0.92) 0%, rgba(10, 21, 44, 0.95) 100%);
+  border: 1.5px solid rgba(0, 102, 255, 0.32);
+  border-radius: 13px;
+  padding: 8px 9px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+
+.cyber-3x2-card:hover {
+  transform: translateY(-2px);
+  border-color: #0066ff;
+  box-shadow: 0 6px 16px rgba(0, 102, 255, 0.22);
+}
+
+.cyber-2col-icon-box {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(0, 102, 255, 0.15);
+  border: 1px solid rgba(0, 102, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.cyber-2col-icon-box.gold-icon-box {
+  background: rgba(212, 175, 55, 0.18);
+  border-color: rgba(212, 175, 55, 0.55);
+}
+
+.cyber-2col-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.cyber-3x2-title {
+  font-size: 10.5px;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cyber-3x2-sub {
+  font-size: 8.8px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-top: 2px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cyber-2col-arrow {
+  font-size: 12px;
+  font-weight: 900;
+  color: #0066ff;
+  flex-shrink: 0;
+}
+
+/* 6. Kompakt Günlük Görev Alanı & Elektrik Mavisi / Gri Alt Navigasyon */
+.home-compact-tasks-card {
+  padding: 9px 10px !important;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.home-tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.home-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+body.cyber-ai-skin .ios-card {
+  background: linear-gradient(180deg, rgba(14, 29, 58, 0.9) 0%, rgba(9, 19, 40, 0.94) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #f8fafc;
+}
+
+body.cyber-ai-skin .dash-list-item {
+  background: rgba(17, 34, 68, 0.85);
+  border-color: rgba(56, 189, 248, 0.25);
+}
+
+body.cyber-ai-skin .ios-tabbar {
+  background: linear-gradient(180deg, rgba(10, 21, 44, 0.96) 0%, rgba(5, 11, 24, 0.99) 100%);
+  border-top: 1px solid rgba(56, 189, 248, 0.32);
+}
+
+body.cyber-ai-skin .ios-tab-btn {
+  color: #94a3b8;
+}
+
+body.cyber-ai-skin .ios-tab-btn.active {
+  color: #38bdf8;
+}
+
+body.cyber-ai-skin .genesis-tab-btn .cyber-ai-tab-orb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  margin-top: -14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1e3a8a 0%, #090d16 100%);
+  border: 2px solid #38bdf8;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.75), inset 0 0 8px rgba(56, 189, 248, 0.45);
+  position: relative;
+}
+
+body.cyber-ai-skin .genesis-tab-btn .cyber-ai-tab-orb svg {
+  display: none;
+}
+
+body.cyber-ai-skin .genesis-tab-btn .cyber-ai-tab-orb .ai-chip-txt {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 900;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 8px #38bdf8;
+}
+
+/* ============================================================================
+   ☀️ AVIGEN SABİTLENMİŞ 3 RENKLİ MARKA KİMLİĞİ (ANA TASARIM DİLİ)
+   - 1. Beyaz (#FFFFFF / #F8FAFF): Ana Zemin
+   - 2. Elektrik Mavisi (#0066FF): Teknoloji ve Güven
+   - 3. Şampanya Altını (#D4AF37 / #F59E0B): Premium ve Başarı
+   ============================================================================ */
+body.cyber-ai-skin.cyber-light-skin {
+  --ios-bg: #f5f8ff;
+  --ios-card: #ffffff;
+  --ios-card-alt: #f8faff;
+  --ios-text: #0f172a;
+  --ios-subtext: #64748b;
+  --ios-border: rgba(0, 102, 255, 0.18);
+  background: radial-gradient(circle at 20% 10%, #ffffff 0%, #f0f6ff 60%, #e4eeff 100%);
+  color: #0f172a;
+}
+
+body.cyber-ai-skin.cyber-light-skin .iphone-frame,
+body.cyber-ai-skin.cyber-light-skin .iphone-screen {
+  background: linear-gradient(180deg, #ffffff 0%, #f5f8ff 55%, #edf4ff 100%);
+  border-color: #93c5fd;
+  box-shadow: 0 22px 55px rgba(0, 82, 204, 0.16);
+}
+
+body.cyber-ai-skin.cyber-light-skin .ios-statusbar {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+body.cyber-ai-skin.cyber-light-skin .ios-navbar {
+  background: #ffffff;
+  border-bottom: 1.5px solid rgba(0, 102, 255, 0.16);
+  box-shadow: 0 3px 12px rgba(0, 102, 255, 0.05);
+}
+
+body.cyber-ai-skin.cyber-light-skin .nav-title,
+body.cyber-ai-skin.cyber-light-skin .ios-navbar .brand-title {
+  background: linear-gradient(180deg, #0044aa 0%, #0066ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+}
+
+body.cyber-ai-skin.cyber-light-skin .nav-subtitle,
+body.cyber-ai-skin.cyber-light-skin .ios-navbar .brand-sub {
+  color: #64748b;
+}
+
+body.cyber-ai-skin.cyber-light-skin #navExperienceModeBtn {
+  background: #f0f6ff !important;
+  border: 1.5px solid #0066ff !important;
+  color: #0052cc !important;
+  box-shadow: none;
+}
+
+body.cyber-ai-skin.cyber-light-skin #navMembershipBtn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d4af37 100%) !important;
+  border: 1.5px solid #b45309 !important;
+  color: #0f172a !important;
+  font-weight: 900 !important;
+}
+
+/* 1. Kümes Kimlik & Şampanya Altını Arması */
+body.cyber-ai-skin.cyber-light-skin .loft-identity-banner {
+  background: #ffffff;
+  border: 1.5px solid rgba(0, 102, 255, 0.18);
+  box-shadow: 0 4px 14px rgba(0, 102, 255, 0.06);
+  padding: 7px 10px;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-crest-shield {
+  width: 44px;
+  height: 44px;
+  background: radial-gradient(circle, #0066ff 0%, #003380 100%);
+  border: 1.5px solid #d4af37;
+  box-shadow: 0 3px 10px rgba(0, 102, 255, 0.18);
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-loft-title {
+  color: #0f172a;
+  font-size: 13.5px;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-loft-sub {
+  color: #64748b;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-weather-row {
+  color: #0052cc;
+  font-weight: 700;
+}
+
+/* 2. Dört Eşit Büyüklükte Küçük ve Zarif Kuş İstatistik Kartı */
+body.cyber-ai-skin.cyber-light-skin .hero-stats-strip {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  gap: 7px;
+}
+
+body.cyber-ai-skin.cyber-light-skin .hero-stat-pill.cyber-stat-col {
+  background: #ffffff;
+  border: 1.5px solid rgba(0, 102, 255, 0.18);
+  border-radius: 12px;
+  padding: 6px 4px;
+  box-shadow: 0 3px 10px rgba(0, 102, 255, 0.05);
+}
+
+body.cyber-ai-skin.cyber-light-skin .hero-stat-pill.cyber-stat-col:hover {
+  border-color: #0066ff;
+  box-shadow: 0 5px 14px rgba(0, 102, 255, 0.12);
+}
+
+body.cyber-ai-skin.cyber-light-skin .hero-stat-pill .num {
+  color: #0052cc;
+  font-size: 15px;
+}
+
+body.cyber-ai-skin.cyber-light-skin .hero-stat-pill .lbl {
+  color: #64748b;
+  font-weight: 700;
+  font-size: 9px;
+}
+
+/* 3. Arama Kutusu & Elektrik Mavisi + Kuş Ekle */
+body.cyber-ai-skin.cyber-light-skin #homeQuickSearchInput {
+  background: #ffffff;
+  border: 1.5px solid rgba(0, 102, 255, 0.24);
+  color: #0f172a;
+  box-shadow: 0 2px 8px rgba(0, 102, 255, 0.04);
+  padding: 7px 11px !important;
+  font-size: 11.5px !important;
+}
+
+body.cyber-ai-skin.cyber-light-skin #homeQuickSearchInput::placeholder {
+  color: #64748b;
+}
+
+body.cyber-ai-skin.cyber-light-skin .home-quick-search-wrap .nav-btn,
+body.cyber-ai-skin.cyber-light-skin .nav-btn,
+body.cyber-ai-skin.cyber-light-skin .ai-send-btn {
+  background: linear-gradient(180deg, #0066ff 0%, #0052cc 100%) !important;
+  border: 1px solid #0052cc !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.25);
+}
+
+/* 4. GENESIS AI Ana Vitrin Kartı: Mavi-Beyaz Zemin, Şampanya Altını Taç ve AI Simgesi */
+body.cyber-ai-skin.cyber-light-skin .cyber-genesis-hero-card {
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 48%, #dbeafe 100%);
+  border: 1.5px solid #0066ff;
+  box-shadow: 0 8px 22px rgba(0, 102, 255, 0.14), inset 0 0 0 1px rgba(212, 175, 55, 0.25);
+  padding: 11px 13px;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-avigen-lbl {
+  color: #0052cc;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-genesis-big-title {
+  background: linear-gradient(180deg, #5b21b6 0%, #7c3aed 65%, #9333ea 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-pro-pill {
+  background: linear-gradient(90deg, #d4af37 0%, #f59e0b 55%, #b45309 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.35);
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-hero-tagline {
+  color: #0f172a;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-hero-bullets {
+  color: #334155;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-hero-bullets .gold-dot {
+  color: #d97706;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-gold-cta-btn {
+  background: linear-gradient(180deg, #f59e0b 0%, #d4af37 55%, #b45309 100%);
+  border: 1.5px solid #fde68a;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4);
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-ai-chip-box {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  color: #ffffff;
+  border: 1px solid #c4b5fd;
+}
+
+.ios-btn-purple {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%) !important;
+  border: 1.5px solid #a78bfa !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 3px 10px rgba(124, 58, 237, 0.25);
+}
+
+/* 5. İki Sütunlu (2x3) 6 Analiz Modülü Kartları */
+body.cyber-ai-skin.cyber-light-skin .cyber-3x2-card {
+  background: #ffffff;
+  border: 1.5px solid rgba(0, 102, 255, 0.18);
+  box-shadow: 0 3px 10px rgba(0, 102, 255, 0.05);
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-3x2-card.cyber-card-gold-accent {
+  border-color: rgba(212, 175, 55, 0.55);
+  background: linear-gradient(135deg, #ffffff 0%, #fffdf5 100%);
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-3x2-card:hover {
+  border-color: #0066ff;
+  box-shadow: 0 6px 16px rgba(0, 102, 255, 0.14);
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-2col-icon-box {
+  background: #eff6ff;
+  border: 1px solid rgba(0, 102, 255, 0.25);
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-2col-icon-box.gold-icon-box {
+  background: #fef9c3;
+  border: 1px solid #d4af37;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-3x2-title {
+  color: #0f172a;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-3x2-sub {
+  color: #64748b;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-2col-arrow {
+  color: #0066ff;
+}
+
+/* 6. Tüm Sekmelerde Ortak Kart, Alt Sekme (Sub-Pill) ve Elektrik Mavisi / Gri Alt Navigasyon */
+body.cyber-ai-skin.cyber-light-skin .ios-card,
+body.cyber-ai-skin.cyber-light-skin .genesis-shell-card {
+  background: #ffffff;
+  border: 1.5px solid rgba(0, 102, 255, 0.18);
+  color: #0f172a;
+  box-shadow: 0 3px 12px rgba(0, 102, 255, 0.05);
+}
+
+body.cyber-ai-skin.cyber-light-skin .sub-pills {
+  background: #f1f5f9;
+  border: 1px solid rgba(0, 102, 255, 0.14);
+}
+
+body.cyber-ai-skin.cyber-light-skin .sub-pill {
+  color: #64748b;
+}
+
+body.cyber-ai-skin.cyber-light-skin .sub-pill.active {
+  background: #0066ff;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 102, 255, 0.25);
+}
+
+body.cyber-ai-skin.cyber-light-skin .dash-list-item {
+  background: #f8faff;
+  border-color: rgba(0, 102, 255, 0.16);
+  padding: 6px 8px;
+}
+
+body.cyber-ai-skin.cyber-light-skin .ios-tabbar {
+  background: #ffffff;
+  border-top: 1.5px solid rgba(0, 102, 255, 0.16);
+  box-shadow: 0 -4px 14px rgba(15, 23, 42, 0.05);
+}
+
+/* Alt Navigasyon: Seçili olmayanlar Gri (#94A3B8), Seçili Sekme Elektrik Mavisi (#0066FF) */
+body.cyber-ai-skin.cyber-light-skin .ios-tab-btn {
+  color: #94a3b8;
+  font-weight: 700;
+  position: relative;
+}
+
+body.cyber-ai-skin.cyber-light-skin .ios-tab-btn.active {
+  color: #0066ff;
+  font-weight: 900;
+}
+
+body.cyber-ai-skin.cyber-light-skin .ios-tab-btn.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 22%;
+  right: 22%;
+  height: 2.5px;
+  background: #0066ff;
+  border-radius: 0 0 4px 4px;
+}
+
+body.cyber-ai-skin.cyber-light-skin .genesis-tab-btn .cyber-ai-tab-orb {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  border: 2px solid #d4af37;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+}
+
+body.cyber-ai-skin.cyber-light-skin .genesis-tab-btn .cyber-ai-tab-orb .ai-chip-txt {
+  color: #ffffff;
+  text-shadow: none;
+}
+
+/* ============================================================================
+   7. YARIŞ GÜVERCİNİ YÖNETİM KOKPİTİ:
+   - GENESIS AI Dinamik Bildirim Kartı (.genesis-dynamic-notif-card)
+   - Görsel & Kompakt Aktif Yuva / Kuluçka Kartları (.nest-cockpit-card)
+   - Kuluçka İlerleme Çubuğu (.nest-progress-track) & Kuş Profili Çipleri
+   ============================================================================ */
+.genesis-dynamic-notif-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 60%, #fffdf5 100%);
+  border: 1.5px solid rgba(0, 102, 255, 0.25);
+  border-left: 4px solid #d4af37;
+  border-radius: 13px;
+  padding: 8px 10px;
+  box-shadow: 0 4px 12px rgba(0, 102, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.genesis-dynamic-notif-card.notif-conflict {
+  background: linear-gradient(135deg, #fff5f5 0%, #fef2f2 100%);
+  border-color: #ef4444;
+  border-left: 4px solid #dc2626;
+}
+
+body.cyber-ai-skin:not(.cyber-light-skin) .genesis-dynamic-notif-card {
+  background: linear-gradient(135deg, rgba(16, 33, 66, 0.94) 0%, rgba(10, 21, 44, 0.96) 100%);
+  border-color: rgba(56, 189, 248, 0.35);
+  border-left: 4px solid #d4af37;
+}
+
+.genesis-notif-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.genesis-notif-cycle-btn {
+  background: rgba(0, 102, 255, 0.08);
+  border: 1px solid rgba(0, 102, 255, 0.25);
+  color: #0052cc;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 99px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+body.cyber-ai-skin:not(.cyber-light-skin) .genesis-notif-cycle-btn {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #bae6fd;
+}
+
+.genesis-notif-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.genesis-notif-ico {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #eff6ff;
+  border: 1px solid rgba(0, 102, 255, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+body.cyber-ai-skin:not(.cyber-light-skin) .genesis-notif-ico {
+  background: rgba(30, 58, 138, 0.65);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+.genesis-notif-title {
+  font-size: 10.5px;
+  font-weight: 900;
+  color: var(--ios-text);
+  line-height: 1.25;
+}
+
+.genesis-notif-desc {
+  font-size: 9.2px;
+  font-weight: 600;
+  color: var(--ios-subtext);
+  margin-top: 1px;
+  line-height: 1.3;
+}
+
+.genesis-notif-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 1px;
+}
+
+/* Aktif Yuva & Kuluçka Görsel Kokpit Kartları */
+.nest-cockpit-card {
+  background: var(--ios-card-alt);
+  border: 1.5px solid var(--ios-border);
+  border-left: 4px solid #0066ff;
+  border-radius: 11px;
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.nest-cockpit-card.nest-conflict-border {
+  border-color: #ef4444;
+  border-left: 4px solid #dc2626;
+  background: rgba(254, 242, 242, 0.7);
+}
+
+.nest-cockpit-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.nest-pill-badge {
+  font-size: 10.5px;
+  font-weight: 900;
+  color: #0052cc;
+  background: rgba(0, 102, 255, 0.09);
+  border: 1px solid rgba(0, 102, 255, 0.25);
+  padding: 2px 7px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+body.cyber-ai-skin:not(.cyber-light-skin) .nest-pill-badge {
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+.nest-conflict-alert-strip {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 4px 7px;
+  border-radius: 7px;
+  line-height: 1.3;
+}
+
+.nest-parents-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.nest-parent-chip {
+  background: var(--ios-card);
+  border: 1px solid var(--ios-border);
+  border-radius: 8px;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  min-width: 0;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.nest-parent-chip:hover {
+  border-color: #0066ff;
+}
+
+.nest-parent-chip.conflict {
+  border-color: #ef4444;
+  background: #fff5f5;
+}
+
+.nest-parent-chip .sex-ico {
+  font-size: 11px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.nest-parent-chip .sex-ico.male {
+  color: #0066ff;
+}
+
+.nest-parent-chip .sex-ico.female {
+  color: #db2777;
+}
+
+.nest-parent-chip .p-txt {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: var(--ios-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.nest-parent-chip .p-link {
+  font-size: 8px;
+  font-weight: 800;
+  color: #0066ff;
+  flex-shrink: 0;
+}
+
+.nest-progress-wrap {
+  background: var(--ios-card);
+  border: 1px solid var(--ios-border);
+  border-radius: 8px;
+  padding: 5px 7px;
+}
+
+.nest-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9.2px;
+  margin-bottom: 3px;
+}
+
+.nest-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(148, 163, 184, 0.22);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.nest-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.35s ease;
+}
+
+.nest-milestones-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 8.8px;
+  color: var(--ios-subtext);
+  margin-top: 4px;
+}
+
+.nest-mini-action-btn {
+  background: var(--ios-card);
+  border: 1px solid rgba(0, 102, 255, 0.28);
+  color: #0052cc;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2.5px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+
+.nest-mini-action-btn:hover {
+  background: #0066ff;
+  color: #ffffff;
+}
+
+.nest-mini-action-btn.gold {
+  background: linear-gradient(135deg, #f59e0b 0%, #d4af37 100%);
+  border-color: #b45309;
+  color: #ffffff;
+}
+
+body.cyber-ai-skin:not(.cyber-light-skin) .nest-mini-action-btn {
+  background: rgba(30, 58, 138, 0.6);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #e0f2fe;
+}
+
+/* ============================================================================
+   GENESIS AI — 3 ANA MODÜL MİMARİSİ & ENTEGRE ALT FONKSİYON SEKMELERİ
+   ============================================================================ */
+.genesis-3main-card {
+  border: 1.5px solid rgba(124, 58, 237, 0.35);
+  border-radius: 13px;
+  padding: 9px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(88, 28, 135, 0.06);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.genesis-3main-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 15px rgba(124, 58, 237, 0.12);
+}
+
+.genesis-io-meta-strip {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 9px;
+  color: var(--ios-text);
+  line-height: 1.38;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+body.cyber-ai-skin:not(.cyber-light-skin) .genesis-io-meta-strip {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(167, 139, 250, 0.28);
+}
+
+.genesis-home-subfunc-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.genesis-subfunc-chip {
+  background: #ffffff;
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  color: #5b21b6;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 7px;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+
+.genesis-subfunc-chip:hover {
+  background: #7c3aed;
+  border-color: #6d28d9;
+  color: #ffffff;
+}
+
+body.cyber-ai-skin:not(.cyber-light-skin) .genesis-subfunc-chip {
+  background: rgba(46, 16, 101, 0.75);
+  border-color: rgba(196, 181, 253, 0.45);
+  color: #e9d5ff;
+}
+
+.genesis-3main-switcher-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.genesis-main-tab-pill {
+  background: var(--ios-card-alt);
+  border: 1px solid var(--ios-border);
+  color: var(--ios-subtext);
+  font-size: 9.2px;
+  font-weight: 800;
+  padding: 5px 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.14s ease;
+}
+
+.genesis-main-tab-pill.active {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  border-color: #4c1d95;
+  color: #ffffff;
+  font-weight: 900;
+  box-shadow: 0 2px 7px rgba(124, 58, 237, 0.25);
+}
+
+.genesis-subfunc-tab-bar {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+  border-bottom: 1px dashed var(--ios-border);
+}
+
+.genesis-subfunc-tab-btn {
+  background: rgba(124, 58, 237, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.24);
+  color: #5b21b6;
+  font-size: 9.2px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.14s ease;
+}
+
+.genesis-subfunc-tab-btn.active {
+  background: #0066ff;
+  border-color: #0052cc;
+  color: #ffffff;
+  font-weight: 900;
+}
+
+/* ============================================================================
+   ✨ [60-30-10 EXECUTIVE BIOTECH RENK PALETİ — MAVİ • MOR • ZÜMRÜT YEŞİLİ UYUMU]
+   - %60 Zemin: Buz Grisi (#F8FAFC) üzerinde Saf Beyaz (#FFFFFF) Kartlar & İnce Arduvaz Kenarlık (#E2E8F0)
+   - %30 Omurga: Gece Laciverti Tipografi (#0F172A) & Elektrik Mavisi (#0066FF) Aktif Etkileşim
+   - %10 Vurgu: Kraliyet Moru (#7C3AED - GENESIS AI) & Zümrüt Yeşili (#059669 - GLOBAL GEN HAVUZU)
+   (Sarı / Altın tonları tamamen kaldırıldı)
+   ============================================================================ */
+body.cyber-ai-skin.cyber-light-skin {
+  --ios-bg: #f8fafc;
+  --ios-card: #ffffff;
+  --ios-card-alt: #f8fafc;
+  --ios-text: #0f172a;
+  --ios-subtext: #475569;
+  --ios-border: #e2e8f0;
+  background: radial-gradient(circle at 20% 10%, #ffffff 0%, #f1f5f9 65%, #e2e8f0 100%);
+  color: #0f172a;
+}
+
+body.cyber-ai-skin.cyber-light-skin .iphone-frame,
+body.cyber-ai-skin.cyber-light-skin .iphone-screen {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
+}
+
+body.cyber-ai-skin.cyber-light-skin .ios-statusbar,
+body.cyber-ai-skin.cyber-light-skin .ios-navbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+}
+
+body.cyber-ai-skin.cyber-light-skin .nav-title,
+body.cyber-ai-skin.cyber-light-skin .ios-navbar .brand-title {
+  background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Üst Bar Paket Seçimi Butonu (#navMembershipBtn): Sarı yerine Paket Rengine Göre Yeşil / Mor / Mavi */
+body.cyber-ai-skin #navMembershipBtn.ios-btn-green,
+body.cyber-ai-skin.cyber-light-skin #navMembershipBtn.ios-btn-green {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  border: 1.5px solid #34d399 !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25) !important;
+}
+
+body.cyber-ai-skin #navMembershipBtn.ios-btn-purple,
+body.cyber-ai-skin.cyber-light-skin #navMembershipBtn.ios-btn-purple {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%) !important;
+  border: 1.5px solid #a78bfa !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25) !important;
+}
+
+body.cyber-ai-skin #navMembershipBtn.ios-btn-primary,
+body.cyber-ai-skin.cyber-light-skin #navMembershipBtn.ios-btn-primary {
+  background: linear-gradient(135deg, #0066ff 0%, #0284c7 100%) !important;
+  border: 1.5px solid #60a5fa !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  box-shadow: 0 2px 8px rgba(0, 102, 255, 0.22) !important;
+}
+
+/* Kümes Arması ve Alt Navigasyon AI Küresi: Sarı çerçeveler yerine Mavi/Mor/Turkuaz */
+body.cyber-ai-skin.cyber-light-skin .cyber-crest-shield {
+  background: radial-gradient(circle, #0066ff 0%, #1e3a8a 100%);
+  border: 1.5px solid #38bdf8;
+  box-shadow: 0 3px 10px rgba(0, 102, 255, 0.18);
+}
+
+body.cyber-ai-skin.cyber-light-skin .genesis-tab-btn .cyber-ai-tab-orb {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  border: 2px solid #c4b5fd;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+}
+
+/* Kartlar: Göz yoran çerçeveler yerine ince arduvaz (#E2E8F0) kenarlık ve saf beyaz yüzey */
+body.cyber-ai-skin.cyber-light-skin .loft-identity-banner,
+body.cyber-ai-skin.cyber-light-skin .hero-stat-pill.cyber-stat-col,
+body.cyber-ai-skin.cyber-light-skin .ios-card,
+body.cyber-ai-skin.cyber-light-skin .genesis-shell-card,
+body.cyber-ai-skin.cyber-light-skin .cyber-3x2-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.035);
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-3x2-card.cyber-card-gold-accent {
+  border-color: #a7f3d0;
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-2col-icon-box.gold-icon-box {
+  background: #d1fae5;
+  border: 1px solid #10b981;
+}
+
+body.cyber-ai-skin.cyber-light-skin .hero-stat-pill .num {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+body.cyber-ai-skin.cyber-light-skin .hero-stat-pill .lbl {
+  color: #64748b;
+}
+
+body.cyber-ai-skin.cyber-light-skin #homeQuickSearchInput {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+body.cyber-ai-skin.cyber-light-skin #homeQuickSearchInput:focus {
+  border-color: #0066ff;
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.12);
+}
+
+/* GENESIS AI Ana Vitrin Kartı: Sakin Beyaz-Lavanta Zemin + Mor & Elektrik Mavisi Vurgu */
+body.cyber-ai-skin.cyber-light-skin .cyber-genesis-hero-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 52%, #eff6ff 100%);
+  border: 1.5px solid rgba(124, 58, 237, 0.35);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.08);
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-avigen-lbl {
+  color: #5b21b6;
+}
+
+body.cyber-ai-skin.cyber-light-skin .cyber-genesis-big-title {
+  background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 60%, #0066ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.cyber-pro-pill,
+body.cyber-ai-skin.cyber-light-skin .cyber-pro-pill {
+  background: linear-gradient(90deg, #7c3aed 0%, #0066ff 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+}
+
+.cyber-hero-bullets .gold-dot,
+body.cyber-ai-skin.cyber-light-skin .cyber-hero-bullets .gold-dot {
+  color: #7c3aed;
+}
+
+.cyber-gold-cta-btn,
+body.cyber-ai-skin.cyber-light-skin .cyber-gold-cta-btn {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  border: 1px solid #8b5cf6;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+
+/* Eski Altın Buton Sınıflarını Mavi-Mor-Yeşil Uyumuna Dönüştür */
+.ios-btn-gold {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  border: 1px solid #047857 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.22) !important;
+}
+
+.nest-mini-action-btn.gold {
+  background: linear-gradient(135deg, #7c3aed 0%, #0066ff 100%);
+  border-color: #5b21b6;
+  color: #ffffff;
+}
+
+/* GENESIS AI Dinamik Bildirim Kartı: Sakin Beyaz Zemin + Sol Mor Şerit */
+body.cyber-ai-skin.cyber-light-skin .genesis-dynamic-notif-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 3.5px solid #7c3aed;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+body.cyber-ai-skin.cyber-light-skin .genesis-dynamic-notif-card.notif-conflict {
+  background: #fef2f2;
+  border-color: #fecaca;
+  border-left: 4px solid #dc2626;
+}
+
+/* Aktif Yuva Kartları & Anne/Baba Semantik Renk Kodlaması */
+body.cyber-ai-skin.cyber-light-skin .nest-cockpit-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 3.5px solid #0066ff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+}
+
+body.cyber-ai-skin.cyber-light-skin .nest-parent-chip {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+body.cyber-ai-skin.cyber-light-skin .nest-parent-chip .sex-ico.male {
+  color: #0284c7;
+  background: #e0f2fe;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+body.cyber-ai-skin.cyber-light-skin .nest-parent-chip .sex-ico.female {
+  color: #db2777;
+  background: #fce7f3;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+/* GENESIS AI 3 Ana Modül Başlatıcı Başlığı & Kartları (1: Mor, 2: Elektrik Mavisi, 3: Zümrüt Yeşili) */
+body.cyber-ai-skin.cyber-light-skin .genesis-launcher-hero {
+  background: linear-gradient(135deg, #1e1b4b 0%, #3b0764 55%, #0f172a 100%);
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  box-shadow: 0 6px 16px rgba(88, 28, 135, 0.14);
+}
+
+body.cyber-ai-skin.cyber-light-skin .genesis-3main-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-left: 4px solid #7c3aed !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+body.cyber-ai-skin.cyber-light-skin .genesis-3main-card:nth-child(2) {
+  border-left-color: #0066ff !important;
+}
+
+body.cyber-ai-skin.cyber-light-skin .genesis-3main-card:nth-child(3) {
+  border-left-color: #059669 !important;
+}
+
+body.cyber-ai-skin.cyber-light-skin .genesis-io-meta-strip {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+/* Semantik Rozetler: Sarı yerine Mavi / Mor / Zümrüt Yeşili Pastel Zemin + Koyu Metin */
+body.cyber-ai-skin.cyber-light-skin .gene-badge.gene-green,
+body.cyber-ai-skin.cyber-light-skin .gene-badge.gene-gold {
+  background: #d1fae5;
+  color: #047857;
+  border: 1px solid #6ee7b7;
+}
+
+body.cyber-ai-skin.cyber-light-skin .gene-badge.gene-blue {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+body.cyber-ai-skin.cyber-light-skin .gene-badge.gene-purple {
+  background: #f3e8ff;
+  color: #6d28d9;
+  border: 1px solid #e9d5ff;
+}
+
+body.cyber-ai-skin.cyber-light-skin .gene-badge.gene-red {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+/* Alt Navigasyon: Temiz Beyaz Zemin + İnce Arduvaz Çizgi + Elektrik Mavisi Aktif Sekme */
+body.cyber-ai-skin.cyber-light-skin .ios-tabbar {
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.04);
+}
+
+/* GENESIS AI & Global Gen Havuzu Yatay Taşma (Yana Kayma) Koruması */
+.genesis-shell-card,
+.genesis-tool-controls,
+.ai-answer-box,
+#genesisToolDynamicControls,
+#genesisResultBox {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.genesis-tool-controls select,
+.genesis-tool-controls input,
+.genesis-tool-controls button {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-overflow: ellipsis;
+}
+
+/* Kuşlarım Listesi Sağ Tek Dokunuşlu Açılır İşlem Menüsü (Mobil Parmak Dostu) */
+.bird-popup-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--ios-text, #0f172a);
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 8px 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s;
+}
+
+.bird-popup-item:hover,
+.bird-popup-item:active {
+  background: var(--ios-card-alt, #f1f5f9);
+}
+
+.bird-popup-item.danger {
+  color: #dc2626;
+}
+
+.bird-popup-item.danger:hover,
+.bird-popup-item.danger:active {
+  background: #fef2f2;
+}
+
+
+
+
+
+
+
+
+
+

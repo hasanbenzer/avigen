@@ -1,0 +1,36 @@
+const CACHE_NAME = 'avigen-pwa-v3';
+const ASSETS = [
+  './',
+  './index.html',
+  './styles.css',
+  './real-pedigrees-64.js',
+  './app.js',
+  './scientific-library.js',
+  './global-gene-pool.js',
+  './genesis-ai.js',
+  './performance-profile.js',
+  './manifest.json',
+  './avigen-logo.svg',
+  './avigen-dna-pigeon.jpg'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  event.respondWith(
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
+  );
+});

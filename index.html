@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="AVIGEN / PREMIUM RACING PIGEON APP" />
+  <title>AVIGEN / PREMIUM RACING PIGEON APP</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@500;700;800&family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+</head>
+<body class="cyber-ai-skin cyber-light-skin">
+
+  <!-- MASAÜSTÜ TEST ÇUBUĞU (İnce Kontrol Barı) -->
+  <div class="desktop-helper-bar">
+    <div class="helper-left">
+      <img src="avigen-logo.svg" alt="AVIGEN" style="width:24px; height:20px;" />
+      <span>AVIGEN / PREMIUM RACING PIGEON APP</span>
+    </div>
+    <div class="helper-right">
+      <button class="helper-btn" id="btnThemeToggle" onclick="toggleAppTheme()">🌙 Gece Modu</button>
+      <button class="helper-btn active" id="btnModeIphone" onclick="setScreenMode('iphone')">📱 iPhone Ekranı</button>
+      <button class="helper-btn" id="btnModeWide" onclick="setScreenMode('wide')">🖥️ Geniş Ekran</button>
+    </div>
+  </div>
+
+  <!-- iPHONE SİMÜLATÖR SAHNESİ (%100 Kaydırmasız Tam Sığar) -->
+  <div class="device-stage">
+    <div class="iphone-frame">
+
+      <!-- iOS Üst Durum Çubuğu -->
+      <div class="ios-statusbar">
+        <span>09:41</span>
+        <div class="dynamic-island"><div class="island-lens"></div></div>
+        <span>5G 🔋100%</span>
+      </div>
+
+      <!-- AVIGEN Üst Başlık (Çok Renkli Kuş Logosu, Kolay/Uzman Mod Anahtarı & Üyelik) -->
+      <div class="ios-navbar">
+        <div class="nav-brand" onclick="openIosTab('home', document.querySelectorAll('.ios-tab-btn')[0])" style="cursor:pointer;">
+          <div class="nav-logo">
+            <img src="avigen-logo.svg" alt="AVIGEN Logo" style="width:100%; height:100%; object-fit:contain;" />
+          </div>
+          <div>
+            <div class="nav-title">AVIGEN</div>
+            <div class="nav-subtitle">PREMIUM RACING PIGEON APP</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <button class="ios-btn ios-btn-green" id="navMembershipBtn" style="padding:5px 9px; font-size:10px;" onclick="AvigenUxManager.openSubscriptionModal()" title="Üyelik & Premium Paketler">
+            🌍 GLOBAL
+          </button>
+          <button class="ios-btn ios-btn-outline" style="padding:5px 7px;" onclick="toggleAppTheme()" title="Gündüz / Gece Modu" id="navThemeBtn">🌙</button>
+        </div>
+      </div>
+
+      <!-- ANA EKRAN GÖVDESİ -->
+      <div class="ios-screen-body">
+
+        <!-- =================================================================
+             1. SEKME: ANA SAYFA (FERAH, SADE & AKILLI KONTROL MERKEZİ)
+             ================================================================= -->
+        <div id="page-home" class="ios-tab-page active">
+
+          <!-- 1. BİRLEŞİK KÜMES KİMLİĞİ & CANLI UÇUŞ HAVA DURUMU KARTI (Tek Katman) -->
+          <div class="loft-identity-banner" id="homeLoftIdentityBanner"></div>
+
+          <!-- 2. Tek Satır Kompakt Kümes Özeti (Toplam, Damızlık, Yarışçı, Yavru) -->
+          <div class="hero-stats-strip" id="dashKpiGrid"></div>
+
+          <!-- 3. Ferah Hızlı Arama + Tekil Büyük "+ Kuş Ekle" Butonu -->
+          <div class="home-quick-search-wrap">
+            <div style="display:grid; grid-template-columns:1fr auto; gap:7px;">
+              <input type="text" id="homeQuickSearchInput" class="ios-input" style="padding:9px 12px; font-size:12.5px;" placeholder="🔍 Halka No veya İsim Ara (Örn: 990001)" oninput="onHomeQuickSearch(this.value)" />
+              <button class="nav-btn" style="padding:9px 14px; font-size:12.5px;" onclick="createNewPedigreeRecord()">
+                ➕ Kuş Ekle
+              </button>
+            </div>
+            <!-- Anında Açılır Hızlı Arama Sonuçları -->
+            <div class="home-quick-results" id="homeQuickSearchResults"></div>
+          </div>
+
+          <!-- 4. AVIGEN GENESIS AI — KOMPAKT VİTRİN & HIZLI GEÇİŞ KARTI -->
+          <div id="homeGenesisTeaserCard"></div>
+
+          <!-- 4B. ANA SAYFA 2x3 ANALİZ MODÜL KARTLARI -->
+          <div id="homeCyber3x2Grid"></div>
+
+          <!-- 4C. GENESIS AI DİNAMİK ÖNERİ & BİLDİRİM KARTI (Kuş Profili & Yuva Hızlı Erişimli) -->
+          <div id="homeGenesisDynamicAlertCard"></div>
+
+          <!-- 5. Kompakt Günlük Görevler, Yaklaşan Tarihler ve Aktif Yuva/Kuluçka Kokpiti -->
+          <div class="ios-card home-compact-tasks-card" id="homeBottomSubPanelCard">
+            <div id="homeBottomSubPanelHeader" class="home-tasks-header">
+              <div class="sub-pills" style="flex:1; padding:2px; gap:3px;">
+                <button class="sub-pill active" id="homeTabBtn_reminders" style="font-size:10px; padding:4px 3px;" onclick="switchHomeSubPanel('reminders', this)">📅 Takvim &amp; Görev</button>
+                <button class="sub-pill" id="homeTabBtn_pairs" style="font-size:10px; padding:4px 3px;" onclick="switchHomeSubPanel('pairs', this)">🪺 Yuvalar</button>
+                <button class="sub-pill" id="homeTabBtn_races" style="font-size:10px; padding:4px 3px;" onclick="switchHomeSubPanel('races', this)">🏁 Yarışlar</button>
+                <button class="sub-pill" id="homeTabBtn_dossier" style="font-size:10px; padding:4px 3px;" onclick="switchHomeSubPanel('dossier', this)">📋 Sicil</button>
+              </div>
+              <button class="ios-btn ios-btn-gold" id="homeSubAddBtn" style="padding:4px 8px; font-size:9.5px; flex-shrink:0;" onclick="openHomeItemModal()">
+                + Görev
+              </button>
+            </div>
+
+            <div id="homeSubPanelContent" class="home-tasks-list"></div>
+          </div>
+
+        </div>
+
+        <!-- =================================================================
+             2. SEKME: GÜVERCİNLER (KÜMES KUŞ LİSTESİ + PEDİGRE STÜDYOSU)
+             ================================================================= -->
+        <div id="page-pedigrees" class="ios-tab-page">
+
+          <!-- Üst Görünüm Seçici: 🕊️ Kümes Kuş Listesi vs 📜 Pedigre Kağıdı Tasarımı -->
+          <div class="sub-pills" style="flex-shrink:0;">
+            <button class="sub-pill active" id="pillBirdsList" onclick="switchBirdsViewMode('list')">
+              🕊️ Kümesimdeki Kuşlar
+            </button>
+            <button class="sub-pill" id="pillBirdsPedigree" onclick="switchBirdsViewMode('pedigree')">
+              📜 Pedigre Kağıdı &amp; Tasarım
+            </button>
+          </div>
+
+          <!-- GÖRÜNÜM A: TÜM GÜVERCİNLER LİSTESİ, ARAMA & FİLTRELEME -->
+          <div id="birdsListViewPane" style="display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;">
+            <div class="ios-card" style="padding:9px 10px; flex-shrink:0;">
+              <div style="display:flex; gap:6px; margin-bottom:7px;">
+                <input type="text" id="loftBirdSearch" class="ios-input" placeholder="🔍 Halka No (TR, BELG, NL...), İsim veya Renk ara..." oninput="renderLoftBirdsDirectory()" style="flex:1; padding:8px 10px; font-size:12px;" />
+                <button class="nav-btn" style="padding:8px 11px; font-size:11.5px; flex-shrink:0;" onclick="createNewPedigreeRecord()">
+                  + Kuş Ekle
+                </button>
+              </div>
+              <div class="sub-pills" id="loftFilterChips" style="padding:3px; gap:3px; flex-wrap:wrap;">
+                <button class="sub-pill active" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('ALL', this)">🏠 Kümesim</button>
+                <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('M', this)">♂ Erkek</button>
+                <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('F', this)">♀ Dişi</button>
+                <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('BREEDER', this)">Damızlık</button>
+                <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('RACER', this)">Yarışçı</button>
+                <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('YOUNG', this)">Yavru</button>
+                <button class="sub-pill" style="font-size:9.8px; padding:6px 5px;" onclick="setLoftBirdFilter('ARCHIVE', this)" title="Pedigre kağıtlarında adı geçen anne, baba, dede ve soyağacı ataları">📜 Soy Arşivi</button>
+              </div>
+            </div>
+
+            <!-- Kuş Kartları Kaydırılabilir Liste -->
+            <div id="loftBirdsCardsList" style="display:flex; flex-direction:column; gap:8px; flex:1; overflow-y:auto; padding-bottom:6px;"></div>
+          </div>
+
+          <!-- GÖRÜNÜM B: 15 KUTULU RESMİ AVIGEN MAVİ PEDİGRE SERTİFİKASI -->
+          <div id="birdsPedigreeViewPane" style="display:none; flex-direction:column; gap:8px; flex:1; min-height:0;">
+            <!-- Kayıtlı Güvercin / Pedigre Seçici -->
+            <div class="ios-card" style="padding:8px 10px; flex-shrink:0;">
+              <div style="display:flex; gap:5px; align-items:center;">
+                <select id="activePedigreeSelect" class="ios-select" style="flex:1; font-weight:800; font-size:12px;" onchange="selectActivePedigree(this.value)"></select>
+                <button class="ios-btn ios-btn-primary" style="padding:7px 9px; font-size:11px;" onclick="AvigenPerformanceEngine.openProfileModal(getActivePedigree()?.boxes?.main?.ring)" title="Bu Güvercinin Bireysel Performans ve Genetik Profil Kartını Aç">📊 Profil</button>
+                <button class="ios-btn ios-btn-outline" style="padding:7px 9px; font-size:11px;" onclick="togglePedigreeZoomMode()" id="btnPedigreeZoom" title="60+ Yaş Rahat Okuma İçin Pedigreyi Büyüt / Ekrana Sığdır">🔍 Büyüt</button>
+                <button class="ios-btn ios-btn-danger" style="padding:7px 9px; font-size:11px;" onclick="deleteActivePedigree()" title="Bu Pedigreyi Sil">🗑️</button>
+              </div>
+            </div>
+
+            <!-- Canlı AVIGEN Mavi Pedigre Şablonu (İki Parmakla Pinch-to-Zoom + Kademeli Büyütme Destekli) -->
+            <div class="pedigree-stage-box" id="pedigreeStageBox">
+              <div style="width:100%; display:flex; justify-content:space-between; align-items:center; color:#cbd5e1; font-size:10px; margin-bottom:5px; padding:0 2px; gap:4px;">
+                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👆 Kutuya dokun düzenle • 🤏 İki parmakla büyüt</span>
+                <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
+                  <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:11px; background:#1e293b; color:#fff; border-color:#475569;" onclick="stepPedigreeZoom(-0.15)" title="Küçült">➖</button>
+                  <span id="zoomBadge" onclick="resetPedigreeZoomFit()" style="color:#38bdf8; font-weight:800; min-width:44px; text-align:center; cursor:pointer;" title="Ekrana Tam Sığdır">%100</span>
+                  <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:11px; background:#1e293b; color:#fff; border-color:#475569;" onclick="stepPedigreeZoom(0.15)" title="Büyüt">➕</button>
+                  <button type="button" class="ios-btn ios-btn-primary" style="padding:2px 7px; font-size:10px;" onclick="resetPedigreeZoomFit()" title="Ekrana Otomatik Sığdır">Sığdır</button>
+                </div>
+              </div>
+              <div class="pedigree-viewport" id="pedigreeViewport">
+                <div id="mypedigrePaper" class="mypedigre-paper"></div>
+              </div>
+            </div>
+
+            <!-- Sadeleştirilmiş 1-Dokunuş İndirme & Paylaşma Çubuğu -->
+            <div class="ios-card" style="padding:9px 11px; flex-shrink:0;">
+              <div class="btn-row">
+                <button class="ios-btn ios-btn-primary" style="flex:1.4; padding:10px;" onclick="downloadHighResPedigree()">
+                  🖼️ HD Pedigre İndir
+                </button>
+                <button class="ios-btn ios-btn-gold" style="flex:1; padding:10px;" onclick="shareActivePedigree()">
+                  📲 Paylaş
+                </button>
+                <button class="ios-btn ios-btn-outline" style="padding:10px 12px;" onclick="window.print()">
+                  🖨️ Yazdır
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- =================================================================
+             OCR TARAMA EKRANI (4 ADIMLI: OCR -> VERİ DOĞRULAMA -> KULLANICI ONAYI -> PEDİGRE MOTORU)
+             ================================================================= -->
+        <div id="page-aiscan" class="ios-tab-page">
+          <div class="ios-card">
+            <div class="ios-card-title">
+              <span>📸 Fotoğraftan OCR Pedigre Aktarımı &amp; Veri Doğrulama</span>
+              <button class="ios-btn ios-btn-outline" style="padding:4px 8px; font-size:11px;" onclick="openIosTab('pedigrees')">← Geri</button>
+            </div>
+            <!-- 4 ADIMLI MÜHENDİSLİK AKIŞ GÖSTERGESİ -->
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; margin-bottom:8px; font-size:9px; font-weight:800; text-align:center;">
+              <div style="background:#eff6ff; border:1px solid #93c5fd; color:#0052cc; border-radius:6px; padding:4px 2px;">1. OCR Metin Okuma</div>
+              <div style="background:#f5f3ff; border:1px solid #c4b5fd; color:#6d28d9; border-radius:6px; padding:4px 2px;">2. Veri Doğrulama</div>
+              <div style="background:#ecfdf5; border:1px solid #6ee7b7; color:#047857; border-radius:6px; padding:4px 2px;">3. Kullanıcı Onayı</div>
+              <div style="background:#f8fafc; border:1px solid #cbd5e1; color:#1e293b; border-radius:6px; padding:4px 2px;">4. Pedigre Motoru</div>
+            </div>
+            <p style="font-size:11px; color:var(--ios-subtext); margin-bottom:8px; line-height:1.38;">
+              <strong>Not:</strong> Optik Karakter Okuma (OCR) yalnızca görüntüdeki yazıları metne dönüştürür; bilimsel yapay zekâ yorumu yapmaz. Okunan halka numaraları sistem tarafından doğrulanır ve sizin onayınızla soyağacına işlenir.
+            </p>
+            <input type="file" id="aiPhotoFile" accept="image/*" class="ios-input" style="margin-bottom:8px;" onchange="onAiPhotoSelected(event)" />
+            <div class="btn-row">
+              <button class="ios-btn ios-btn-primary" style="flex:1;" onclick="startAiOcrScan()">
+                🔍 1. Fotoğrafı OCR İle Oku &amp; Doğrula
+              </button>
+              <button class="ios-btn ios-btn-outline" style="flex:1;" onclick="runDemoAiScan()">
+                📋 Şablon Pedigre Yükle
+              </button>
+            </div>
+            <div id="aiStatusText" style="font-size:11px; color:var(--ios-blue); font-weight:800; margin-top:7px;"></div>
+            <div id="ocrValidationSummaryBox" style="margin-top:6px;"></div>
+          </div>
+
+          <div class="ios-card" style="flex:1; overflow-y:auto;">
+            <div class="ios-card-title">
+              <span>✅ 3. Adım: Okunan Verileri Kontrol Edin &amp; Onaylayın</span>
+              <button class="ios-btn ios-btn-green" style="padding:5px 10px; font-size:11px;" onclick="saveAiScannedPedigree()">
+                🌳 4. Onayla &amp; Soyağacını Oluştur
+              </button>
+            </div>
+            <div id="aiScannedBoxesList" style="display:flex; flex-direction:column; gap:6px;"></div>
+          </div>
+        </div>
+
+        <!-- =================================================================
+             3. SEKME: AVIGEN GENESIS AI — TAM EKRAN BİLİMSEL KARAR DESTEK MERKEZİ
+             ================================================================= -->
+        <div id="page-breeding" class="ios-tab-page">
+          <div id="genesisModuleRoot" style="display:flex; flex-direction:column; gap:10px; height:100%;"></div>
+        </div>
+
+        <!-- =================================================================
+             4. SEKME: YARIŞLAR — AVIGEN YARIŞ TAKİP SİSTEMİ & GENESIS AI YARIŞ ANALİZİ
+             ================================================================= -->
+        <div id="page-flight" class="ios-tab-page">
+
+          <!-- Üst Alt-Sekme Seçici: 🏁 Yarış Yönetimi | 🧬 AI Yarış Analizi | 💑 Yuva & Kuluçka -->
+          <div class="sub-pills" style="flex-shrink:0;">
+            <button class="sub-pill active" id="pillRaceTracker" onclick="AvigenUxManager.switchBreedingPlanSub('racetracker')">
+              🏁 Yarış Yönetimi
+            </button>
+            <button class="sub-pill" id="pillRaceAiInsights" onclick="AvigenUxManager.switchBreedingPlanSub('raceai')">
+              🧬 AI Yarış Analizi
+            </button>
+            <button class="sub-pill" id="pillBreedPairs" onclick="AvigenUxManager.switchBreedingPlanSub('pairs')">
+              💑 Yuva &amp; Çiftler
+            </button>
+            <button class="sub-pill" id="pillBreedTimeline" onclick="AvigenUxManager.switchBreedingPlanSub('timeline')">
+              📅 Kuluçka
+            </button>
+            <button class="sub-pill" id="pillRaceResults" style="display:none;" onclick="AvigenUxManager.switchBreedingPlanSub('results')">
+              🏆 Hızlı Derece
+            </button>
+            <button class="sub-pill" id="pillRaceWeather" style="display:none;" onclick="AvigenUxManager.switchBreedingPlanSub('weather')">
+              🌤️ Uçuş Havası
+            </button>
+          </div>
+
+          <!-- YENİ ANA EKRAN 1: AVIGEN YARIŞ TAKİP SİSTEMİ (YARIŞ KARTLARI, KUŞ SEPETLEME & SONUÇ GİRİŞİ) -->
+          <div id="raceTrackerMainPane" style="display:flex; flex-direction:column; gap:10px; flex:1; overflow-y:auto;">
+            <div id="avigenRaceTrackerRoot" style="display:flex; flex-direction:column; gap:10px;"></div>
+          </div>
+
+          <!-- YENİ ANA EKRAN 2: GENESIS AI GERÇEK YARIŞ & SOY ANALİZİ (GENETİK TAHMİNDEN AYRI ÖLÇÜLEN VERİ) -->
+          <div id="raceAiInsightsPane" style="display:none; flex-direction:column; gap:10px; flex:1; overflow-y:auto;">
+            <div id="avigenRaceAiInsightsRoot" style="display:flex; flex-direction:column; gap:10px;"></div>
+          </div>
+
+          <!-- ALT EKRAN 3: AKTİF DAMIZLIK ÇİFTLER, YUMURTA/YAVRU TAKİBİ & TEK TUŞLA YAVRU KAYDI -->
+          <div id="breedPairsPane" style="display:none; flex-direction:column; gap:8px; flex:1; overflow-y:auto;">
+            <div class="ios-card">
+              <div class="ios-card-title">
+                <span>💑 Aktif Damızlık Eşleşmeler &amp; Yuva Takibi</span>
+                <button class="ios-btn ios-btn-gold" style="padding:5px 10px; font-size:10.5px;" onclick="openHomeItemModal('', 'pairs')">+ Yeni Çift Eşleştir</button>
+              </div>
+              <div style="font-size:10.5px; color:var(--ios-subtext); margin-bottom:8px; line-height:1.35;">
+                Eşleştirilen çiftlerin yumurtlama, kuluçka ve yavruya boncuk takma günleri otomatik hesaplanır. <strong>🐣 Yavru Kaydet</strong> butonuyla doğan yavruyu anne-babası bağlı olarak tek dokunuşla kümesinize ekleyebilirsiniz.
+              </div>
+              <div id="breedingPlanPairsList" style="display:flex; flex-direction:column; gap:7px;"></div>
+            </div>
+
+            <div class="ios-card">
+              <div class="ios-card-title">
+                <span>🤖 Kümesiniz İçin Otomatik Önerilen En Uygun Eşleşmeler</span>
+                <button class="ios-btn ios-btn-outline" style="padding:3px 8px; font-size:10px;" onclick="openIosTab('breeding', document.querySelectorAll('.ios-tab-btn')[2])">Tüm Analizler →</button>
+              </div>
+              <div id="autoBestPairsList" style="display:flex; flex-direction:column; gap:6px;"></div>
+            </div>
+          </div>
+
+          <!-- ALT EKRAN 2: OTOMATİK KULUÇKA, BONCUK TAKMA & AŞI TAKVİMİ HESAPLAYICI -->
+          <div id="breedTimelinePane" style="display:none; flex-direction:column; gap:8px; flex:1; overflow-y:auto;">
+            <div class="ios-card">
+              <div class="ios-card-title">
+                <span>🥚 Eşleşme Tarihine Göre Kuluçka &amp; Boncuk Takvimi</span>
+                <span class="gene-badge gene-green">Otomatik Hesap</span>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                <div>
+                  <label style="font-size:10px; font-weight:800;">Yuva / Çift Adı</label>
+                  <input type="text" id="hatchNestName" class="ios-input" style="padding:6px 8px; font-size:11.5px;" value="Damızlık Yuva #1" oninput="calculateIncubationTimeline()" />
+                </div>
+                <div>
+                  <label style="font-size:10px; font-weight:800;">Çiftleşme Tarihi</label>
+                  <input type="date" id="hatchPairDate" class="ios-input" style="padding:6px 8px; font-size:11.5px;" onchange="calculateIncubationTimeline()" />
+                </div>
+              </div>
+            </div>
+            <div class="ios-card" id="hatchTimelineResult" style="flex:1;"></div>
+          </div>
+
+          <!-- ALT EKRAN A: BİLİMSEL UÇUŞ UYGUNLUĞU + BU HAVA İÇİN ÖNERİLEN YARIŞ KADROSU -->
+          <div id="raceWeatherPane" style="display:none; flex-direction:column; gap:8px; flex:1; overflow-y:auto;">
+            <div class="ios-card">
+              <div class="ios-card-title">
+                <span>🌤️ Yarış Etabı Atmosferik &amp; Manyetik Koşullar</span>
+                <span class="gene-badge gene-green">Canlı Model</span>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+                <div>
+                  <label style="font-size:10px; font-weight:800;">Mesafe (km)</label>
+                  <input type="number" id="flDist" class="ios-input" style="padding:6px 8px; font-size:12px;" value="420" oninput="calcMypedigreFlight()" />
+                </div>
+                <div>
+                  <label style="font-size:10px; font-weight:800;">Sıcaklık (°C)</label>
+                  <input type="number" id="flTemp" class="ios-input" style="padding:6px 8px; font-size:12px;" value="22" oninput="calcMypedigreFlight()" />
+                </div>
+                <div>
+                  <label style="font-size:10px; font-weight:800;">Manyetik Kp (0-9)</label>
+                  <input type="number" id="flKp" class="ios-input" style="padding:6px 8px; font-size:12px;" value="2" min="0" max="9" oninput="calcMypedigreFlight()" />
+                </div>
+                <div style="grid-column: span 1;">
+                  <label style="font-size:10px; font-weight:800;">Nem (%)</label>
+                  <input type="number" id="flHum" class="ios-input" style="padding:6px 8px; font-size:12px;" value="55" min="10" max="100" oninput="calcMypedigreFlight()" />
+                </div>
+                <div style="grid-column: span 2;">
+                  <label style="font-size:10px; font-weight:800;">Rüzgar Yönü &amp; Şiddeti</label>
+                  <select id="flWind" class="ios-select" style="padding:6px 8px; font-size:11.5px;" onchange="calcMypedigreFlight()">
+                    <option value="calm" selected>Sakin / Yan Rüzgar (5-12 km/sa)</option>
+                    <option value="tail">Arkadan Rüzgar (+18 km/sa Hız)</option>
+                    <option value="head">Karşıdan Sert Rüzgar (-22 km/sa)</option>
+                    <option value="storm">Fırtına / Sağanak (-35 km/sa)</option>
+                  </select>
+                </div>
+              </div>
+              <input type="hidden" id="flVis" value="10" />
+            </div>
+
+            <!-- Canlı Uçuş Uygunluk Raporu + Önerilen Yarış Sepeti Kadrosu -->
+            <div class="ios-card" id="flightResultCard" style="flex:1;"></div>
+          </div>
+
+          <!-- ALT EKRAN B: YARIŞ DERECE & HIZ (m/dk) HESAPLAYICI + OTOMATİK SİCİL/PEDİGRE KAYDI -->
+          <div id="raceResultsPane" style="display:none; flex-direction:column; gap:8px; flex:1; overflow-y:auto;">
+            <div class="ios-card">
+              <div class="ios-card-title">
+                <span>⏱️ Resmi Yarış Derecesi &amp; Hız (m/dk) Kaydı</span>
+                <span class="gene-badge gene-purple">Pedigreye İşler</span>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:6px; margin-bottom:6px;">
+                <div>
+                  <label style="font-size:10px; font-weight:800;">Yarıştan Dönen Güvercin</label>
+                  <select id="rcBirdSelect" class="ios-select" style="padding:6px; font-size:11.5px; font-weight:800;"></select>
+                </div>
+                <div>
+                  <label style="font-size:10px; font-weight:800;">Etap Adı (Şehir / Klasman)</label>
+                  <input type="text" id="rcStageName" class="ios-input" style="padding:6px 8px; font-size:11.5px;" placeholder="Örn: Ulusal Ankara" value="Ulusal Ankara" />
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:5px; margin-bottom:6px;">
+                <div>
+                  <label style="font-size:9.5px; font-weight:800;">Mesafe (km)</label>
+                  <input type="number" id="rcDistKm" class="ios-input" style="padding:6px; font-size:11.5px;" value="450" oninput="previewCalculatedRaceSpeed()" />
+                </div>
+                <div>
+                  <label style="font-size:9.5px; font-weight:800;">Uçuş Süresi (Dk)</label>
+                  <input type="number" id="rcDurationMin" class="ios-input" style="padding:6px; font-size:11.5px;" value="315" oninput="previewCalculatedRaceSpeed()" />
+                </div>
+                <div>
+                  <label style="font-size:9.5px; font-weight:800;">Derece (Sıra)</label>
+                  <input type="number" id="rcRank" class="ios-input" style="padding:6px; font-size:11.5px;" value="1" oninput="previewCalculatedRaceSpeed()" />
+                </div>
+                <div>
+                  <label style="font-size:9.5px; font-weight:800;">Toplam Kuş</label>
+                  <input type="number" id="rcTotalFlock" class="ios-input" style="padding:6px; font-size:11.5px;" value="3850" oninput="previewCalculatedRaceSpeed()" />
+                </div>
+              </div>
+
+              <div id="rcSpeedPreviewBar" style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:5px 8px; border-radius:7px; font-size:10.5px; font-weight:800; margin-bottom:7px;">
+                ⚡ Hesaplanan Resmi Hız: 1.428,6 m/dk (85,7 km/sa) • 1. / 3.850 Kuş
+              </div>
+
+              <button class="ios-btn ios-btn-gold" style="width:100%; padding:8px; font-size:12px;" onclick="recordOfficialRaceResult()">
+                🏆 Dereceyi Kaydet (Yarışlara + Sicile + Pedigreye İşle)
+              </button>
+            </div>
+
+            <!-- Kayıtlı Yarışlar ve Kazanılan Dereceler Listesi -->
+            <div class="ios-card" style="flex:1; display:flex; flex-direction:column;">
+              <div class="ios-card-title">
+                <span>🏁 Kayıtlı Yarışlar &amp; Klasman Sonuçları</span>
+                <button class="ios-btn ios-btn-outline" style="padding:3px 8px; font-size:10px;" onclick="openHomeItemModal('', 'races')">+ Yaklaşan Yarış Planla</button>
+              </div>
+              <div id="raceTabFullList" style="display:flex; flex-direction:column; gap:6px;"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- =================================================================
+             5. SEKME: PROFİL VE AYARLAR (PREMIUM MOBİL STANDARTLARDA 5 ANA KATEGORİ)
+             1. Profil ve Üyelik
+             2. Global Gizlilik Merkezi (Ayrı Kuş İzinleri + Arama/Filtre/Toplu İşlem + Talepler)
+             3. Bilimsel Bilgi Bankası (AVIGEN Scientific Library)
+             4. Uygulama Tercihleri (Kolay/Uzman Mod, Tema, Mesafe Sınırları, Pedigree Kuşak)
+             5. Veri ve Güvenlik (Ayrı JSON Yedekleme, Geri Yükleme & Kümes Not Defteri)
+             ================================================================= -->
+        <div id="page-notes" class="ios-tab-page">
+          <!-- ÜST SABİT YETİŞTİRİCİ PROFİL VE ÜYELİK KARTI -->
+          <div id="profileTopBreederCard" style="flex-shrink:0;"></div>
+
+          <!-- 4 PRATİK ANA KATEGORİ SEÇİCİ ŞERİT -->
+          <div class="sub-pills" id="profileFiveCatStrip" style="flex-shrink:0;">
+            <button class="sub-pill active" id="btnProfCat_membership" onclick="AvigenUxManager.switchProfileSection('membership')">
+              👤 Hesap &amp; Abonelik
+            </button>
+            <button class="sub-pill" id="btnProfCat_privacy" onclick="AvigenUxManager.switchProfileSection('privacy')">
+              🛡️ Global İzinler
+            </button>
+            <button class="sub-pill" id="btnProfCat_preferences" onclick="AvigenUxManager.switchProfileSection('preferences')">
+              ⚙️ Ayarlar &amp; Yedek
+            </button>
+            <button class="sub-pill" id="btnProfCat_library" onclick="AvigenUxManager.switchProfileSection('library')">
+              🔬 Bilim Bankası
+            </button>
+          </div>
+
+          <!-- KATEGORİ 1, 2, 4, 5 DİNAMİK İÇERİK EKRANI -->
+          <div id="profileAccountPane" style="display:flex; flex-direction:column; gap:8px; flex:1; overflow-y:auto;">
+            <div id="profileAccountRoot" style="display:flex; flex-direction:column; gap:8px;"></div>
+          </div>
+
+          <!-- KATEGORİ 3: BİLİMSEL BİLGİ BANKASI (AVIGEN SCIENTIFIC LIBRARY) -->
+          <div id="sciLibraryPane" style="display:none; flex-direction:column; gap:8px; flex:1; overflow-y:auto;">
+            <div id="sciLibraryRoot" style="display:flex; flex-direction:column; gap:8px;"></div>
+          </div>
+
+          <!-- KÜMES & SOY HATTI NOT DEFTERİ (Veri ve Güvenlik İçinden veya Doğrudan Erişilebilir) -->
+          <div id="loftNotesPane" style="display:none; flex-direction:column; gap:8px; flex:1; overflow-y:auto;">
+            <div class="ios-card">
+              <div class="ios-card-title">
+                <span>📝 Kümes &amp; Soy Hattı Notu Ekle</span>
+                <button class="ios-btn ios-btn-outline" style="padding:3px 8px; font-size:10px;" onclick="AvigenUxManager.switchProfileSection('security')">← Veri &amp; Güvenliğe Dön</button>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
+                <input type="text" id="mpNoteRing" class="ios-input" placeholder="Boncuk No (TR-2026-101)" />
+                <input type="text" id="mpNoteTitle" class="ios-input" placeholder="Başlık (Eşleşme, Aşı, Derece)" />
+              </div>
+              <textarea id="mpNoteBody" class="ios-textarea" rows="2" placeholder="Notunuzu buraya yazın..." style="margin-bottom:8px;"></textarea>
+              <button class="ios-btn ios-btn-gold" style="width:100%;" onclick="addMypedigreNote()">
+                + Notu Kaydet
+              </button>
+            </div>
+
+            <div class="ios-card" style="flex:1; overflow-y:auto;">
+              <div class="ios-card-title">🌍 Yetiştirici Notları &amp; Kayıt Defteri</div>
+              <div id="mpNotesList" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ===================================================================
+           iOS ALT SEKME ÇUBUĞU (5 ANA BÖLÜM: ANA SAYFA, KUŞLARIM, AKILLI ANALİZ, DAMIZLIK PLANI, PROFİL VE AYARLAR)
+           =================================================================== -->
+      <div class="ios-tabbar">
+        <button class="ios-tab-btn active" onclick="openIosTab('home', this)">
+          <svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-10.5z"/></svg>
+          <span>Ana Sayfa</span>
+        </button>
+        <button class="ios-tab-btn" onclick="openIosTab('pedigrees', this)">
+          <svg viewBox="0 0 24 24"><path d="M18.5 5c-1.7 0-3.1 1.1-3.7 2.5-1.5-.7-3.4-.9-5.2-.1-2.8 1.2-4.4 4.2-6.6 6.4 1.8 1.1 4.5 1.4 7 .6 1.1 2.2 3.4 3.6 6 3.6 3.6 0 6-2.9 6-6.5 0-1.5.7-3 1.5-4-1.7.1-3-2.5-5-2.5z"/></svg>
+          <span>Kuşlarım</span>
+        </button>
+        <button class="ios-tab-btn genesis-tab-btn" onclick="openIosTab('breeding', this)">
+          <div class="cyber-ai-tab-orb">
+            <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>
+            <span class="ai-chip-txt">AI</span>
+          </div>
+          <span>GENESIS AI</span>
+        </button>
+        <button class="ios-tab-btn" onclick="openIosTab('flight', this)">
+          <svg viewBox="0 0 24 24"><path d="M5 3h14a1 1 0 0 1 1 1v3a5 5 0 0 1-4 4.9V14a3 3 0 0 1-3 3h-2a3 3 0 0 1-3-3v-2.1A5 5 0 0 1 4 7V4a1 1 0 0 1 1-1zm1 2v2a3 3 0 0 0 2 2.83V5H6zm12 0h-2v4.83A3 3 0 0 0 18 7V5zM9 19h6v2H9v-2z"/></svg>
+          <span>Yarış &amp; Eşleşme</span>
+        </button>
+        <button class="ios-tab-btn" onclick="openIosTab('notes', this)">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <span>Profil &amp; Ayarlar</span>
+        </button>
+      </div>
+
+      <!-- ===================================================================
+           ALT AÇILIR PANEL: AKILLI OTOMATİK TAMAMLAMALI GÜVERCİN / KUTU KAYDI
+           =================================================================== -->
+      <div class="ios-modal-overlay" id="boxEditModal">
+        <div class="ios-sheet">
+          <div class="ios-card-title" style="margin-bottom:8px;">
+            <span id="boxEditTitle">🕊️ Güvercin Bilgilerini Düzenle</span>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="closeBoxEditModal()">✖ Kapat</button>
+          </div>
+
+          <!-- Eğer Aktif Çiftten Yavru Kaydediliyorsa Anne/Baba Otomatik Bağlantı Bilgi Kutusu -->
+          <div id="chickParentsInfoBanner" style="display:none; background:#f0fdf4; border:1.5px solid #86efac; color:#166534; padding:8px 10px; border-radius:10px; font-size:11px; margin-bottom:9px; line-height:1.4;"></div>
+
+          <!-- 1-Dokunuş Akıllı Hızlı Veri Giriş Araçları (Fotoğraftan AI Pedigre Tara | Barkod Okut) -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; background:var(--ios-card-alt); padding:7px; border-radius:10px; border:1px solid var(--ios-border);">
+            <button type="button" class="ios-btn ios-btn-gold" style="padding:7px 8px; font-size:11.5px;" onclick="closeBoxEditModal(); openIosTab('aiscan');">
+              📸 Fotoğraftan AI Tara
+            </button>
+            <button type="button" class="ios-btn ios-btn-primary" style="padding:7px 8px; font-size:11.5px;" onclick="openBarcodeScannerModal(true)">
+              ▮▯ Barkod / QR Okut
+            </button>
+          </div>
+
+          <div style="margin-bottom:8px;">
+            <label style="font-size:11px; font-weight:800; display:block; margin-bottom:4px;">🏳️ Ülke Federasyon Bayrağı Seçin</label>
+            <div class="flag-chips" id="flagChipsContainer"></div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1.25fr 1fr; gap:8px; margin-bottom:8px;">
+            <div>
+              <label style="font-size:11px; font-weight:800;">Halka (Boncuk) Numarası</label>
+              <div style="display:flex; gap:5px;">
+                <input type="text" id="editBoxRing" class="ios-input" list="knownRingsDatalist" placeholder="TR-2026-100200" oninput="onSmartRingInput(this.value)" />
+                <button type="button" class="ios-btn ios-btn-primary" style="padding:0 10px; flex-shrink:0;" onclick="openBarcodeScannerModal(true)" title="Barkod / QR Tarayarak Doldur">▮▯</button>
+              </div>
+              <datalist id="knownRingsDatalist"></datalist>
+            </div>
+            <div>
+              <label style="font-size:11px; font-weight:800;">Güvercin Adı / Ünvanı</label>
+              <input type="text" id="editBoxName" class="ios-input" placeholder="Altın Kanat" />
+            </div>
+          </div>
+
+          <!-- 1-Dokunuş Cinsiyet & Kümes Statüsü Seçicileri -->
+          <div style="display:grid; grid-template-columns:1fr 1.15fr; gap:8px; margin-bottom:8px;">
+            <div>
+              <label style="font-size:10.5px; font-weight:800; display:block; margin-bottom:3px;">Cinsiyet</label>
+              <div class="seg-group" id="editBoxSexGroup">
+                <button type="button" class="seg-btn active" data-val="M" onclick="selectModalSegment('editBoxSexGroup', 'M', this)">♂ Erkek</button>
+                <button type="button" class="seg-btn sex-f-btn" data-val="F" onclick="selectModalSegment('editBoxSexGroup', 'F', this)">♀ Dişi</button>
+                <button type="button" class="seg-btn" data-val="U" onclick="selectModalSegment('editBoxSexGroup', 'U', this)">🐣 Genç</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size:10.5px; font-weight:800; display:block; margin-bottom:3px;">Kümes Statüsü</label>
+              <div class="seg-group" id="editBoxRoleGroup">
+                <button type="button" class="seg-btn active" data-val="RACER" onclick="selectModalSegment('editBoxRoleGroup', 'RACER', this)">🏁 Yarışçı</button>
+                <button type="button" class="seg-btn role-gold-btn" data-val="BREEDER" onclick="selectModalSegment('editBoxRoleGroup', 'BREEDER', this)">🧬 Damızlık</button>
+                <button type="button" class="seg-btn" data-val="YOUNG" onclick="selectModalSegment('editBoxRoleGroup', 'YOUNG', this)">🐣 Yavru</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tüy Rengi, Göz İşareti (Canlı İris Merceğiyle) ve Fotoğraf -->
+          <div style="display:grid; grid-template-columns:1.05fr 1.1fr 0.85fr; gap:6px; margin-bottom:8px;">
+            <div>
+              <label style="font-size:10.5px; font-weight:800;">Tüy Rengi Seçin</label>
+              <select id="editBoxColor" class="ios-select" style="padding:7px 6px; font-size:11px;">
+                <option value="Mavi Çakmaklı">🪶 Mavi Çakmaklı</option>
+                <option value="Mavi (Gök)">🪶 Mavi (Gök)</option>
+                <option value="Koyu Çakmaklı">🪶 Koyu Çakmaklı</option>
+                <option value="Dumanlı Mavi">🪶 Dumanlı Mavi</option>
+                <option value="Dumanlı Çakmaklı">🪶 Dumanlı Çakmaklı</option>
+                <option value="Bozkirli (Kırçıllı)">🪶 Bozkirli (Kırçıllı)</option>
+                <option value="Kula (Kırmızı Çakmaklı)">🪶 Kula (Kırmızı Çakmaklı)</option>
+                <option value="Şeker / Gümüş">🪶 Şeker / Gümüş</option>
+                <option value="Siyah (Arap)">🪶 Siyah (Arap)</option>
+                <option value="Mavi Alaca (Sinekli)">🪶 Mavi Alaca (Sinekli)</option>
+                <option value="Çakmaklı Alaca">🪶 Çakmaklı Alaca</option>
+                <option value="Kalemli (Beyaz Telek)">🪶 Kalemli (Beyaz Telek)</option>
+                <option value="Beyaz">🪶 Beyaz</option>
+                <option value="Sarı / Limon">🪶 Sarı / Limon</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:10.5px; font-weight:800;">Göz Rengi (Görsel Kimlik)</label>
+              <select id="editBoxEye" class="ios-select" style="padding:7px 6px; font-size:11px;">
+                <option value="yellow_breeder">🟡 Sarı İris</option>
+                <option value="pearl_racer">⚪ Beyaz / İnci İris</option>
+                <option value="orange_amber">🟠 Portakal / Kehribar İris</option>
+                <option value="red_chestnut">🔴 Kırmızı / Kestane İris</option>
+                <option value="violet_pearl">🟣 Menekşe / Viyole İnci</option>
+                <option value="green_circle">🟢 Yeşil Halkalı Sarı İris</option>
+                <option value="gravel_grey">🔘 Dumanlı Gri / Çakıl İris</option>
+                <option value="dark_brown">🟤 Koyu Kestane / Kahve İris</option>
+                <option value="bull_eye">⚫ Koyu / Bilye Göz (Bull Eye)</option>
+                <option value="split_eye">🌓 Çift Renkli / Kırık Göz</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:10.5px; font-weight:800;">Fotoğraf</label>
+              <input type="file" id="editBoxPhoto" accept="image/*" class="ios-input" style="padding:5px; font-size:10.5px;" onchange="onBoxPhotoUpload(event)" />
+            </div>
+          </div>
+
+          <!-- Sadece Ana Kuş (main) Eklenirken/Düzenlenirken Görünür: Otomatik Alt Soy Bağlayan Baba & Anne Seçimi -->
+          <div id="editBoxParentsSection" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; background:var(--ios-card-alt); border:1px solid var(--ios-border); padding:7px 9px; border-radius:10px;">
+            <div>
+              <label style="font-size:10.5px; font-weight:800; color:#0284c7;">♂ Baba Seç (Üst Soyu Otomatik Gelir)</label>
+              <select id="editBoxSireLink" class="ios-select" style="padding:6px; font-size:11px; margin-top:2px;"></select>
+            </div>
+            <div>
+              <label style="font-size:10.5px; font-weight:800; color:#db2777;">♀ Anne Seç (Üst Soyu Otomatik Gelir)</label>
+              <select id="editBoxDamLink" class="ios-select" style="padding:6px; font-size:11px; margin-top:2px;"></select>
+            </div>
+          </div>
+
+          <!-- STANDART YARIŞ / DAMIZLIK DERECESİ HIZLI EKLEME ARACI (PEDİGRE + GENESIS AI %100 UYUMLU) -->
+          <div style="background:var(--ios-card-alt); border:1.5px solid #93c5fd; border-radius:10px; padding:7px 9px; margin-bottom:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+              <span style="font-size:10.5px; font-weight:900; color:#0052cc;">🏆 Standart Yarış / Damızlık Derecesi Ekle</span>
+              <span class="gene-badge gene-blue" style="font-size:8px; padding:1px 5px;">GENESIS AI Uyumlu</span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1.15fr; gap:5px; margin-bottom:5px;">
+              <div>
+                <label style="font-size:9px; font-weight:800; color:var(--ios-subtext);">Kimin Derecesi?</label>
+                <select id="stdDegreeRole" class="ios-select" style="padding:4px 6px; font-size:10.5px; font-weight:800;">
+                  <option value="SELF">🦅 Kendi Derecesi</option>
+                  <option value="AS">👑 As (Ace) Güvercin</option>
+                  <option value="OFFSPRING">🐣 Yavrusu Derecesi</option>
+                  <option value="SIBLING">🧬 Öz Kardeşi Derecesi</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:9px; font-weight:800; color:var(--ios-subtext);">Etap / Derby / Klasman Adı</label>
+                <input type="text" id="stdDegreeStage" class="ios-input" style="padding:4px 6px; font-size:10.5px;" placeholder="Örn: Derby 16 Final" />
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:0.85fr 0.75fr 0.95fr auto; gap:5px; align-items:end;">
+              <div>
+                <label style="font-size:9px; font-weight:800; color:var(--ios-subtext);">Mesafe (km)</label>
+                <input type="number" id="stdDegreeKm" class="ios-input" style="padding:4px 6px; font-size:10.5px; font-weight:800;" placeholder="505" />
+              </div>
+              <div>
+                <label style="font-size:9px; font-weight:800; color:var(--ios-subtext);">Derece (Sıra)</label>
+                <input type="number" id="stdDegreeRank" class="ios-input" style="padding:4px 6px; font-size:10.5px; font-weight:900; color:#059669;" placeholder="1" />
+              </div>
+              <div>
+                <label style="font-size:9px; font-weight:800; color:var(--ios-subtext);">Kuş Sayısı (Ops.)</label>
+                <input type="number" id="stdDegreeFlock" class="ios-input" style="padding:4px 6px; font-size:10.5px;" placeholder="3644" />
+              </div>
+              <button type="button" class="ios-btn ios-btn-green" style="padding:5px 9px; font-size:10.5px; font-weight:900;" onclick="appendStandardDegreeToBoxNotes()">
+                + Ekle
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:10px;">
+            <label style="font-size:11px; font-weight:800;">Yarış Dereceleri, Sağlık &amp; Soy Notu (Pedigre Kutusu Açıklaması)</label>
+            <textarea id="editBoxNotes" class="ios-textarea" rows="3" placeholder="Yukarıdaki '+ Ekle' aracıyla standart derece ekleyebilir veya serbest not yazabilirsiniz..."></textarea>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:8px;">
+            <button class="ios-btn ios-btn-primary" style="width:100%; padding:11px; font-size:13px;" onclick="saveBoxEditModal()">
+              💾 Kaydet ve Soyağacına İşle
+            </button>
+            <button type="button" class="ios-btn ios-btn-danger" style="width:100%; padding:11px; font-size:12px;" onclick="deleteBirdFromEditModal()">
+              🗑️ Kuşu Sil
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KÜMES BAŞLIĞI, LOGO & TAM VERİ YEDEKLEME AYAR MODALI -->
+      <div class="ios-modal-overlay" id="loftHeaderModal">
+        <div class="ios-sheet">
+          <div class="ios-card-title" style="margin-bottom:8px;">
+            <span>⚙️ Kümes Kimliği &amp; Veri Yedekleme</span>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="closeLoftHeaderModal()">✖ Kapat</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
+            <div>
+              <label style="font-size:11px; font-weight:800;">Kümes / Yetiştirici Başlığı</label>
+              <input type="text" id="editLoftTitle" class="ios-input" />
+            </div>
+            <div>
+              <label style="font-size:11px; font-weight:800;">Alt Başlık / Ülke / Telefon</label>
+              <input type="text" id="editLoftSub" class="ios-input" />
+            </div>
+            <div>
+              <label style="font-size:11px; font-weight:800;">Kümes Özel Logosu / Fotoğrafı Seç</label>
+              <input type="file" accept="image/*" class="ios-input" onchange="onLoftLogoChange(event)" />
+            </div>
+            <div>
+              <label style="font-size:11px; font-weight:800;">Pedigre Soy Ağacı Kuşak Sayısı (Standart: 4 Kuşak)</label>
+              <select id="editLoftGenDepth" class="ios-select">
+                <option value="4" selected>4 Kuşak — Uluslararası Standart (31 Kutu: +16 Ata)</option>
+                <option value="3">3 Kuşak — Büyük Kutu Görünümü (15 Kutu: +8 Ata)</option>
+              </select>
+            </div>
+          </div>
+          <button class="ios-btn ios-btn-gold" style="width:100%; padding:10px; margin-bottom:12px;" onclick="saveLoftHeaderModal()">💾 Kümes Bilgilerini Kaydet</button>
+
+          <!-- Tam Kümes Yedekleme & Cihazlar Arası (Bilgisayar <-> iPhone) Aktarım -->
+          <div style="border-top:1px solid var(--ios-border); padding-top:10px;">
+            <div style="font-size:11.5px; font-weight:800; color:var(--ios-text); margin-bottom:4px;">
+              💾 Kümes Verilerini Yedekle / Cihaza Aktar
+            </div>
+            <div style="font-size:10px; color:var(--ios-subtext); margin-bottom:8px; line-height:1.35;">
+              Tüm güvercinlerinizi, pedigreleri, çiftleri, hatırlatmaları ve sicil kayıtlarını tek dosyada yedekleyip telefonunuza veya bilgisayarınıza aktarabilirsiniz.
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <button type="button" class="ios-btn ios-btn-primary" style="padding:9px 8px; font-size:11px;" onclick="exportFullAvigenBackup()">
+                ⬇️ Yedeği İndir (.JSON)
+              </button>
+              <label class="ios-btn ios-btn-outline" style="padding:9px 8px; font-size:11px; cursor:pointer; text-align:center;">
+                ⬆️ Yedeği Geri Yükle
+                <input type="file" accept=".json" style="display:none;" onchange="importFullAvigenBackup(event)" />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           BARKOD / QR KODLA HIZLI GÜVERCİN EKLEME MODALI
+           =================================================================== -->
+      <div class="ios-modal-overlay" id="barcodeScannerModal">
+        <div class="ios-sheet">
+          <div class="ios-card-title" style="margin-bottom:8px;">
+            <span>▮▯ Barkod / QR Kod Tarayarak Kuş Ekle</span>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="closeBarcodeScannerModal()">✖ Kapat</button>
+          </div>
+
+          <!-- Canlı Kamera & Lazer Tarama Sahnesi -->
+          <div class="barcode-scanner-box" id="barcodeScannerBox">
+            <video id="barcodeVideo" autoplay playsinline muted style="display:none;"></video>
+            <div id="barcodePlaceholder" style="text-align:center; color:#cbd5e1; padding:12px;">
+              <div style="font-size:28px; margin-bottom:4px;">▮▯▮▯▮</div>
+              <div style="font-size:12px; font-weight:800; color:#fbbf24;">Halka Barkodu veya Künye Kartını Okutun</div>
+              <div style="font-size:10.5px; color:#94a3b8; margin-top:2px;">Kamera, Barkod Resmi veya USB Barkod Okuyucu</div>
+            </div>
+            <div class="scanner-frame-corners"></div>
+            <div class="scanner-laser-line"></div>
+          </div>
+
+          <!-- Kamera Başlat / Resimden Barkod Oku / Örnek Barkod Okut -->
+          <div class="btn-row" style="margin-bottom:8px;">
+            <button class="ios-btn ios-btn-primary" style="flex:1;" onclick="startLiveCameraBarcodeScan()">
+              📷 Kamerayı Aç
+            </button>
+            <label class="ios-btn ios-btn-outline" style="flex:1; cursor:pointer;">
+              🖼️ Barkod Resmi Seç
+              <input type="file" accept="image/*" style="display:none;" onchange="scanBarcodeFromImageFile(event)" />
+            </label>
+            <button class="ios-btn ios-btn-gold" style="flex:1;" onclick="simulateInstantBarcodeScan()">
+              ⚡ Örnek Barkod Okut
+            </button>
+          </div>
+
+          <!-- Okunan Barkod Sonucu ve Tek Dokunuşla Ekleme -->
+          <div style="background:var(--ios-card-alt); border:1.5px solid var(--ios-border); border-radius:10px; padding:10px; margin-bottom:10px;">
+            <div style="font-size:11px; font-weight:800; color:var(--ios-subtext); margin-bottom:4px;">
+              OKUNAN BARKOD / HALKA VERİSİ (USB Okuyucu & Manuel Giriş Destekli):
+            </div>
+            <div style="display:flex; gap:6px; margin-bottom:6px;">
+              <input type="text" id="scannedBarcodeInput" class="ios-input" placeholder="Barkodu okutun (Örn: BELG-2026-4190888)" oninput="onBarcodeValueDecoded(this.value)" />
+            </div>
+            <div id="barcodeDecodedPreview" style="font-size:11.5px; color:var(--ios-text); line-height:1.45;">
+              Barkod okutulduğunda ülke bayrağı, doğum yılı, halka numarası ve varsa soy bilgileri otomatik çözülür.
+            </div>
+          </div>
+
+          <button class="ios-btn ios-btn-green" style="width:100%; padding:11px; font-size:13.5px;" onclick="confirmAddBirdFromBarcode()">
+            ✅ Bu Barkodla Güvercini Hemen Ekle
+          </button>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           ANA SAYFA: HATIRLATMA / AKTİF ÇİFT / YARIŞ EKLEME & DÜZENLEME MODALI
+           =================================================================== -->
+      <div class="ios-modal-overlay" id="homeItemModal">
+        <div class="ios-sheet">
+          <div class="ios-card-title" style="margin-bottom:10px;">
+            <span id="homeItemModalTitle">🔔 Hatırlatma Ekle / Düzenle</span>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="closeHomeItemModal()">✖ Kapat</button>
+          </div>
+          <input type="hidden" id="editHomeItemId" />
+          <input type="hidden" id="editHomeItemType" />
+
+          <!-- Dinamik Form Alanı -->
+          <div id="homeItemFormBody" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;"></div>
+
+          <button class="ios-btn ios-btn-gold" style="width:100%; padding:11px; font-size:13.5px;" onclick="saveHomeItemFromModal()">
+            💾 Kaydet
+          </button>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           GÜVERCİN KİŞİSEL SİCİL DOSYASI (DOSSIER) GÖRÜNTÜLEME & EKLEME MODALI
+           =================================================================== -->
+      <div class="ios-modal-overlay" id="birdDossierModal">
+        <div class="ios-sheet">
+          <div class="ios-card-title" style="margin-bottom:8px;">
+            <span id="birdDossierModalTitle">📋 Güvercin Sicil Dosyası</span>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="closeBirdDossierModal()">✖ Kapat</button>
+          </div>
+          <div id="birdDossierHeaderInfo" style="margin-bottom:10px;"></div>
+          <div id="birdDossierLogsList" style="display:flex; flex-direction:column; gap:6px; max-height:260px; overflow-y:auto; margin-bottom:10px;"></div>
+          <button class="ios-btn ios-btn-gold" style="width:100%; padding:10px;" onclick="openAddDossierForCurrentBird()">
+            + Bu Güvercine Yeni Sicil Kaydı Ekle
+          </button>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           AVIGEN – INDIVIDUAL PERFORMANCE & GENETIC PROFILE ENGINE MODALI
+           =================================================================== -->
+      <div class="ios-modal-overlay" id="birdPerfProfileModal">
+        <div class="ios-sheet" style="max-height:92%;">
+          <div class="ios-card-title" style="margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <img src="avigen-logo.svg" style="width:22px; height:22px;" />
+              <span>AVIGEN Performans &amp; Genetik Profil Kartı</span>
+            </div>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="AvigenPerformanceEngine.closeProfileModal()">✖ Kapat</button>
+          </div>
+          <div id="birdPerfProfileBody"></div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           AVIGEN SCIENTIFIC LIBRARY – MAKALE TAM KÜNYE (15 ALAN) MODALI
+           =================================================================== -->
+      <div class="ios-modal-overlay" id="sciArticleDetailModal">
+        <div class="ios-sheet" style="max-height:92%;">
+          <div class="ios-card-title" style="margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <span>🔬 Akademik Makale Künyesi &amp; Kanıt Analizi</span>
+            </div>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="AvigenScientificLibrary.closeArticleDetailModal()">✖ Kapat</button>
+          </div>
+          <div id="sciArticleDetailBody"></div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           AVIGEN SCIENTIFIC LIBRARY – YÖNETİCİ YENİ YAYIN EKLEME / DÜZENLEME MODALI
+           =================================================================== -->
+      <div class="ios-modal-overlay" id="sciAdminModal">
+        <div class="ios-sheet" style="max-height:93%;">
+          <div class="ios-card-title" style="margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <span>🏛️ Bilimsel Yayın Ekle / Doğrula (scientific_sources)</span>
+            </div>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="AvigenScientificLibrary.closeAdminSourceModal()">✖ Kapat</button>
+          </div>
+          <div id="sciAdminModalBody"></div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           AVIGEN – ÜCRETSİZ ÜYE OLMA / GİRİŞ & PREMIUM ABONELİK SATIN ALMA MODALI
+           =================================================================== -->
+      <div class="ios-modal-overlay" id="avigenSubscriptionModal">
+        <div class="ios-sheet" style="max-height:93%;">
+          <div class="ios-card-title" style="margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <img src="avigen-logo.svg" style="width:22px; height:22px;" />
+              <span id="avigenSubModalTitle">👑 AVIGEN Üyelik &amp; Premium Paketler</span>
+            </div>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="AvigenUxManager.closeSubscriptionModal()">✖ Kapat</button>
+          </div>
+          <div id="avigenSubModalBody"></div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           AVIGEN YARIŞ TAKİP SİSTEMİ – YENİ YARIŞ OLUŞTURMA / KUŞ SEPETLEME & SONUÇ GİRİŞ MODALI
+           =================================================================== -->
+      <div class="ios-modal-overlay" id="avigenRaceModal">
+        <div class="ios-sheet" style="max-height:93%;">
+          <div class="ios-card-title" style="margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <span>🏁</span>
+              <span id="avigenRaceModalTitle">Yeni Yarış Oluştur &amp; Kuş Seç</span>
+            </div>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="AvigenRaceTracker.closeModal()">✖ Kapat</button>
+          </div>
+          <div id="avigenRaceModalBody"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="real-pedigrees-64.js"></script>
+  <script src="app.js"></script>
+  <script src="scientific-library.js"></script>
+  <script src="global-gene-pool.js"></script>
+  <script src="genesis-ai.js"></script>
+  <script src="performance-profile.js"></script>
+  <script>
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
