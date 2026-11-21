@@ -8231,6 +8231,18 @@ const AvigenUxManager = {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
+  // Mobil / Dokunmatik / PWA / Capacitor APK Algılama -> %100 Gerçek Tam Ekran Modu
+  const isMobileOrNative = Boolean(
+    window.Capacitor ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+    (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches) ||
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '') ||
+    window.innerWidth <= 920
+  );
+  if (isMobileOrNative) {
+    document.body.classList.add('mobile-native-fullscreen');
+  }
+
   // AVIGEN Sabitlenmiş Temel Marka Tasarımı: Beyaz Ana Zemin + Elektrik Mavisi + Şampanya Altını (Varsayılan Aktif)
   document.body.classList.add('cyber-ai-skin');
   document.body.classList.remove('dark-theme');

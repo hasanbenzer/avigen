@@ -3608,12 +3608,78 @@ body.cyber-ai-skin.cyber-light-skin .ios-tabbar {
   background: #fef2f2;
 }
 
+/* ============================================================================
+   MOBİL / TELEFON / PWA / ANDROID APK %100 GERÇEK TAM EKRAN MODU
+   (Masaüstü iPhone simülatör çerçevesini, üst çubuğu ve sahte durum çubuğunu gizler)
+   ============================================================================ */
+@media (max-width: 920px), (hover: none) and (pointer: coarse), (display-mode: standalone) {
+  html,
+  body {
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    background: var(--ios-bg, #f8fafc) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
 
+  .desktop-helper-bar,
+  .ios-statusbar {
+    display: none !important;
+  }
 
+  .device-stage {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
 
+  .iphone-frame,
+  body.wide-mode .iphone-frame {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}
 
+body.mobile-native-fullscreen {
+  width: 100% !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  background: var(--ios-bg, #f8fafc) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
 
+body.mobile-native-fullscreen .desktop-helper-bar,
+body.mobile-native-fullscreen .ios-statusbar {
+  display: none !important;
+}
 
+body.mobile-native-fullscreen .device-stage {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+}
 
-
+body.mobile-native-fullscreen .iphone-frame,
+body.mobile-native-fullscreen.wide-mode .iphone-frame {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
 
