@@ -20,16 +20,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Setup Java 17
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+          java-version: '21'
 
       - name: Build Capacitor Android APK with Embedded 64 Pedigrees
         run: |
@@ -37,7 +34,7 @@ jobs:
           cp index.html styles.css real-pedigrees-64.js app.js genesis-ai.js performance-profile.js global-gene-pool.js scientific-library.js manifest.json sw.js avigen-logo.svg avigen-dna-pigeon.jpg avigen-dna-pigeon.svg /tmp/avigen_cap/www/
           cd /tmp/avigen_cap
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
           npx cap init "AVIGEN" "com.avigen.pigeonapp" --web-dir www
           npx cap add android
           cd android
