@@ -5,6 +5,8 @@ on:
     branches: [ main ]
     paths-ignore:
       - 'AVIGEN.apk'
+      - 'icon-192.png'
+      - 'icon-512.png'
   workflow_dispatch:
 
 permissions:
@@ -28,34 +30,112 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Build Capacitor Android APK with Embedded 64 Pedigrees
+      - name: Build Capacitor Android APK with AVIGEN Icon & Embedded 64 Pedigrees
         run: |
           mkdir -p /tmp/avigen_cap/www
-          cp index.html styles.css real-pedigrees-64.js app.js genesis-ai.js performance-profile.js global-gene-pool.js scientific-library.js manifest.json sw.js avigen-logo.svg avigen-dna-pigeon.jpg avigen-dna-pigeon.svg /tmp/avigen_cap/www/
           cd /tmp/avigen_cap
           npm init -y
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 sharp
+
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const sharp = require("sharp");
+            const ws = process.env.GITHUB_WORKSPACE;
+            const rawSvg = fs.readFileSync(path.join(ws, "avigen-logo.svg"), "utf8");
+            const innerSvg = rawSvg.replace(/<svg[^>]*>/i, "").replace(/<\/svg>/i, "");
+
+            function makeSquareSvg(size, padRatio, rounded) {
+              const pad = Math.round(size * padRatio);
+              const w = size - pad * 2;
+              const h = Math.round(w * (200 / 240));
+              const x = pad;
+              const y = Math.round((size - h) / 2);
+              const rx = rounded ? Math.round(size * 0.22) : 0;
+              return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+                <rect width="${size}" height="${size}" rx="${rx}" fill="#ffffff"/>
+                <svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 240 200">${innerSvg}</svg>
+              </svg>`;
+            }
+
+            (async () => {
+              await sharp(Buffer.from(makeSquareSvg(192, 0.10, true))).png().toFile(path.join(ws, "icon-192.png"));
+              await sharp(Buffer.from(makeSquareSvg(512, 0.10, true))).png().toFile(path.join(ws, "icon-512.png"));
+              console.log("Generated PWA icons icon-192.png and icon-512.png");
+            })();
+          '
+
+          cp "$GITHUB_WORKSPACE"/*.html "$GITHUB_WORKSPACE"/*.css "$GITHUB_WORKSPACE"/*.js "$GITHUB_WORKSPACE"/*.json "$GITHUB_WORKSPACE"/*.svg "$GITHUB_WORKSPACE"/*.jpg "$GITHUB_WORKSPACE"/*.png /tmp/avigen_cap/www/
           npx cap init "AVIGEN" "com.avigen.pigeonapp" --web-dir www
           npx cap add android
-          cd android
+
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const sharp = require("sharp");
+            const ws = process.env.GITHUB_WORKSPACE;
+            const rawSvg = fs.readFileSync(path.join(ws, "avigen-logo.svg"), "utf8");
+            const innerSvg = rawSvg.replace(/<svg[^>]*>/i, "").replace(/<\/svg>/i, "");
+
+            function makeIconSvg(size, padRatio, circle) {
+              const pad = Math.round(size * padRatio);
+              const w = size - pad * 2;
+              const h = Math.round(w * (200 / 240));
+              const x = pad;
+              const y = Math.round((size - h) / 2);
+              const bg = circle
+                ? `<circle cx="${size/2}" cy="${size/2}" r="${size/2}" fill="#ffffff"/>`
+                : `<rect width="${size}" height="${size}" rx="${Math.round(size*0.18)}" fill="#ffffff"/>`;
+              return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+                ${bg}
+                <svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 240 200">${innerSvg}</svg>
+              </svg>`;
+            }
+
+            const resDir = "/tmp/avigen_cap/android/app/src/main/res";
+            const mipmaps = [
+              { folder: "mipmap-mdpi", size: 48, fg: 108 },
+              { folder: "mipmap-hdpi", size: 72, fg: 162 },
+              { folder: "mipmap-xhdpi", size: 96, fg: 216 },
+              { folder: "mipmap-xxhdpi", size: 144, fg: 324 },
+              { folder: "mipmap-xxxhdpi", size: 192, fg: 432 }
+            ];
+
+            (async () => {
+              for (const m of mipmaps) {
+                const dir = path.join(resDir, m.folder);
+                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                await sharp(Buffer.from(makeIconSvg(m.size, 0.10, false))).png().toFile(path.join(dir, "ic_launcher.png"));
+                await sharp(Buffer.from(makeIconSvg(m.size, 0.12, true))).png().toFile(path.join(dir, "ic_launcher_round.png"));
+                await sharp(Buffer.from(makeIconSvg(m.fg, 0.24, false))).png().toFile(path.join(dir, "ic_launcher_foreground.png"));
+              }
+              const bgXmlPath = path.join(resDir, "values", "ic_launcher_background.xml");
+              if (fs.existsSync(bgXmlPath)) {
+                fs.writeFileSync(bgXmlPath, `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#FFFFFF</color>\n</resources>\n`);
+              }
+              console.log("Generated all Android mipmap launcher icons with AVIGEN logo");
+            })();
+          '
+
+          cd /tmp/avigen_cap/android
           chmod +x gradlew
           ./gradlew assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/AVIGEN.apk"
 
-      - name: Commit AVIGEN.apk to repository root for direct download link
+      - name: Commit AVIGEN.apk and PNG icons to repository root
         run: |
           cd "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add AVIGEN.apk
-          git commit -m "Build direct download AVIGEN.apk" || true
+          git add AVIGEN.apk icon-192.png icon-512.png
+          git commit -m "Update full-screen mobile AVIGEN.apk and AVIGEN launcher icons" || true
           git push origin main
 
       - name: Publish GitHub Release with direct APK download
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0
-          name: AVIGEN Android APK (64 Pedigrees Included)
+          name: AVIGEN Android APK (Tam Ekran + AVIGEN Logolu + 64 Pedigri)
           files: AVIGEN.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
