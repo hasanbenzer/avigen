@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths-ignore:
       - 'AVIGEN.apk'
+      - 'avigen-signing.keystore'
       - 'icon-192.png'
       - 'icon-512.png'
   workflow_dispatch:
@@ -117,18 +118,50 @@ jobs:
             })();
           '
 
+          # 1. version.json içinden güncel version (versionName) ve build (versionCode) değerlerini Android build.gradle içine otomatik yaz
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const ws = process.env.GITHUB_WORKSPACE;
+            let verName = "4.0.0";
+            let verCode = 400;
+            try {
+              const vj = JSON.parse(fs.readFileSync(path.join(ws, "version.json"), "utf8"));
+              if (vj.version) verName = String(vj.version);
+              if (vj.build) verCode = Number(vj.build) || 400;
+            } catch (e) {}
+            const gradlePath = "/tmp/avigen_cap/android/app/build.gradle";
+            let g = fs.readFileSync(gradlePath, "utf8");
+            g = g.replace(/versionCode\s+\d+/, "versionCode " + verCode);
+            g = g.replace(/versionName\s+"[^"]+"/, "versionName \"" + verName + "\"");
+            fs.writeFileSync(gradlePath, g, "utf8");
+            console.log("Updated Android build.gradle -> versionCode:", verCode, "versionName:", verName);
+          '
+
+          # 2. Sabit Android İmza Anahtarı (avigen-release.keystore): Depoda varsa onu kullan, yoksa ilk kez oluşturup depoya kaydet!
+          # Böylece bundan sonraki tüm APK güncellemeleri aynı dijital imzaya sahip olur ve eski APK silinmeden (veriler kaybolmadan) doğrudan üzerine kurulur!
+          mkdir -p ~/.android
+          if [ -f "$GITHUB_WORKSPACE/avigen-signing.keystore" ]; then
+            cp "$GITHUB_WORKSPACE/avigen-signing.keystore" ~/.android/debug.keystore
+            echo "Loaded persistent avigen-signing.keystore from repository"
+          else
+            keytool -genkey -v -keystore "$GITHUB_WORKSPACE/avigen-signing.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            cp "$GITHUB_WORKSPACE/avigen-signing.keystore" ~/.android/debug.keystore
+            echo "Generated new persistent avigen-signing.keystore"
+          fi
+
           cd /tmp/avigen_cap/android
           chmod +x gradlew
           ./gradlew assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/AVIGEN.apk"
 
-      - name: Commit AVIGEN.apk and PNG icons to repository root
+      - name: Commit AVIGEN.apk, persistent keystore and PNG icons to repository root
         run: |
           cd "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add AVIGEN.apk icon-192.png icon-512.png
-          git commit -m "Update full-screen mobile AVIGEN.apk and AVIGEN launcher icons" || true
+          git add AVIGEN.apk avigen-signing.keystore icon-192.png icon-512.png
+          git commit -m "Update full-screen mobile AVIGEN.apk with persistent keystore and launcher icons" || true
           git push origin main
 
       - name: Publish GitHub Release with direct APK download
