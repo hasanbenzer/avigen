@@ -1,0 +1,14 @@
+{
+  "version": "2.1.0",
+  "build": 210,
+  "releaseDate": "2026-11-22",
+  "title": "AVIGEN 2.1 — 5 Nesil Akıllı Eşleştirme, Performans Doğrulaması & Kullanım Rehberi",
+  "notes": [
+    "GENESIS AI 1. Modül: 5 Nesil Çapraz Soy Ağacı Tamamlama, Ortak Ata Kalite Kontrolü, Mesafe/Tip Uyumu ve Kümesinizdeki En Uygun 5 Eşleşme Tarayıcısı",
+    "Performans & Genetik Profil: Bireysel yarış ve yavru başarısı ayrımı, veri doluluğuna göre AVK ağırlıklandırma ve doğruluk düzeltmeleri",
+    "Üst barda sadeleştirilmiş 📖 Rehber (Adım Adım Nasıl Kullanılır & Neyin Ne İşe Yaradığı) ve 2 katmanlı ferah Kümes + Canlı Hava Durumu kartı",
+    "AVIGEN FREE ve AVIGEN GENESIS AI 2 kademeli sadeleştirilmiş paket yapısı ve tek tuşla veri kaybetmeden güncelleme sistemi"
+  ],
+  "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
+  "webUrl": "https://hasanbenzer.github.io/avigen/"
+}

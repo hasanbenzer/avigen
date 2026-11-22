@@ -66,19 +66,27 @@ const AvigenPerformanceEngine = {
       sex: 'M',
       roleCategory: 'RACER',
       notes: '',
-      pedId: pedigrees[0]?.id || ''
+      pedId: pedigrees[0]?.id || '',
+      slotKey: 'main'
     };
 
-    // A. Kuşun bulunduğu ana pedigre veya ata kutusunu bul
+    // A. Kuşun gerçek 5 nesil soy ağacını `getCandidateLineageTree` ile çıkar (İster main, ister sire/dam/g2_1 olsun!)
     let ownPed = pedigrees.find(p => p.boxes?.main?.ring?.trim().toUpperCase() === cleanRing);
+    let targetSlotKey = 'main';
     if (!ownPed && bird.pedId) {
       ownPed = pedigrees.find(p => p.id === bird.pedId);
+      targetSlotKey = bird.slotKey || 'main';
     }
+    const candidateRef = ownPed ? `${ownPed.id}::${targetSlotKey}` : `${pedigrees[0]?.id || ''}::main`;
+    const fullLineageTree = typeof getCandidateLineageTree === 'function'
+      ? getCandidateLineageTree(candidateRef)
+      : { self: bird };
 
     // B. Bireysel Yarış ve Antrenman Kayıtlarını Ayrıştır (Notlar + Sicil + Yarışlar Listesi)
     const rawLines = [];
-    if (bird.notes) {
-      bird.notes.split(/\r?\n/).forEach(l => rawLines.push({ source: 'Pedigri/Kuş Notu', text: l.trim() }));
+    const mergedSelfNotes = fullLineageTree.self?.notes || bird.notes || '';
+    if (mergedSelfNotes) {
+      mergedSelfNotes.split(/\r?\n/).forEach(l => rawLines.push({ source: 'Pedigri/Kuş Notu', text: l.trim() }));
     }
 
     const dossierLogs = getDossierLogsForRing(cleanRing);
@@ -99,8 +107,58 @@ const AvigenPerformanceEngine = {
       }
     });
 
-    // C. Satırlardan Ölçülebilir Yarış Metriklerini Çıkar (Sıra/Derece, Mesafe km, Katılan Kuş, Hız m/dk, Süre dk, Şehir/Etap)
+    // Satırdan Derece (Rank), Kuş Sayısı (Flock), Mesafe (km) ve Hız (m/dk) Çıkarıcı Yardımcı (Tüm TR/Avrupa formatlarını okur)
+    const parseRaceLineMetrics = (txt) => {
+      // 1. Kesirli derece: "1/6461", "3/2853" veya Türk ters kesirli "679/2."
+      let rank = null;
+      let flockSize = null;
+      const slashM = txt.match(/\b(\d{1,3})\s*\/\s*(\d{3,5})\b/);
+      const revSlashM = txt.match(/\b(\d{3,5})\s*\/\s*(\d{1,2})\./);
+      if (revSlashM) {
+        flockSize = parseInt(revSlashM[1], 10);
+        rank = parseInt(revSlashM[2], 10);
+      } else if (slashM) {
+        rank = parseInt(slashM[1], 10);
+        flockSize = parseInt(slashM[2], 10);
+      }
+
+      // 2. Açık sıra formatları: "1. Final", "Final 5.", "180 km. - 1e.", "453 km. - FİNAL 22e.", "6. MONFERTO 4507 p."
+      if (rank === null) {
+        const expM = txt.match(/\b(\d{1,3})\.\s*(?:lik|ulusal|bölge|klasman|npo|kbdb|etap|final|f[iı]nal|s\/final|ace|as\b|nat\b|nikolaev|algarve|monforte|monferto|evora|mertola|gerede|hendek|izmit|sivas|ankara|kayseri|eskişehir|bursa)/i)
+          || txt.match(/\b(?:f[iı]nal|final|ace|as(?:\s*güvercin)?)\s*(?:\d{2,4}\s*km\.?)?\s*[:=-]?\s*(\d{1,3})e?\.?\b/i)
+          || txt.match(/\b\d{2,4}\s*km\.?\s*[-:]+\s*(?:f[iı]nal\s*)?(\d{1,3})e?\.?\b/i)
+          || txt.match(/\b(\d{1,2})(?:st|nd|rd|e\.)\s*(?:nat|national|npo|final|ace|olr)?\b/i);
+        if (expM) {
+          const rVal = parseInt(expM[1], 10);
+          if (rVal >= 1 && rVal <= 200) rank = rVal;
+        }
+      }
+
+      // 3. Kuş sayısı ("4507 p.", "3.850 kuş")
+      if (flockSize === null) {
+        const flM = txt.match(/(\d{1,2}[.,]\d{3}|\d{3,5})\s*(?:kuş|p\.|d\b)/i);
+        if (flM) flockSize = parseInt(flM[1].replace(/[.,]/g, ''), 10);
+      }
+
+      // 4. Mesafe (km) ve Hız (m/dk)
+      const kmM = txt.match(/(\d{2,4})\s*km/i);
+      const distanceKm = kmM ? parseInt(kmM[1], 10) : null;
+      const spdM = txt.match(/(\d{3,4}(?:[.,]\d)?)\s*m\/dk/i);
+      const speedMpm = spdM ? parseFloat(spdM[1].replace(',', '.')) : null;
+      const minM = txt.match(/Süre:\s*(\d{2,4})\s*dk/i);
+      const durationMin = minM
+        ? parseInt(minM[1], 10)
+        : (distanceKm && speedMpm ? Math.round((distanceKm * 1000) / speedMpm) : null);
+
+      return { rank, flockSize, distanceKm, speedMpm, durationMin };
+    };
+
+    // C. Satırlardan Ölçülebilir Yarış Metriklerini Çıkar
+    // ÖNEMLİ DOĞRULUK KURALI: Not satırı "Yavrusu:", "Father to:", "Öz kardeşi:", "Babası:" diye başlıyorsa
+    // bu kuşun KENDİ bireysel yarışı değildir! Yavru veya Kardeş/Üst Soy kanıtına ayrılır!
     const parsedRaces = [];
+    const verifiedOffspringNoteWins = [];
+    const verifiedSiblingNoteWins = [];
     const releasePoints = new Set();
     let hasGpsData = false;
     let loftFlightMinutes = 0;
@@ -125,15 +183,33 @@ const AvigenPerformanceEngine = {
       });
     }
 
-    const cities = ['Ankara', 'Eskişehir', 'Bolu', 'Polatlı', 'Sivas', 'Kayseri', 'Bursa', 'Bourges', 'Vierzon', 'Argenton', 'Chateauroux', 'Quievrain', 'Noyon', 'Sens'];
+    const cities = ['Ankara', 'Eskişehir', 'Bolu', 'Polatlı', 'Sivas', 'Kayseri', 'Bursa', 'Gerede', 'Hendek', 'İzmit', 'Bourges', 'Vierzon', 'Argenton', 'Chateauroux', 'Quievrain', 'Noyon', 'Sens', 'Monforte', 'Evora', 'Mertola', 'Nikolaev'];
 
     rawLines.forEach(item => {
       const txt = item.text;
       if (!txt) return;
 
+      const isOffspringLine = /\b(yavrusu|yavrular[ıi]|father\s*(?:to|of)|mother\s*(?:to|of)|father:|mother:|offspring\s*won|grandmother\s*to|grandfather\s*to)\b/i.test(txt);
+      const isCollateralOrParentLine = /\b(öz\s*kardeş|tam\s*kardeş|babadan\s*kardeş|anneden\s*kardeş|kardeş[iİ]|full\s*(?:sister|brother)|half\s*(?:sister|brother)|h\/brother|h\/sister|vollbruder|babas[ıi]|annesi|dedesi|direct\s*(?:son|daughter)|son\s*of|daughter\s*of)\b/i.test(txt);
+
+      const m = parseRaceLineMetrics(txt);
+
+      if (isOffspringLine) {
+        if (m.rank !== null || m.distanceKm !== null || /1\.|2\.|3\.|final|ace|as\b|şampiyon/i.test(txt)) {
+          verifiedOffspringNoteWins.push({ text: txt, ...m });
+        }
+        return; // Kuşun kendi bireysel yarış sayısına EKLEME!
+      }
+
+      if (isCollateralOrParentLine) {
+        if (m.rank !== null || m.distanceKm !== null || /1\.|2\.|3\.|final|ace|as\b|şampiyon/i.test(txt)) {
+          verifiedSiblingNoteWins.push({ text: txt, ...m });
+        }
+        return; // Kuşun kendi bireysel yarış sayısına EKLEME!
+      }
+
       if (/gps|rota|track/i.test(txt)) hasGpsData = true;
 
-      // Kümes üstü uçuş süresi (örn: "2 Saat")
       const hourMatch = txt.match(/(\d+)\s*saat/i);
       if (hourMatch) {
         loftFlightMinutes = Math.max(loftFlightMinutes, parseInt(hourMatch[1], 10) * 60);
@@ -143,29 +219,15 @@ const AvigenPerformanceEngine = {
         if (txt.toLowerCase().includes(c.toLowerCase())) releasePoints.add(c);
       });
 
-      const rankMatch = txt.match(/\b(\d{1,3})\.\s*(?:lik|ulusal|bölge|klasman|npo|kbdb|etap|[a-zA-ZğüşıöçĞÜŞİÖÇ]+)/i);
-      const kmMatch = txt.match(/(\d{2,4})\s*km/i);
-      const flockMatch = txt.match(/(\d{1,2}[.,]\d{3}|\d{3,5})\s*kuş/i);
-      const speedMatch = txt.match(/(\d{3,4}(?:[.,]\d)?)\s*m\/dk/i);
-      const minMatch = txt.match(/Süre:\s*(\d{2,4})\s*dk/i);
-
-      if (rankMatch || kmMatch || speedMatch) {
-        const rank = rankMatch ? parseInt(rankMatch[1], 10) : null;
-        const distanceKm = kmMatch ? parseInt(kmMatch[1], 10) : null;
-        const flockSize = flockMatch ? parseInt(flockMatch[1].replace(/[.,]/g, ''), 10) : null;
-        const speedMpm = speedMatch ? parseFloat(speedMatch[1].replace(',', '.')) : null;
-        const durationMin = minMatch
-          ? parseInt(minMatch[1], 10)
-          : (distanceKm && speedMpm ? Math.round((distanceKm * 1000) / speedMpm) : (distanceKm ? Math.round((distanceKm * 1000) / 1320) : null));
-
+      if (m.rank !== null || m.distanceKm !== null || m.speedMpm !== null) {
         parsedRaces.push({
           source: item.source,
           rawText: txt,
-          rank,
-          distanceKm,
-          flockSize,
-          speedMpm,
-          durationMin
+          rank: m.rank,
+          distanceKm: m.distanceKm,
+          flockSize: m.flockSize,
+          speedMpm: m.speedMpm,
+          durationMin: m.durationMin
         });
       }
     });
@@ -176,80 +238,74 @@ const AvigenPerformanceEngine = {
       (b.sireRing.toUpperCase() === cleanRing || b.damRing.toUpperCase() === cleanRing)
     );
 
-    // E. Atalarının (1. Kuşak Ebeveyn %50, 2. Kuşak Büyük Ebeveyn %25, 3. Kuşak %12.5, 4. Kuşak %6.25)
-    //    Doğrulanmış Yarış/Performans Kayıtlarını Galton-Mendel Kalıtım Ağırlıklarıyla Topla
-    //    (Özellikle henüz yarışmamış Yavru/Genç kuşların bilimsel performans potansiyeli tahmini için)
+    // E. Atalarının (1. Kuşak %50 -> 4. Kuşak %6.25) GERÇEK Yarış/Performans Kayıtlarını Topla
+    //    (ÖNEMLİ DÜZELTME: Yalnızca ismi "Porsche" veya "Harry" diye sahte 505 km / 1355 m/dk yarış uydurulmaz!
+    //     Yalnızca atanın notunda gerçek derece, km veya hız kaydı varsa hesaba katılır.)
     const ancestorRaces = [];
     const ancestorReleasePoints = new Set();
     let ancestorWeightedPerfSum = 0;
     let ancestorWeightTotal = 0;
     let ancestorsWithPerfCount = 0;
 
-    if (ownPed && ownPed.boxes) {
-      const genWeights = {
-        sire: 0.50, dam: 0.50,
-        g2_1: 0.25, g2_2: 0.25, g2_3: 0.25, g2_4: 0.25,
-        g3_1: 0.125, g3_2: 0.125, g3_3: 0.125, g3_4: 0.125, g3_5: 0.125, g3_6: 0.125, g3_7: 0.125, g3_8: 0.125,
-        g4_1: 0.0625, g4_2: 0.0625, g4_3: 0.0625, g4_4: 0.0625, g4_5: 0.0625, g4_6: 0.0625, g4_7: 0.0625, g4_8: 0.0625,
-        g4_9: 0.0625, g4_10: 0.0625, g4_11: 0.0625, g4_12: 0.0625, g4_13: 0.0625, g4_14: 0.0625, g4_15: 0.0625, g4_16: 0.0625
-      };
+    const treeSlots = [
+      { key: 'p1', weight: 0.50 }, { key: 'p2', weight: 0.50 },
+      { key: 'g1', weight: 0.25 }, { key: 'g2', weight: 0.25 }, { key: 'g3', weight: 0.25 }, { key: 'g4', weight: 0.25 },
+      { key: 'gg1', weight: 0.125 }, { key: 'gg2', weight: 0.125 }, { key: 'gg3', weight: 0.125 }, { key: 'gg4', weight: 0.125 },
+      { key: 'gg5', weight: 0.125 }, { key: 'gg6', weight: 0.125 }, { key: 'gg7', weight: 0.125 }, { key: 'gg8', weight: 0.125 },
+      { key: 'ggg1', weight: 0.0625 }, { key: 'ggg2', weight: 0.0625 }, { key: 'ggg3', weight: 0.0625 }, { key: 'ggg4', weight: 0.0625 },
+      { key: 'ggg5', weight: 0.0625 }, { key: 'ggg6', weight: 0.0625 }, { key: 'ggg7', weight: 0.0625 }, { key: 'ggg8', weight: 0.0625 },
+      { key: 'ggg9', weight: 0.0625 }, { key: 'ggg10', weight: 0.0625 }, { key: 'ggg11', weight: 0.0625 }, { key: 'ggg12', weight: 0.0625 },
+      { key: 'ggg13', weight: 0.0625 }, { key: 'ggg14', weight: 0.0625 }, { key: 'ggg15', weight: 0.0625 }, { key: 'ggg16', weight: 0.0625 }
+    ];
 
-      Object.entries(genWeights).forEach(([slotKey, weight]) => {
-        const ancBox = ownPed.boxes[slotKey];
-        if (!ancBox || !ancBox.ring) return;
-        const ancTxt = `${ancBox.name || ''} ${ancBox.notes || ''}`.trim();
-        if (!ancTxt) return;
+    treeSlots.forEach(({ key: slotKey, weight }) => {
+      const ancBox = fullLineageTree[slotKey];
+      if (!ancBox || !ancBox.ring || !ancBox.ring.trim()) return;
+      const ancTxt = `${ancBox.name || ''}\n${ancBox.notes || ''}`.trim();
+      if (!ancTxt) return;
 
-        cities.forEach(c => {
-          if (ancTxt.toLowerCase().includes(c.toLowerCase())) ancestorReleasePoints.add(c);
-        });
-
-        const rankMatch = ancTxt.match(/\b(\d{1,3})\.\s*(?:lik|ulusal|bölge|klasman|npo|kbdb|etap|as|final|f[iı]nal|s\/final|ace|[a-zA-ZğüşıöçĞÜŞİÖÇ]+)/i)
-          || ancTxt.match(/\b(?:f[iı]nal|final|ace|as)\s*(?:\d{2,4}\s*km)?\s*[:=]?\s*(\d{1,3})\b/i)
-          || ancTxt.match(/\b(\d{1,3})\s*\/\s*\d{3,5}\b/);
-        const slashFlockMatch = ancTxt.match(/\b\d{1,3}\s*\/\s*(\d{3,5})\b/);
-        const kmMatch = ancTxt.match(/(\d{2,4})\s*km/i);
-        const flockMatch = ancTxt.match(/(\d{1,2}[.,]\d{3}|\d{3,5})\s*kuş/i);
-        const speedMatch = ancTxt.match(/(\d{3,4}(?:[.,]\d)?)\s*m\/dk/i);
-        const isEliteKeyword = /şampiyon|as güvercin|ace|olympiad|olimpiyat|olympic|1\.|1st|f[iı]nal|derby|olr|romario|messi|rolex|veenstra|porsche|kittel|harry|bliksem|dna\s*(?:certified|tested)/i.test(ancTxt);
-
-        if (rankMatch || kmMatch || speedMatch || isEliteKeyword) {
-          ancestorsWithPerfCount++;
-          const rawRank = rankMatch ? parseInt(rankMatch[1], 10) : null;
-          const rank = (rawRank && rawRank >= 1 && rawRank <= 180) ? rawRank : (isEliteKeyword ? 3 : null);
-          const distanceKm = kmMatch
-            ? parseInt(kmMatch[1], 10)
-            : (/kittel|sprint|quievrain|noyon/i.test(ancTxt) ? 240 : (/romario|messi|rolex|porsche|harry|bourges|argenton|chateauroux|algarve|nikolaev|derby|olr/i.test(ancTxt) ? 505 : 380));
-          const flockSize = slashFlockMatch
-            ? parseInt(slashFlockMatch[1], 10)
-            : (flockMatch ? parseInt(flockMatch[1].replace(/[.,]/g, ''), 10) : 2500);
-          const speedMpm = speedMatch ? parseFloat(speedMatch[1].replace(',', '.')) : (rank === 1 ? 1415 : 1355);
-          const durationMin = Math.round((distanceKm * 1000) / speedMpm);
-
-          let ancPts = 75;
-          if (rank === 1) ancPts = 95;
-          else if (rank && rank <= 3) ancPts = 89;
-          else if (rank && rank <= 12) ancPts = 84;
-          else if (isEliteKeyword) ancPts = 86;
-
-          ancestorWeightedPerfSum += ancPts * weight;
-          ancestorWeightTotal += weight;
-
-          ancestorRaces.push({
-            slotKey,
-            weight,
-            ancRing: ancBox.ring,
-            ancName: ancBox.name || '',
-            rank,
-            distanceKm,
-            flockSize,
-            speedMpm,
-            durationMin,
-            ancPts
-          });
-        }
+      cities.forEach(c => {
+        if (ancTxt.toLowerCase().includes(c.toLowerCase())) ancestorReleasePoints.add(c);
       });
-    }
+
+      const m = parseRaceLineMetrics(ancTxt);
+      const hasExplicitAchievement = m.rank !== null || m.distanceKm !== null || m.speedMpm !== null || /\b(1\.|1st|şampiyon|as\s*güvercin|ace\s*pigeon|olimpiyat|olympic|f[iı]nal\s*\d|npo\s*1|kbdb\s*1)\b/i.test(ancTxt);
+
+      if (hasExplicitAchievement) {
+        ancestorsWithPerfCount++;
+        const rank = m.rank !== null ? m.rank : (/\b(1\.|1st|1e\.|npo\s*1|kbdb\s*1)\b/i.test(ancTxt) ? 1 : 5);
+        // Yalnızca gerçek km yazıyorsa veya bilinen etap şehri varsa mesafe ata; yoksa null bırak ki yanlış mesafe çubuğunu şişirmesin!
+        const distanceKm = m.distanceKm !== null
+          ? m.distanceKm
+          : (/quievrain|noyon|sprint|180\s*km|200\s*km/i.test(ancTxt) ? 220 : (/bourges|argenton|chateauroux|algarve|nikolaev|monforte|monferto|evora|sivas|gerede|f[iı]nal/i.test(ancTxt) ? 480 : null));
+        const flockSize = m.flockSize;
+        const speedMpm = m.speedMpm;
+        const durationMin = m.durationMin || (distanceKm ? Math.round((distanceKm * 1000) / (speedMpm || 1320)) : null);
+
+        let ancPts = 74;
+        if (rank === 1) ancPts = 94;
+        else if (rank && rank <= 3) ancPts = 88;
+        else if (rank && rank <= 12) ancPts = 83;
+        else if (rank && rank <= 50) ancPts = 78;
+        if (flockSize && flockSize >= 3000) ancPts = Math.min(97, ancPts + 3);
+
+        ancestorWeightedPerfSum += ancPts * weight;
+        ancestorWeightTotal += weight;
+
+        ancestorRaces.push({
+          slotKey,
+          weight,
+          ancRing: ancBox.ring,
+          ancName: ancBox.name || '',
+          rank,
+          distanceKm,
+          flockSize,
+          speedMpm,
+          durationMin,
+          ancPts
+        });
+      }
+    });
 
     const pedigreeBaseIndex = ancestorWeightTotal > 0
       ? Math.round(ancestorWeightedPerfSum / ancestorWeightTotal)
@@ -258,7 +314,10 @@ const AvigenPerformanceEngine = {
     return {
       bird,
       ownPed,
+      fullLineageTree,
       parsedRaces,
+      verifiedOffspringNoteWins,
+      verifiedSiblingNoteWins,
       ancestorRaces,
       ancestorReleasePoints: Array.from(ancestorReleasePoints),
       ancestorsWithPerfCount,
@@ -280,7 +339,10 @@ const AvigenPerformanceEngine = {
     const {
       bird,
       ownPed,
+      fullLineageTree,
       parsedRaces,
+      verifiedOffspringNoteWins,
+      verifiedSiblingNoteWins,
       ancestorRaces,
       ancestorReleasePoints,
       ancestorsWithPerfCount,
@@ -331,13 +393,12 @@ const AvigenPerformanceEngine = {
         };
       }
 
-      // Bireysel yarış yoksa atalarının bu mesafedeki kayıtlarından Galton-Mendel kalıtsal tahmin yap
-      const ancSubset = ancestorRaces.filter(a => a.distanceKm >= minKm && a.distanceKm <= maxKm);
+      // Bireysel yarış yoksa atalarının BU MESAFEDEKİ gerçek kayıtlarından Galton-Mendel kalıtsal tahmin yap
+      const ancSubset = ancestorRaces.filter(a => a.distanceKm !== null && a.distanceKm >= minKm && a.distanceKm <= maxKm);
       if (ancSubset.length > 0) {
         let wSum = 0;
         let wTot = 0;
         ancSubset.forEach(a => {
-          // Galton ortalamaya dönüş (regression to the mean): ata puanı %82 + popülasyon baz (55) %18
           const regressedPts = Math.round(a.ancPts * 0.82 + 55 * 0.18);
           wSum += regressedPts * a.weight;
           wTot += a.weight;
@@ -347,7 +408,7 @@ const AvigenPerformanceEngine = {
           reliability: calcInheritedReliability(ancSubset.length, 3),
           isInheritedEstimate: true,
           sampleCount: ancSubset.length,
-          evidence: `🧬 Soyağacı Kalıtım Tahmini (Galton-Mendel): Bu kuşun henüz bireysel ${bracketName} yarışı yoktur; ancak üst soyundaki ${ancSubset.length} atasının (${ancSubset.slice(0, 3).map(a => `${a.ancRing} [${a.distanceKm}km]`).join(', ')}) bu mesafedeki doğrulanmış derecelerinden tahmin edilmiştir.`
+          evidence: `🧬 Soyağacı Kalıtım Tahmini: Bu kuşun henüz bireysel ${bracketName} yarışı yoktur; ancak üst soyundaki ${ancSubset.length} atasının (${ancSubset.slice(0, 3).map(a => `${a.ancRing} [${a.distanceKm}km]`).join(', ')}) bu mesafedeki doğrulanmış derecelerinden hesaplanmıştır.`
         };
       }
 
@@ -363,7 +424,7 @@ const AvigenPerformanceEngine = {
     // ========================================================================
     // KATEGORİ 1: UÇUŞ PERFORMANSI (FLIGHT PERFORMANCE)
     // ========================================================================
-    // 1.1 Speed (Hız — Önce bireysel m/dk, yoksa ataların Galton-Mendel hız indeksi)
+    // 1.1 Speed (Hız — Önce bireysel m/dk, yoksa bireysel derece, yoksa ataların hız/derece indeksi)
     let speedScore = null;
     let speedRel = 0;
     let speedInherited = false;
@@ -375,24 +436,25 @@ const AvigenPerformanceEngine = {
       speedEvidence = `Doğrudan Bireysel Ölçüm: ${racesWithSpeed.length} yarışın ölçülen ortalama hızı (${avgSpeed.toFixed(1)} m/dk), AVIGEN ${ref.refSpeedMpm} m/dk referans tavanına göre normalize edildi.`;
     } else if (racesWithRank.length > 0) {
       const bestRank = Math.min(...racesWithRank.map(r => r.rank));
-      speedScore = bestRank === 1 ? 91 : (bestRank <= 3 ? 85 : 76);
-      speedRel = 55;
+      speedScore = bestRank === 1 ? 92 : (bestRank <= 3 ? 86 : (bestRank <= 15 ? 80 : 73));
+      speedRel = 60;
       speedEvidence = `Bireysel klasman derecesi (${bestRank}.lik) üzerinden hız dilimi hesaplandı.`;
     } else if (ancestorRaces.length > 0) {
-      let wSpeed = 0;
+      let wPts = 0;
       let wTot = 0;
       ancestorRaces.forEach(a => {
-        wSpeed += a.speedMpm * a.weight;
+        wPts += a.ancPts * a.weight;
         wTot += a.weight;
       });
-      const estAncSpeed = wSpeed / wTot;
-      speedScore = Math.max(45, Math.min(92, Math.round(48 + ((estAncSpeed - 1000) / (ref.refSpeedMpm - 1000)) * 44)));
+      const avgAncPts = wPts / wTot;
+      speedScore = Math.max(48, Math.min(89, Math.round(avgAncPts * 0.85 + 55 * 0.15)));
       speedRel = calcInheritedReliability(ancestorRaces.length, 4);
       speedInherited = true;
-      speedEvidence = `🧬 Soyağacı Kalıtım Tahmini: Kuş henüz yarışmamıştır (veya bireysel hız kaydı yoktur). Üst soyundaki ${ancestorRaces.length} performanslı atanın ağırlıklı hız ortalaması (~${Math.round(estAncSpeed)} m/dk) ve PPARD/CASK poligenik hız kalıtım modeli (Gazda et al., 2018; Stefaniuk-Szmukier et al., 2026) ile tahmin edilmiştir.`;
+      speedEvidence = `🧬 Soyağacı Kalıtım Tahmini: Kuşun bireysel hız kaydı yoktur; üst soyundaki ${ancestorRaces.length} dereceli atanın yarış başarılarından tahmin edilmiştir.`;
     }
 
-    // 1.2 Endurance (Dayanıklılık — Önce bireysel km/süre, yoksa ataların uzun mesafe dayanıklılık kalıtımı)
+    // 1.2 Endurance (Dayanıklılık — Önce bireysel km/süre, yoksa ataların GERÇEK km kaydı)
+    const ancRacesWithDist = ancestorRaces.filter(a => a.distanceKm !== null && a.distanceKm > 0);
     let enduranceScore = null;
     let enduranceRel = 0;
     let enduranceInherited = false;
@@ -407,13 +469,13 @@ const AvigenPerformanceEngine = {
       const durNorm = maxDur > 0 ? Math.min(99, Math.round((maxDur / ref.refDurationMin) * 92)) : 0;
       enduranceScore = Math.max(35, Math.min(99, Math.round(Math.max(kmNorm, durNorm))));
       enduranceRel = calcReliability(racesWithDist.length + (loftFlightMinutes > 0 ? 1 : 0), 2);
-      enduranceEvidence = `Doğrudan Bireysel Ölçüm: Hızdan bağımsız olarak tamamlanan maksimum menzil (${maxKm} km) ve kesintisiz havada kalma süresi (${maxDur} dk) üzerinden hesaplandı.`;
-    } else if (ancestorRaces.length > 0) {
-      const maxAncKm = Math.max(...ancestorRaces.map(a => a.distanceKm));
+      enduranceEvidence = `Doğrudan Bireysel Ölçüm: Tamamlanan maksimum menzil (${maxKm} km) ve kesintisiz havada kalma süresi (${maxDur} dk) üzerinden hesaplandı.`;
+    } else if (ancRacesWithDist.length > 0) {
+      const maxAncKm = Math.max(...ancRacesWithDist.map(a => a.distanceKm));
       enduranceScore = Math.max(48, Math.min(91, Math.round(((maxAncKm / 650) * 78) + 12)));
-      enduranceRel = calcInheritedReliability(ancestorRaces.length, 4);
+      enduranceRel = calcInheritedReliability(ancRacesWithDist.length, 4);
       enduranceInherited = true;
-      enduranceEvidence = `🧬 Soyağacı Kalıtım Tahmini: Üst soyundaki ataların tamamladığı maksimum yarış menzili (${maxAncKm} km) ve göğüs kası lipid metabolizması kalıtımı (Stefaniuk-Szmukier et al., 2024) üzerinden tahmin edilmiştir.`;
+      enduranceEvidence = `🧬 Soyağacı Kalıtım Tahmini: Üst soyundaki ataların tamamladığı maksimum doğrulanmış yarış menzili (${maxAncKm} km) üzerinden hesaplanmıştır.`;
     }
 
     // 1.3 Sprint, 1.4 Middle Distance, 1.5 Long Distance, 1.6 Marathon
@@ -425,6 +487,7 @@ const AvigenPerformanceEngine = {
     // 1.7 Flight Duration (Uçuş Süresi Kapasitesi)
     const durations = parsedRaces.map(r => r.durationMin).filter(Boolean);
     if (loftFlightMinutes > 0) durations.push(loftFlightMinutes);
+    const ancDurations = ancestorRaces.map(a => a.durationMin).filter(Boolean);
     let durationScore = null;
     let durationRel = 0;
     let durationInherited = false;
@@ -434,10 +497,10 @@ const AvigenPerformanceEngine = {
       durationScore = Math.max(30, Math.min(99, Math.round((maxMin / ref.refDurationMin) * 95)));
       durationRel = calcReliability(durations.length, 2);
       durationEvidence = `Doğrudan Bireysel Ölçüm: Ölçülen en uzun uçuş süresi ${maxMin} dakika (${(maxMin / 60).toFixed(1)} saat). Referans tavanı: ${ref.refDurationMin} dk.`;
-    } else if (ancestorRaces.length > 0) {
-      const maxAncMin = Math.max(...ancestorRaces.map(a => a.durationMin));
+    } else if (ancDurations.length > 0) {
+      const maxAncMin = Math.max(...ancDurations);
       durationScore = Math.max(45, Math.min(89, Math.round((maxAncMin / ref.refDurationMin) * 86)));
-      durationRel = calcInheritedReliability(ancestorRaces.length, 4);
+      durationRel = calcInheritedReliability(ancDurations.length, 4);
       durationInherited = true;
       durationEvidence = `🧬 Soyağacı Kalıtım Tahmini: Atalarının yarış etaplarında havada kalma kapasitesi (~${maxAncMin} dk / ${(maxAncMin / 60).toFixed(1)} saat) üzerinden tahmin edilmiştir.`;
     }
@@ -451,15 +514,15 @@ const AvigenPerformanceEngine = {
     let consistencyInherited = false;
     let consistencyEvidence = 'İstikrar hesabı için bireysel yarış veya soyağacı derece kaydı gereklidir.';
     if (totalRaceCount > 0) {
-      const topFinishes = racesWithRank.filter(r => r.rank <= 20).length;
-      consistencyScore = Math.max(40, Math.min(98, Math.round(((topFinishes / totalRaceCount) * 75) + Math.min(23, totalRaceCount * 7))));
+      const topFinishes = racesWithRank.filter(r => r.rank <= 25).length;
+      consistencyScore = Math.max(45, Math.min(98, Math.round(((topFinishes / totalRaceCount) * 75) + Math.min(23, totalRaceCount * 7))));
       consistencyRel = calcReliability(totalRaceCount, 3);
-      consistencyEvidence = `Doğrudan Bireysel Ölçüm: Toplam ${totalRaceCount} yarış kaydının ${topFinishes} tanesinde ilk 20 klasman derecesi elde edildi.`;
+      consistencyEvidence = `Doğrudan Bireysel Ölçüm: Toplam ${totalRaceCount} bireysel yarış kaydının ${topFinishes} tanesinde üst klasman derecesi elde edildi.`;
     } else if (pedigreeBaseIndex !== null) {
-      consistencyScore = Math.max(48, Math.min(90, Math.round(pedigreeBaseIndex * 0.86 + 8)));
+      consistencyScore = Math.max(48, Math.min(89, Math.round(pedigreeBaseIndex * 0.85 + 8)));
       consistencyRel = calcInheritedReliability(ancestorsWithPerfCount, 4);
       consistencyInherited = true;
-      consistencyEvidence = `🧬 Soyağacı Kalıtım Tahmini: Henüz bireysel yarışı olmayan bu kuş için, soy ağacındaki ${ancestorsWithPerfCount} şampiyon/dereceli atanın Galton-Mendel istikrar ortalaması baz alınmıştır (Kolvenbag et al., 2022).`;
+      consistencyEvidence = `🧬 Soyağacı Kalıtım Tahmini: Henüz bireysel yarışı olmayan bu kuş için, soy ağacındaki ${ancestorsWithPerfCount} dereceli atanın istikrar ortalaması baz alınmıştır.`;
     }
 
     // 2.2 Top 10 Rate (İlk 10 Oranı / Potansiyeli)
@@ -471,13 +534,13 @@ const AvigenPerformanceEngine = {
       const top10Count = racesWithRank.filter(r => r.rank <= 10).length;
       top10Score = Math.round((top10Count / racesWithRank.length) * 100);
       top10Rel = calcReliability(racesWithRank.length, 3);
-      top10Evidence = `Doğrudan Bireysel Ölçüm: Derecesi bilinen ${racesWithRank.length} yarışın ${top10Count} tanesinde İlk 10 içinde yer aldı (%${top10Score}).`;
+      top10Evidence = `Doğrudan Bireysel Ölçüm: Derecesi bilinen ${racesWithRank.length} bireysel yarışın ${top10Count} tanesinde İlk 10 içinde yer aldı (%${top10Score}).`;
     } else if (ancestorRaces.length > 0) {
       const ancTop10 = ancestorRaces.filter(a => a.rank && a.rank <= 10).length;
       top10Score = Math.min(88, Math.round(((ancTop10 / ancestorRaces.length) * 75) + 10));
       top10Rel = calcInheritedReliability(ancestorRaces.length, 4);
       top10Inherited = true;
-      top10Evidence = `🧬 Soyağacı Kalıtım Tahmini: Üst soyundaki ${ancestorRaces.length} performanslı atanın ${ancTop10} tanesi İlk 10 klasman derecesine sahiptir; yavrunun beklenen İlk 10 potansiyelidir.`;
+      top10Evidence = `🧬 Soyağacı Kalıtım Tahmini: Üst soyundaki ${ancestorRaces.length} performanslı atanın ${ancTop10} tanesi İlk 10 klasman derecesine sahiptir.`;
     }
 
     // 2.3 Top 1% Rate (İlk %1 Elit Klasman Oranı / Potansiyeli)
@@ -497,7 +560,7 @@ const AvigenPerformanceEngine = {
         top1PctScore = Math.min(85, Math.round(((ancTop1 / ancestorRaces.length) * 72) + 12));
         top1PctRel = calcInheritedReliability(ancestorRaces.length, 4);
         top1PctInherited = true;
-        top1PctEvidence = `🧬 Soyağacı Kalıtım Tahmini: Üst soyundaki ${ancTop1} ata binlerce kuşluk ulusal etaplarda ilk %1 elit dilime girmiştir; Galton ortalamaya dönüş modeliyle hesaplanan genetik elit klasman potansiyelidir.`;
+        top1PctEvidence = `🧬 Soyağacı Kalıtım Tahmini: Üst soyundaki ${ancTop1} ata binlerce kuşluk etaplarda ilk %1 elit dilime girmiştir.`;
       }
     }
 
@@ -514,7 +577,7 @@ const AvigenPerformanceEngine = {
       completionScore = Math.min(91, Math.round(pedigreeBaseIndex * 0.9 + 5));
       completionRel = calcInheritedReliability(ancestorsWithPerfCount, 4);
       completionInherited = true;
-      completionEvidence = `🧬 Soyağacı Kalıtım Tahmini: Ebeveyn ve büyük ebeveynlerinin yarış tamamlama ve sağ kalım kayıtlarından tahmin edilen etap tamamlama potansiyeli.`;
+      completionEvidence = `🧬 Soyağacı Kalıtım Tahmini: Ebeveyn ve büyük ebeveynlerinin yarış tamamlama kayıtlarından tahmin edilen etap tamamlama potansiyeli.`;
     }
 
     // 2.5 Competition Performance (Rekabet Hacmi Performansı)
@@ -537,7 +600,7 @@ const AvigenPerformanceEngine = {
       compPerfScore = Math.min(89, Math.round(pedigreeBaseIndex * 0.88 + 6));
       compPerfRel = calcInheritedReliability(ancestorsWithPerfCount, 4);
       compPerfInherited = true;
-      compPerfEvidence = `🧬 Soyağacı Kalıtım Tahmini: Atalarının büyük sürü (ulusal/klasman) yarışlarındaki rekabet indeksinin (%50 / %25 / %12.5 kuşak ağırlıklı) yavruya aktarım tahminidir.`;
+      compPerfEvidence = `🧬 Soyağacı Kalıtım Tahmini: Atalarının büyük sürü yarışlarındaki rekabet indeksinin kuşak ağırlıklı aktarım tahminidir.`;
     }
 
     // ========================================================================
@@ -556,7 +619,7 @@ const AvigenPerformanceEngine = {
       homingScore = Math.min(90, Math.round(pedigreeBaseIndex * 0.88 + 7));
       homingRel = calcInheritedReliability(ancestorsWithPerfCount, 4);
       homingInherited = true;
-      homingEvidence = `🧬 Soyağacı Kalıtım Tahmini: Atalarının eve dönüş (homing) başarısı ve hipokampal uzamsal hafıza / CRY1 manyetik yönelim kalıtımı (Shao et al., 2020; Dybus et al., 2021) üzerinden tahmin edilmiştir.`;
+      homingEvidence = `🧬 Soyağacı Kalıtım Tahmini: Atalarının eve dönüş başarısı üzerinden tahmin edilmiştir.`;
     }
 
     // 3.2 Return Time (Dönüş Zamanlaması İstikrarı)
@@ -565,14 +628,14 @@ const AvigenPerformanceEngine = {
     let returnTimeInherited = false;
     let returnTimeEvidence = 'Dönüş zamanlaması için bireysel veya soyağacı hız/süre kaydı bulunmuyor.';
     if (durations.length > 0 || racesWithRank.length > 0) {
-      returnTimeScore = Math.min(96, 78 + durations.length * 6);
+      returnTimeScore = Math.min(96, 78 + (durations.length || racesWithRank.length) * 6);
       returnTimeRel = calcReliability(durations.length || racesWithRank.length, 2);
       returnTimeEvidence = `Doğrudan Bireysel Ölçüm: Etap mesafesine oranla gecikmesiz varış penceresi kararlılığı üzerinden hesaplandı.`;
     } else if (pedigreeBaseIndex !== null) {
       returnTimeScore = Math.min(87, Math.round(pedigreeBaseIndex * 0.84 + 8));
       returnTimeRel = calcInheritedReliability(ancestorsWithPerfCount, 4);
       returnTimeInherited = true;
-      returnTimeEvidence = `🧬 Soyağacı Kalıtım Tahmini: Ebeveyn ve büyük ebeveynlerin yarışlardan kopmadan grup önünde dönüş istikrarına dayalı genetik tahmin.`;
+      returnTimeEvidence = `🧬 Soyağacı Kalıtım Tahmini: Ebeveyn ve büyük ebeveynlerin yarışlardan kopmadan dönüş istikrarına dayalı tahmin.`;
     }
 
     // 3.3 Route Efficiency (Rota Verimliliği — Yalnızca GPS verisi varsa kesin!)
@@ -604,18 +667,17 @@ const AvigenPerformanceEngine = {
     // ========================================================================
     // KATEGORİ 4: BREEDING / GENETİK PROFİL (GENETIC & BREEDING PROFILE)
     // ========================================================================
-    const bBoxes = ownPed?.boxes || {};
-    const allAncKeys = [
-      'sire', 'dam',
-      'g2_1', 'g2_2', 'g2_3', 'g2_4',
-      'g3_1', 'g3_2', 'g3_3', 'g3_4', 'g3_5', 'g3_6', 'g3_7', 'g3_8',
-      'g4_1', 'g4_2', 'g4_3', 'g4_4', 'g4_5', 'g4_6', 'g4_7', 'g4_8',
-      'g4_9', 'g4_10', 'g4_11', 'g4_12', 'g4_13', 'g4_14', 'g4_15', 'g4_16'
+    const treeAncKeys = [
+      'p1', 'p2',
+      'g1', 'g2', 'g3', 'g4',
+      'gg1', 'gg2', 'gg3', 'gg4', 'gg5', 'gg6', 'gg7', 'gg8',
+      'ggg1', 'ggg2', 'ggg3', 'ggg4', 'ggg5', 'ggg6', 'ggg7', 'ggg8',
+      'ggg9', 'ggg10', 'ggg11', 'ggg12', 'ggg13', 'ggg14', 'ggg15', 'ggg16'
     ];
     let filledAncCount = 0;
     const uniqueAncRings = new Set();
-    allAncKeys.forEach(k => {
-      const r = bBoxes[k]?.ring?.trim();
+    treeAncKeys.forEach(k => {
+      const r = fullLineageTree?.[k]?.ring?.trim();
       if (r) {
         filledAncCount++;
         uniqueAncRings.add(r.toUpperCase());
@@ -624,67 +686,126 @@ const AvigenPerformanceEngine = {
 
     // 4.1 Pedigree Depth (Soyağacı Derinliği — 4 Kuşak 30 Ata Üzerinden Doğrudan Ölçüm)
     const pedDepthScore = Math.round((filledAncCount / 30) * 100);
-    const pedDepthRel = 100; // Doğrudan veritabanı sayımı olduğu için %100 kesin ölçüm
+    const pedDepthRel = 100;
     const pedDepthEvidence = `4 kuşaktaki toplam 30 ata kutusunun ${filledAncCount} tanesi kayıtlıdır (${filledAncCount}/30 = %${pedDepthScore}).`;
 
-    // 4.2 Genetic Diversity (Genetik Çeşitlilik / Tekil Ata Oranı - AVK)
+    // 4.2 Genetic Diversity (Genetik Çeşitlilik / Tekil Ata Oranı - AVK, Eksik Pedigride Sönümlenmiş!)
     let diversityScore = null;
     let diversityRel = 0;
     let diversityEvidence = 'Genetik çeşitlilik hesabı için soy ağacında en az 2 ata kayıtlı olmalıdır.';
     if (filledAncCount >= 2) {
-      // Ancestor Loss Coefficient (AVK): Tekil ata sayısı / Toplam dolu ata sayısı
-      diversityScore = Math.round((uniqueAncRings.size / filledAncCount) * 100);
-      diversityRel = Math.round((filledAncCount / 14) * 100);
-      diversityEvidence = `Kayıtlı ${filledAncCount} atanın ${uniqueAncRings.size} tanesi farklı/tekil bireydir (Soy Çeşitlilik Katsayısı AVK = %${diversityScore}).`;
+      const rawAvkPct = Math.round((uniqueAncRings.size / filledAncCount) * 100);
+      // ÖNEMLİ DÜZELTME: Yalnızca 2 ata girilmişken AVK %100 çıkıp puanı yapay olarak 100'e şişirmesin;
+      // 14 ata doygunluğuna göre popülasyon tabanına (55) dengelenir.
+      const depthConfidence = Math.min(1, filledAncCount / 14);
+      diversityScore = Math.round(rawAvkPct * depthConfidence + 55 * (1 - depthConfidence));
+      diversityRel = Math.min(100, Math.round((filledAncCount / 14) * 100));
+      diversityEvidence = `Kayıtlı ${filledAncCount} atanın ${uniqueAncRings.size} tanesi farklı/tekil bireydir (Ham AVK: %${rawAvkPct} • Soyağacı derinliğiyle ağırlıklandırılmış çeşitlilik: ${diversityScore}/100).`;
     }
 
     // 4.3 Inbreeding Risk (Akrabalık Riski — Baba × Anne Sewall Wright COI)
     let inbreedingRiskScore = null;
     let inbreedingRel = 0;
     let inbreedingEvidence = 'Baba ve Anne soy ağacı verisi eksik olduğu için akrabalık riski hesaplanamadı.';
+    let internalCoiPct = 0;
     if (ownPed && filledAncCount >= 2) {
       const sTree = getCandidateLineageTree(`${ownPed.id}::sire`);
       const dTree = getCandidateLineageTree(`${ownPed.id}::dam`);
       const wright = typeof AvigenGenesisAI !== 'undefined'
         ? AvigenGenesisAI.calculateExactWrightCOI(sTree, dTree)
         : { coiPercent: 0, relationSummary: 'Ortak ata yok' };
-      // 0% COI = 5 puan risk (Çok düşük risk), 25% COI = 90 puan risk (Yüksek risk)
+      internalCoiPct = wright.coiPercent;
       inbreedingRiskScore = Math.min(99, Math.round(5 + (wright.coiPercent / 25) * 85));
       inbreedingRel = Math.min(100, Math.round((filledAncCount / 14) * 100));
-      inbreedingEvidence = `Sewall Wright COI = %${wright.coiPercent.toFixed(2)} (${wright.relationSummary}). Not: Düşük puan düşük akrabalık riskini (güvenli durumu) ifade eder.`;
+      inbreedingEvidence = `Baba × Anne Akrabalık Oranı (Wright COI) = %${wright.coiPercent.toFixed(2)} (${wright.relationSummary}). Not: Düşük puan düşük akrabalık riskini (güvenli durumu) ifade eder.`;
     }
 
-    // 4.4 Offspring Performance (Yavru Performansı — Kümeste Yavrusu Yoksa Yapay Puan Üretmez!)
+    // 4.4 Offspring Performance (Yavru Başarısı — Doğrulanmış Yavru Dereceleri + Pedigri Yavru Notları)
     let offspringScore = null;
     let offspringRel = 0;
-    let offspringEvidence = 'Kümes kayıtlarında bu güvercinin anne veya baba olduğu doğrulanmış bir yavru bulunamadı. Eksik veride yapay yavru puanı üretilmemiştir.';
-    if (offspringBirds.length > 0) {
-      const avgOffEbv = Math.round(offspringBirds.reduce((a, b) => a + b.ebvScore, 0) / offspringBirds.length);
-      offspringScore = avgOffEbv;
-      offspringRel = calcReliability(offspringBirds.length, 3);
-      offspringEvidence = `Kümeste kayıtlı ${offspringBirds.length} yavrusunun (${offspringBirds.map(o => o.ring).join(', ')}) yarış ve kalite ortalaması üzerinden hesaplandı.`;
+    let offspringEvidence = 'Kümes kayıtlarında veya pedigri notlarında bu güvercinin doğrulanmış yarış dereceli bir yavrusu bulunamadı. Eksik veride yapay yavru puanı üretilmemiştir.';
+    const provenOffspringScores = [];
+    const provenOffspringLabels = [];
+
+    // 1) Kümesteki yavrularından gerçekten derece/yarış kaydı olanları kontrol et
+    offspringBirds.forEach(ob => {
+      const obHist = typeof AvigenRaceTracker !== 'undefined'
+        ? AvigenRaceTracker.getBirdRaceHistory(ob.ring).filter(h => h.resultStatus === 'ENTERED' && h.rank)
+        : [];
+      const hasNoteWin = /\b(1\.|2\.|3\.|4\.|5\.|final|ace|as\b|ulusal|npo|kbdb|\d{1,3}\/\d{3,5})\b/i.test(ob.notes || '');
+      if (obHist.length > 0 || hasNoteWin) {
+        provenOffspringScores.push(ob.ebvScore || 84);
+        provenOffspringLabels.push(`${ob.ring} (${ob.name})`);
+      }
+    });
+
+    // 2) Kuşun kendi pedigri kutusunda yazılı doğrulanmış yavru derecelerini ("Yavrusu: ...", "Father to...") ekle
+    verifiedOffspringNoteWins.forEach(vw => {
+      let pts = 85;
+      if (vw.rank === 1) pts = 95;
+      else if (vw.rank && vw.rank <= 5) pts = 90;
+      else if (vw.rank && vw.rank <= 25) pts = 84;
+      provenOffspringScores.push(pts);
+      provenOffspringLabels.push(vw.text.slice(0, 55));
+    });
+
+    if (provenOffspringScores.length > 0) {
+      offspringScore = Math.round(provenOffspringScores.reduce((a, b) => a + b, 0) / provenOffspringScores.length);
+      offspringRel = calcReliability(provenOffspringScores.length, 3);
+      offspringEvidence = `Doğrulanmış ${provenOffspringScores.length} yavru başarı kaydı (${provenOffspringLabels.slice(0, 2).join(' | ')}) üzerinden hesaplandı.`;
+    } else if (offspringBirds.length > 0) {
+      offspringEvidence = `Kümeste kayıtlı ${offspringBirds.length} genç yavrusu (${offspringBirds.map(o => o.ring).join(', ')}) mevcuttur ancak bu yavrulara ait resmi yarış derecesi henüz girilmemiştir.`;
     }
 
-    // 4.5 Breeding Value (Tahmini Damızlık Değeri — Pedigri + Bireysel + Varsa Yavru)
+    // 4.5 Breeding Value (Tahmini Damızlık Değeri — Soyağacı + Kardeş/Yavru Kanıtı + COI Dengesi)
     let breedingValScore = null;
     let breedingValRel = 0;
     let breedingValEvidence = 'Damızlık değeri için yeterli soyağacı veya performans verisi yok.';
+    const isBlupEligible = totalRaceCount >= 3 && provenOffspringScores.length >= 2 && filledAncCount >= 6;
+    const evaluationMethodType = isBlupEligible
+      ? 'BLUP (Çoklu Yarış & Yavru Doğrulamalı Damızlık Değeri)'
+      : 'Geçici Damızlık Puanı (BLUP İçin Yavru/Yarış Verisi Sınırlı)';
+
+    // Kuşun kendi doğrudan yarış puanı (yalnızca kendi yarışlarından!)
+    let directRaceAvgScore = null;
+    if (totalRaceCount > 0) {
+      const directComponents = [speedScore, consistencyScore, compPerfScore].filter(s => s !== null);
+      if (directComponents.length > 0) {
+        directRaceAvgScore = Math.round(directComponents.reduce((a, b) => a + b, 0) / directComponents.length);
+      }
+    }
+
+    let geneticPotentialScore = pedigreeBaseIndex;
+    let realizedPerformanceScore = directRaceAvgScore !== null ? directRaceAvgScore : offspringScore;
+
     if (ownPed && typeof AvigenGenesisAI !== 'undefined') {
       const rRep = AvigenGenesisAI.analyzeRacingIntelligence(ownPed.id);
-      breedingValScore = offspringScore !== null
-        ? Math.round(rRep.totalScore * 0.6 + offspringScore * 0.4)
-        : rRep.totalScore;
+      geneticPotentialScore = rRep.totalScore;
+      let baseBv = rRep.totalScore;
+      if (offspringScore !== null) {
+        baseBv = Math.round(baseBv * 0.55 + offspringScore * 0.45);
+      } else if (verifiedSiblingNoteWins.length > 0) {
+        baseBv = Math.min(95, baseBv + 4);
+      }
+      breedingValScore = baseBv;
       breedingValRel = rRep.dataReliabilityPct;
-      breedingValEvidence = `AVIGEN Galton-Mendel soyağacı ağırlıkları (%50 / %25 / %12.5), bireysel yarış kayıtları${offspringScore !== null ? ' ve doğrulanmış yavru sonuçları' : ''} birleştirilerek tahmin edilmiştir. (Genetik DNA garantisi değil, soyağacı istatistiksel tahminidir.)`;
+      breedingValEvidence = `${evaluationMethodType}: Genetik Potansiyel (${geneticPotentialScore ?? '-'}/100) ile Gerçekleşmiş Performans (${realizedPerformanceScore !== null ? realizedPerformanceScore + '/100' : 'Henüz Doğrudan Yarış/Yavru Kaydı Yok'}) birbirinden ayrı değerlendirilmiştir.`;
     }
 
     return {
       bird,
       statsSummary: {
         totalRaceCount,
+        directRaceAvgScore,
         filledAncCount,
         offspringCount: offspringBirds.length,
-        releasePointsCount: releasePoints.length
+        provenOffspringCount: provenOffspringScores.length,
+        releasePointsCount: releasePoints.length,
+        internalCoiPct,
+        isBlupEligible,
+        evaluationMethodType,
+        geneticPotentialScore,
+        realizedPerformanceScore
       },
       categories: {
         flight: {
@@ -833,7 +954,7 @@ const AvigenPerformanceEngine = {
 
   // 4 Temel Bilimsel Boyutu Hesaplayıcı (Hem Kuş Kartı Hem GENESIS AI İçin Ortak Standart)
   buildCore4ScientificPillars(prof) {
-    const { categories } = prof;
+    const { categories, statsSummary } = prof;
     const lim = this.state.distanceLimits;
 
     const combineTwo = (m1, m2, key, simpleName, methodText) => {
@@ -871,20 +992,46 @@ const AvigenPerformanceEngine = {
     const mDiversity = categories.breeding.metrics[1];
     const mBreedingVal = categories.breeding.metrics[4];
 
-    // 1. Kısa Mesafe & Hız
-    const pillarSpeedSprint = combineTwo(
-      mSpeed,
-      mSprint,
-      'core_sprint_speed',
-      `🚀 1. Kısa Mesafe & Hız (50–${lim.sprintMax} km)`,
-      'Ölçülen yarış hızları (m/dk) ile kısa mesafe (Sprint) derecelerinin bileşik ortalaması (yarışmamış genç kuşlarda anne-baba hız kalıtımı).'
-    );
+    // 1. Kısa Mesafe & Hız (ÖNEMLİ DÜZELTME: Kuşun/ataların hiç kısa mesafe kaydı yoksa ve sadece uzun mesafe kaydı varsa,
+    //    genel hız puanı doğrudan kısa mesafe puanı olarak kopyalanıp uzun mesafe kuşunu kısa mesafeci gibi göstermez!)
+    let pillarSpeedSprint;
+    if (mSprint?.score !== null) {
+      pillarSpeedSprint = combineTwo(
+        mSprint,
+        mSpeed,
+        'core_sprint_speed',
+        `🚀 1. Kısa Mesafe & Hız (50–${lim.sprintMax} km)`,
+        'Kısa mesafe (Sprint) dereceleri ile ölçülen yarış hızlarının (m/dk) bileşik ortalaması.'
+      );
+    } else if (mSpeed?.score !== null && mMiddle?.score === null && mLong?.score === null) {
+      pillarSpeedSprint = {
+        key: 'core_sprint_speed',
+        name: `🚀 1. Kısa Mesafe & Hız (50–${lim.sprintMax} km)`,
+        simpleName: `🚀 1. Kısa Mesafe & Hız (50–${lim.sprintMax} km)`,
+        score: mSpeed.score,
+        reliability: mSpeed.reliability,
+        isInherited: mSpeed.isInherited,
+        evidence: mSpeed.evidence,
+        method: 'Mesafe belirtilmemiş genel hız/derece kayıtlarından hesaplanan hız potansiyeli.'
+      };
+    } else {
+      pillarSpeedSprint = {
+        key: 'core_sprint_speed',
+        name: `🚀 1. Kısa Mesafe & Hız (50–${lim.sprintMax} km)`,
+        simpleName: `🚀 1. Kısa Mesafe & Hız (50–${lim.sprintMax} km)`,
+        score: mSpeed?.score !== null ? Math.round(mSpeed.score * 0.88) : null,
+        reliability: mSpeed?.reliability ? Math.round(mSpeed.reliability * 0.75) : 0,
+        isInherited: true,
+        evidence: mSprint?.evidence || 'Bu kuşta doğrudan kısa mesafe (50–300 km) kaydı bulunmuyor; orta/uzun mesafe hızından sönümlenerek tahmin edildi.',
+        method: 'Doğrudan kısa mesafe kaydı olmadığında genel hız indeksinin %88 katsayısıyla sönümlenmesi.'
+      };
+    }
 
     // 2. Orta & Uzun Mesafe Dayanıklılığı
     const bestLonger = (mLong?.score || 0) >= (mMiddle?.score || 0) ? mLong : mMiddle;
     const pillarEndurance = combineTwo(
+      bestLonger?.score !== null ? bestLonger : mEndurance,
       mEndurance,
-      bestLonger,
       'core_endurance_long',
       `🏔️ 2. Orta / Uzun Mesafe Dayanıklılığı (${lim.sprintMax + 1}–${lim.longMax}+ km)`,
       'Orta ve uzun mesafe etaplarındaki menzil başarısı ile kesintisiz uçuş dayanıklılığının bileşik indeksi.'
@@ -899,14 +1046,17 @@ const AvigenPerformanceEngine = {
       'Gönderildiği yarışlardan kopmadan ilk klasmanda ve farklı salım noktalarından kayıpsız eve dönüş güvenilirliği.'
     );
 
-    // 4. Soyağacı Tamlığı & Damızlık Gücü
+    // 4. Soyağacı Tamlığı & Damızlık Gücü (Aşırı akrabalık riski varsa puanı gerçekçi şekilde düşürür)
     const pillarGenetics = combineTwo(
       mBreedingVal,
       mDiversity?.score !== null ? mDiversity : mPedDepth,
       'core_genetics_breeding',
       '🧬 4. Soyağacı & Damızlık Gücü (AVK / COI)',
-      '4 kuşak soyağacı doluluğu, tekil ata çeşitliliği (AVK), ebeveyn Wright COI dengesi ve varsa yavru performanslarının bileşimi.'
+      '4 kuşak soyağacı doluluğu, derinlik ağırlıklı tekil ata çeşitliliği (AVK), ebeveyn Wright COI dengesi ve doğrulanmış yavru performanslarının bileşimi.'
     );
+    if (pillarGenetics.score !== null && (statsSummary?.internalCoiPct || 0) >= 25) {
+      pillarGenetics.score = Math.max(40, pillarGenetics.score - 12);
+    }
     pillarGenetics.isInherited = false; // Soyağacı veritabanı üzerinden doğrudan ölçülür
 
     return [pillarSpeedSprint, pillarEndurance, pillarConsistencyHoming, pillarGenetics];
@@ -922,11 +1072,9 @@ const AvigenPerformanceEngine = {
 
     const core4Pillars = this.buildCore4ScientificPillars(prof);
 
-    // 1. Gerçek Yarış Puanı (Sadece gerçekten yarışmışsa sayısal puan gösterir!)
-    const hasRealRaces = statsSummary.totalRaceCount > 0;
-    const realRaceScore = hasRealRaces
-      ? Math.round(((core4Pillars[0].score || 70) + (core4Pillars[1].score || 70) + (core4Pillars[2].score || 70)) / 3)
-      : null;
+    // 1. Gerçek Yarış Puanı (Yalnızca kuşun KENDİ bireysel yarış kayıtlarından hesaplanır, soyağacı tahmini karıştırılmaz!)
+    const hasRealRaces = statsSummary.totalRaceCount > 0 && statsSummary.directRaceAvgScore !== null;
+    const realRaceScore = hasRealRaces ? statsSummary.directRaceAvgScore : null;
 
     // 2. Soy & Damızlık Gücü
     const soyPowerScore = core4Pillars[3].score;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avigen-pwa-v4';
+const CACHE_NAME = 'avigen-pwa-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -30,6 +30,10 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (event.request.url.includes('version.json')) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }));
+    return;
+  }
   event.respondWith(
     fetch(event.request)
       .then((res) => {

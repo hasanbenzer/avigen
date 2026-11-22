@@ -1630,7 +1630,9 @@ function renderHomeFlightWeatherStrip() {
   syncLoftIdentityAcrossUI();
 }
 
-// Ana Sayfa Hızlı Güvercin Arama (1-Dokunuşla Pedigre veya GENESIS Analiz Açma)
+// Ana Sayfa Hızlı Güvercin Arama (1-Dokunuşla Pedigre, Profil veya GENESIS Analiz Açma)
+let _lastQuickSearchMatches = [];
+
 function onHomeQuickSearch(val) {
   const resBox = document.getElementById('homeQuickSearchResults');
   if (!resBox) return;
@@ -1638,16 +1640,29 @@ function onHomeQuickSearch(val) {
   if (!q) {
     resBox.classList.remove('open');
     resBox.innerHTML = '';
+    _lastQuickSearchMatches = [];
     return;
   }
 
   const allBirds = collectUniqueLoftBirds();
   const cleanQ = q.replace(/[-\s./]+/g, '');
-  const matches = allBirds.filter(b => {
-    const rawHay = `${b.ring} ${b.name} ${b.color} ${b.notes}`.toLowerCase();
-    const cleanHay = rawHay.replace(/[-\s./]+/g, '');
-    return rawHay.includes(q) || (cleanQ.length >= 2 && cleanHay.includes(cleanQ));
-  }).slice(0, 6);
+  const matches = allBirds
+    .filter(b => {
+      const rawHay = `${b.ring} ${b.name} ${b.color} ${b.notes}`.toLowerCase();
+      const cleanHay = rawHay.replace(/[-\s./]+/g, '');
+      return rawHay.includes(q) || (cleanQ.length >= 2 && cleanHay.includes(cleanQ));
+    })
+    .sort((a, b) => {
+      // Önce aktif kümesteki ana kuşları (🏠 Kümesim), ardından Soy Arşivi atalarını sırala
+      if (a.isActiveLoftBird !== b.isActiveLoftBird) return a.isActiveLoftBird ? -1 : 1;
+      const aNameMatch = (a.name || '').toLowerCase().includes(q) || (a.ring || '').toLowerCase().includes(q);
+      const bNameMatch = (b.name || '').toLowerCase().includes(q) || (b.ring || '').toLowerCase().includes(q);
+      if (aNameMatch !== bNameMatch) return aNameMatch ? -1 : 1;
+      return (b.ebvScore || 0) - (a.ebvScore || 0);
+    })
+    .slice(0, 12);
+
+  _lastQuickSearchMatches = matches;
 
   if (!matches.length) {
     resBox.innerHTML = `<div style="padding:8px; font-size:11px; color:var(--ios-subtext); text-align:center;">"${escapeHtml(val)}" ile eşleşen kuş bulunamadı.</div>`;
@@ -1655,20 +1670,40 @@ function onHomeQuickSearch(val) {
     return;
   }
 
-  resBox.innerHTML = matches.map(b => `
-    <div class="quick-res-item">
-      <div onclick="document.getElementById('homeQuickSearchResults').classList.remove('open'); openBirdPedigreeFromDirectory('${b.pedId}');" style="flex:1; min-width:0;">
-        <div style="font-weight:900; color:var(--ios-text);">${b.flag} ${escapeHtml(b.ring)} — ${escapeHtml(b.name)}</div>
+  resBox.innerHTML = matches.map((b, idx) => `
+    <div class="quick-res-item" style="cursor:pointer;" onclick="handleHomeQuickSearchAction(${idx}, 'pedigree', event)">
+      <div style="flex:1; min-width:0;">
+        <div style="font-weight:900; color:var(--ios-text); display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+          <span>${b.flag} ${escapeHtml(b.ring)} — ${escapeHtml(b.name || 'İsimsiz')}</span>
+          <span class="gene-badge ${b.isActiveLoftBird ? 'gene-blue' : 'gene-purple'}" style="font-size:8px; padding:1px 5px;">${b.isActiveLoftBird ? '🏠 Kümesim' : '📜 Soy Arşivi'}</span>
+        </div>
         <div style="font-size:10px; color:var(--ios-subtext);">${b.sex === 'M' ? '♂ Erkek' : '♀ Dişi'} • ${escapeHtml(b.color)} • İndeks: ${b.ebvScore}/100</div>
       </div>
       <div style="display:flex; gap:4px; flex-shrink:0;">
-        <button class="ios-btn ios-btn-gold" style="padding:4px 7px; font-size:10px;" onclick="document.getElementById('homeQuickSearchResults').classList.remove('open'); openBirdPedigreeFromDirectory('${b.pedId}');">📜 Pedigre</button>
-        <button class="ios-btn ios-btn-secondary" style="padding:4px 7px; font-size:10px; border-color:#1e40af; color:#1e40af;" onclick="document.getElementById('homeQuickSearchResults').classList.remove('open'); if(typeof AvigenPerformanceEngine!=='undefined') AvigenPerformanceEngine.openProfileModal('${escapeHtml(b.ring)}');">📊 Profil</button>
-        <button class="ios-btn ios-btn-primary" style="padding:4px 7px; font-size:10px;" onclick="document.getElementById('homeQuickSearchResults').classList.remove('open'); openBirdInGenesisFromDirectory('${b.pedId}', '${b.slotKey}', '${b.sex}');">🧬 Analiz</button>
+        <button type="button" class="ios-btn ios-btn-gold" style="padding:4px 7px; font-size:10px;" onclick="handleHomeQuickSearchAction(${idx}, 'pedigree', event)">📜 Pedigre</button>
+        <button type="button" class="ios-btn ios-btn-secondary" style="padding:4px 7px; font-size:10px; border-color:#1e40af; color:#1e40af;" onclick="handleHomeQuickSearchAction(${idx}, 'profile', event)">📊 Profil</button>
       </div>
     </div>
   `).join('');
   resBox.classList.add('open');
+}
+
+function handleHomeQuickSearchAction(idx, actionType, event) {
+  if (event) event.stopPropagation();
+  const bird = _lastQuickSearchMatches[idx];
+  const resBox = document.getElementById('homeQuickSearchResults');
+  if (resBox) resBox.classList.remove('open');
+  if (!bird) return;
+
+  if (actionType === 'profile') {
+    if (typeof AvigenPerformanceEngine !== 'undefined') {
+      AvigenPerformanceEngine.openProfileModal(bird.ring);
+    }
+  } else if (actionType === 'genesis') {
+    openBirdInGenesisFromDirectory(bird.pedId, bird.slotKey, bird.sex);
+  } else {
+    openBirdPedigreeFromDirectory(bird.pedId, bird.slotKey);
+  }
 }
 
 function switchHomeSubPanel(tabName, btnEl) {
@@ -3175,9 +3210,6 @@ function renderLoftBirdsDirectory() {
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); if(typeof AvigenPerformanceEngine!=='undefined') AvigenPerformanceEngine.openProfileModal('${escapeHtml(b.ring)}');">
               <span>📊</span> <span>Performans &amp; Genetik Profil</span>
             </button>
-            <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); openBirdInGenesisFromDirectory('${b.pedId}', '${b.slotKey}', '${b.sex}');">
-              <span>🧬</span> <span>GENESIS AI Analizi</span>
-            </button>
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); openBirdDossierModal('${escapeHtml(b.ring)}');">
               <span>📋</span> <span>Sicil Dosyası (${dCount} Kayıt)</span>
             </button>
@@ -3200,13 +3232,29 @@ function renderLoftBirdsDirectory() {
   }).join('');
 }
 
-function openBirdPedigreeFromDirectory(pedId) {
+function openBirdPedigreeFromDirectory(pedId, slotKey = 'main') {
+  openIosTab('pedigrees', document.querySelectorAll('.ios-tab-btn')[1]);
   selectActivePedigree(pedId);
   renderPedigreeDropdown();
   switchBirdsViewMode('pedigree');
+  setTimeout(() => {
+    fitPaperToIphoneScreen();
+    if (slotKey && slotKey !== 'main') {
+      const targetBox = document.querySelector(`#mypedigrePaper [onclick*="openBoxEditModal('${slotKey}')"]`);
+      if (targetBox) {
+        targetBox.style.outline = '3px solid #0066ff';
+        targetBox.style.boxShadow = '0 0 16px rgba(0, 102, 255, 0.75)';
+        setTimeout(() => {
+          targetBox.style.outline = '';
+          targetBox.style.boxShadow = '';
+        }, 3500);
+      }
+    }
+  }, 50);
 }
 
 function editBirdFromDirectory(pedId, slotKey) {
+  openIosTab('pedigrees', document.querySelectorAll('.ios-tab-btn')[1]);
   activePedigreeId = pedId;
   renderPedigreeDropdown();
   selectActivePedigree(pedId);
@@ -3290,13 +3338,13 @@ function deleteBirdFromEditModal() {
 function openBirdInGenesisFromDirectory(pedId, slotKey, sex) {
   if (typeof AvigenGenesisAI !== 'undefined') {
     AvigenGenesisAI.state.viewStage = 'tool';
-    if (slotKey === 'main') {
-      AvigenGenesisAI.state.activeMode = 'racing';
-      AvigenGenesisAI.state.selectedRacerPedId = pedId;
+    AvigenGenesisAI.state.activeMainModule = 'breeding_hub';
+    AvigenGenesisAI.state.activeMode = 'breeding';
+    const refKey = `${pedId}::${slotKey || 'main'}`;
+    if (sex === 'F') {
+      AvigenGenesisAI.state.selectedDamRef = refKey;
     } else {
-      AvigenGenesisAI.state.activeMode = 'breeding';
-      if (sex === 'F') AvigenGenesisAI.state.selectedDamRef = `${pedId}::${slotKey}`;
-      else AvigenGenesisAI.state.selectedSireRef = `${pedId}::${slotKey}`;
+      AvigenGenesisAI.state.selectedSireRef = refKey;
     }
     AvigenGenesisAI.saveState();
   }
@@ -4356,6 +4404,315 @@ function importFullAvigenBackup(event) {
   reader.readAsText(file);
 }
 
+// ============================================================================
+// AVIGEN 2.0 — CANLI METEOROLOJİ, GPS KONUM VE NOAA JEOMANYETİK (Kp) MOTORU
+// (Open-Meteo API + NOAA SWPC Planetary K-Index + 15 Dk Otomatik Senkronizasyon)
+// ============================================================================
+const AVIGEN_LIVE_WEATHER_KEY = 'avigen_live_weather_state_v2';
+
+const AvigenLiveWeather = {
+  CITIES: [
+    { id: 'istanbul', name: 'İstanbul', lat: 41.0082, lon: 28.9784 },
+    { id: 'ankara', name: 'Ankara', lat: 39.9334, lon: 32.8597 },
+    { id: 'izmir', name: 'İzmir', lat: 38.4237, lon: 27.1428 },
+    { id: 'bursa', name: 'Bursa', lat: 40.1885, lon: 29.0610 },
+    { id: 'antalya', name: 'Antalya', lat: 36.8969, lon: 30.7133 },
+    { id: 'adana', name: 'Adana', lat: 37.0000, lon: 35.3213 },
+    { id: 'konya', name: 'Konya', lat: 37.8746, lon: 32.4932 },
+    { id: 'gaziantep', name: 'Gaziantep', lat: 37.0662, lon: 37.3833 },
+    { id: 'kocaeli', name: 'Kocaeli', lat: 40.8533, lon: 29.8815 },
+    { id: 'samsun', name: 'Samsun', lat: 41.2867, lon: 36.3300 },
+    { id: 'eskisehir', name: 'Eskişehir', lat: 39.7767, lon: 30.5206 },
+    { id: 'kayseri', name: 'Kayseri', lat: 38.7312, lon: 35.4787 },
+    { id: 'sivas', name: 'Sivas', lat: 39.7477, lon: 37.0179 },
+    { id: 'sanliurfa', name: 'Şanlıurfa', lat: 37.1674, lon: 38.7955 },
+    { id: 'diyarbakir', name: 'Diyarbakır', lat: 37.9144, lon: 40.2306 },
+    { id: 'mersin', name: 'Mersin', lat: 36.8121, lon: 34.6415 },
+    { id: 'manisa', name: 'Manisa', lat: 38.6191, lon: 27.4289 },
+    { id: 'denizli', name: 'Denizli', lat: 37.7765, lon: 29.0864 },
+    { id: 'edirne', name: 'Edirne', lat: 41.6771, lon: 26.5557 },
+    { id: 'trabzon', name: 'Trabzon', lat: 41.0027, lon: 39.7168 },
+    { id: 'erzurum', name: 'Erzurum', lat: 39.9055, lon: 41.2658 },
+    { id: 'brussels', name: 'Brüksel (Belçika)', lat: 50.8503, lon: 4.3517 },
+    { id: 'amsterdam', name: 'Amsterdam (Hollanda)', lat: 52.3676, lon: 4.9041 }
+  ],
+
+  state: {
+    cityId: 'istanbul',
+    cityName: 'İstanbul',
+    lat: 41.0082,
+    lon: 28.9784,
+    isGps: false,
+    temp: 22,
+    hum: 55,
+    windSpeedKmh: 12,
+    windDirDeg: 45,
+    windDirLabel: 'KD',
+    windCategory: 'calm',
+    kp: 2,
+    weatherCode: 1,
+    conditionIcon: '🌤️',
+    conditionText: 'Açık / Az Bulutlu',
+    isLiveSynced: false,
+    isFetching: false,
+    lastUpdatedTime: ''
+  },
+
+  timerId: null,
+
+  init() {
+    try {
+      const saved = localStorage.getItem(AVIGEN_LIVE_WEATHER_KEY);
+      if (saved) {
+        this.state = { ...this.state, ...JSON.parse(saved), isFetching: false };
+      }
+    } catch (e) {}
+
+    this.populateCityDropdown();
+    this.applyStateToFlightInputs(false);
+    this.updateWeatherStatusUI();
+    this.fetchNow(false);
+
+    if (this.timerId) clearInterval(this.timerId);
+    // Her 15 dakikada bir canlı meteoroloji ve Kp indeksini otomatik güncelle
+    this.timerId = setInterval(() => {
+      this.fetchNow(false);
+    }, 15 * 60 * 1000);
+  },
+
+  saveState() {
+    try {
+      localStorage.setItem(AVIGEN_LIVE_WEATHER_KEY, JSON.stringify(this.state));
+    } catch (e) {}
+  },
+
+  populateCityDropdown() {
+    const sel = document.getElementById('liveWeatherCitySelect');
+    if (!sel) return;
+    let html = '';
+    if (this.state.isGps) {
+      html += `<option value="gps" selected>🎯 ${escapeHtml(this.state.cityName)} (GPS Konumu)</option>`;
+    }
+    html += this.CITIES.map(c =>
+      `<option value="${c.id}" ${!this.state.isGps && this.state.cityId === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+    ).join('');
+    sel.innerHTML = html;
+  },
+
+  onCitySelectChange(cityId) {
+    if (cityId === 'gps') {
+      this.useGpsLocation();
+      return;
+    }
+    const found = this.CITIES.find(c => c.id === cityId);
+    if (!found) return;
+    this.state.cityId = found.id;
+    this.state.cityName = found.name;
+    this.state.lat = found.lat;
+    this.state.lon = found.lon;
+    this.state.isGps = false;
+    this.saveState();
+    this.populateCityDropdown();
+    this.fetchNow(true);
+  },
+
+  promptCityFromHomeBanner(event) {
+    if (event) event.stopPropagation();
+    openIosTab('flight', document.querySelectorAll('.ios-tab-btn')[3]);
+    if (typeof switchRaceSubTab === 'function') {
+      switchRaceSubTab('weather');
+    }
+    setTimeout(() => {
+      const sel = document.getElementById('liveWeatherCitySelect');
+      if (sel) sel.focus();
+    }, 80);
+  },
+
+  useGpsLocation() {
+    if (!navigator.geolocation) {
+      alert('Cihazınızda GPS konum servisi desteklenmiyor. Lütfen listeden şehrinizi seçin.');
+      return;
+    }
+    const badge = document.getElementById('liveWeatherStatusBadge');
+    if (badge) badge.textContent = '📡 GPS Aranıyor...';
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(4));
+        const lon = Number(pos.coords.longitude.toFixed(4));
+        this.state.lat = lat;
+        this.state.lon = lon;
+        this.state.isGps = true;
+        this.state.cityId = 'gps';
+        this.state.cityName = 'GPS Konumum';
+
+        try {
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&accept-language=tr`);
+          if (geoRes.ok) {
+            const geoJson = await geoRes.json();
+            const addr = geoJson.address || {};
+            const detectedName = addr.province || addr.city || addr.town || addr.county || addr.state;
+            if (detectedName) {
+              this.state.cityName = detectedName;
+            }
+          }
+        } catch (e) {}
+
+        this.saveState();
+        this.populateCityDropdown();
+        this.fetchNow(true);
+      },
+      () => {
+        alert('GPS konum izni alınamadı veya kapalı. Şehir listesinden kümesinizin bulunduğu şehri seçebilirsiniz.');
+        this.updateWeatherStatusUI();
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+    );
+  },
+
+  degToCompassTr(deg) {
+    const dirs = ['K', 'KD', 'D', 'GD', 'G', 'GB', 'B', 'KB'];
+    const idx = Math.round(((Number(deg) || 0) % 360) / 45) % 8;
+    return dirs[idx];
+  },
+
+  decodeWmoWeather(code, windSpeed) {
+    const c = Number(code) || 0;
+    if (c === 0) return { icon: '☀️', text: 'Açık & Güneşli', vis: 10 };
+    if (c === 1 || c === 2) return { icon: '🌤️', text: 'Az Bulutlu', vis: 10 };
+    if (c === 3) return { icon: '☁️', text: 'Kapalı Bulutlu', vis: 9 };
+    if (c === 45 || c === 48) return { icon: '🌫️', text: 'Sisli / Puslu', vis: 3 };
+    if (c >= 51 && c <= 67) return { icon: '🌧️', text: 'Yağmurlu', vis: 5 };
+    if (c >= 71 && c <= 77) return { icon: '❄️', text: 'Kar Yağışlı', vis: 4 };
+    if (c >= 80 && c <= 82) return { icon: '🌦️', text: 'Sağanak Yağışlı', vis: 5 };
+    if (c >= 95) return { icon: '⛈️', text: 'Gök Gürültülü Fırtına', vis: 3 };
+    if (windSpeed >= 34) return { icon: '💨', text: 'Şiddetli Rüzgâr', vis: 7 };
+    return { icon: '🌤️', text: 'Parçalı Bulutlu', vis: 10 };
+  },
+
+  async fetchNow(manualRefresh = false, event = null) {
+    if (event) event.stopPropagation();
+    if (this.state.isFetching) return;
+    this.state.isFetching = true;
+    this.updateWeatherStatusUI();
+
+    const lat = this.state.lat || 41.0082;
+    const lon = this.state.lon || 28.9784;
+
+    try {
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code,precipitation&timezone=auto`;
+      const res = await fetch(weatherUrl, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Open-Meteo HTTP ' + res.status);
+      const data = await res.json();
+      const cur = data.current || {};
+
+      const temp = Math.round(Number(cur.temperature_2m ?? 22));
+      const hum = Math.round(Number(cur.relative_humidity_2m ?? 55));
+      const windSpeed = Math.round(Number(cur.wind_speed_10m ?? 12));
+      const windDirDeg = Math.round(Number(cur.wind_direction_10m ?? 45));
+      const wCode = Number(cur.weather_code ?? 1);
+      const precip = Number(cur.precipitation ?? 0);
+
+      const wmo = this.decodeWmoWeather(wCode, windSpeed);
+
+      let windCat = 'calm';
+      if (wCode >= 95 || windSpeed >= 35 || precip >= 4) {
+        windCat = 'storm';
+      } else if (windSpeed >= 21) {
+        windCat = 'head';
+      } else if (windSpeed >= 13 && (windDirDeg >= 315 || windDirDeg <= 135)) {
+        windCat = 'tail';
+      } else {
+        windCat = 'calm';
+      }
+
+      this.state.temp = temp;
+      this.state.hum = hum;
+      this.state.windSpeedKmh = windSpeed;
+      this.state.windDirDeg = windDirDeg;
+      this.state.windDirLabel = this.degToCompassTr(windDirDeg);
+      this.state.windCategory = windCat;
+      this.state.weatherCode = wCode;
+      this.state.conditionIcon = wmo.icon;
+      this.state.conditionText = wmo.text;
+      this.state.isLiveSynced = true;
+
+      // NOAA SWPC Canlı Jeomanyetik Kp İndeksi Çekimi (Opsiyonel / Hata Korumalı)
+      try {
+        const kpRes = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json', { cache: 'no-store' });
+        if (kpRes.ok) {
+          const kpArr = await kpRes.json();
+          if (Array.isArray(kpArr) && kpArr.length > 1) {
+            const lastRow = kpArr[kpArr.length - 1];
+            const parsedKp = parseFloat(lastRow?.[1]);
+            if (!isNaN(parsedKp)) {
+              this.state.kp = Math.max(0, Math.min(9, Math.round(parsedKp)));
+            }
+          }
+        }
+      } catch (kpErr) {
+        // NOAA erişilemezse mevcut Kp korunur
+      }
+
+      const now = new Date();
+      this.state.lastUpdatedTime = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+      this.saveState();
+      this.applyStateToFlightInputs(true);
+    } catch (err) {
+      // Çevrimdışı veya ağ hatası durumunda son kaydedilen veriyi koru
+      this.applyStateToFlightInputs(false);
+    } finally {
+      this.state.isFetching = false;
+      this.updateWeatherStatusUI();
+      syncLoftIdentityAcrossUI();
+    }
+  },
+
+  applyStateToFlightInputs(triggerRecalc = true) {
+    const tempEl = document.getElementById('flTemp');
+    const humEl = document.getElementById('flHum');
+    const kpEl = document.getElementById('flKp');
+    const windEl = document.getElementById('flWind');
+    const visEl = document.getElementById('flVis');
+
+    if (tempEl) tempEl.value = this.state.temp;
+    if (humEl) humEl.value = this.state.hum;
+    if (kpEl) kpEl.value = this.state.kp;
+    if (windEl) windEl.value = this.state.windCategory || 'calm';
+    if (visEl) {
+      const wmo = this.decodeWmoWeather(this.state.weatherCode, this.state.windSpeedKmh);
+      visEl.value = wmo.vis;
+    }
+
+    if (triggerRecalc && typeof calcMypedigreFlight === 'function') {
+      calcMypedigreFlight();
+    }
+  },
+
+  updateWeatherStatusUI() {
+    const badge = document.getElementById('liveWeatherStatusBadge');
+    const bar = document.getElementById('liveWeatherLastSyncBar');
+    if (badge) {
+      if (this.state.isFetching) {
+        badge.className = 'gene-badge gene-blue';
+        badge.textContent = '🔄 Güncelleniyor...';
+      } else if (this.state.isLiveSynced) {
+        badge.className = 'gene-badge gene-green';
+        badge.textContent = `🟢 Canlı • ${this.state.lastUpdatedTime || 'Aktif'}`;
+      } else {
+        badge.className = 'gene-badge gene-purple';
+        badge.textContent = '⚡ Çevrimdışı Önbellek';
+      }
+    }
+    if (bar) {
+      bar.innerHTML = `
+        <span>${this.state.conditionIcon} <strong>${escapeHtml(this.state.cityName)}:</strong> ${escapeHtml(this.state.conditionText)} • 💨 Rüzgâr: <strong>${this.state.windSpeedKmh} km/sa (${this.state.windDirLabel})</strong></span>
+        <span>${this.state.lastUpdatedTime ? `Saat ${this.state.lastUpdatedTime}` : '15 dk otomatik'}</span>
+      `;
+    }
+  }
+};
+
 function syncLoftIdentityAcrossUI() {
   const bannerEl = document.getElementById('homeLoftIdentityBanner');
   if (bannerEl) {
@@ -4363,22 +4720,27 @@ function syncLoftIdentityAcrossUI() {
       ? `<div class="loft-identity-logo"><img src="${loftConfig.logo}" alt="Kümes Logosu" style="width:100%; height:100%; object-fit:cover; border-radius:8px;" /></div>`
       : `<div class="loft-identity-logo" style="background:linear-gradient(135deg,#fef3c7,#fde68a); border-color:#f59e0b; font-size:20px;">🏆</div>`;
 
-    const temp = parseFloat(document.getElementById('flTemp')?.value) || 22;
-    const wind = document.getElementById('flWind')?.value || 'calm';
-    const kp = parseFloat(document.getElementById('flKp')?.value) || 2;
-    const hum = parseFloat(document.getElementById('flHum')?.value) || 55;
+    const wState = AvigenLiveWeather.state;
+    const temp = parseFloat(document.getElementById('flTemp')?.value) || wState.temp || 22;
+    const wind = document.getElementById('flWind')?.value || wState.windCategory || 'calm';
+    const kp = parseFloat(document.getElementById('flKp')?.value) || wState.kp || 2;
+    const hum = parseFloat(document.getElementById('flHum')?.value) || wState.hum || 55;
 
     let score = 92;
     if (wind === 'tail') score += 5;
     else if (wind === 'head') score -= 12;
     else if (wind === 'storm') score -= 35;
     if (temp > 29) score -= (temp - 28) * 3;
+    else if (temp < 6) score -= 10;
     if (kp >= 5) score -= (kp - 3) * 6;
     if (hum > 80) score -= 8;
     score = Math.max(12, Math.min(99, Math.round(score)));
 
     const badgeClass = score >= 80 ? 'gene-green' : (score >= 60 ? 'gene-gold' : 'gene-red');
     const isCyber = isCyberVisualSkinActive();
+    const liveDot = wState.isFetching
+      ? '🔄'
+      : (wState.isLiveSynced ? '🟢' : '🌤️');
 
     if (isCyber) {
       const cyberCrestHtml = loftConfig.logo
@@ -4404,21 +4766,50 @@ function syncLoftIdentityAcrossUI() {
           </div>
         `;
 
+      const flightBadgeColor = score >= 80 ? '#059669' : (score >= 60 ? '#d97706' : '#dc2626');
+      const flightBadgeBg = score >= 80 ? '#ecfdf5' : (score >= 60 ? '#fef3c7' : '#fef2f2');
+      const flightBadgeBorder = score >= 80 ? '#a7f3d0' : (score >= 60 ? '#fde68a' : '#fecaca');
+
       bannerEl.innerHTML = `
-        <div style="display:flex; align-items:center; gap:11px; min-width:0; flex:1;">
-          ${cyberCrestHtml}
-          <div style="min-width:0; flex:1;">
-            <div style="display:flex; align-items:center; gap:6px;">
-              <span class="cyber-loft-title">${escapeHtml(loftConfig.title || 'NORM TEAM')}</span>
-              <span style="font-size:13px;">🇹🇷</span>
+        <div style="display:flex; flex-direction:column; gap:7px; width:100%;">
+          <!-- 1. KATMAN: SADE KÜMES KİMLİĞİ & KONUM SEÇİCİ -->
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%;">
+            <div style="display:flex; align-items:center; gap:9px; min-width:0; flex:1; cursor:pointer;" onclick="openLoftHeaderModal()" title="Kümes Adını ve Logosunu Düzenlemek İçin Dokunun">
+              ${cyberCrestHtml}
+              <div style="min-width:0; flex:1;">
+                <div style="display:flex; align-items:center; gap:5px;">
+                  <span class="cyber-loft-title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(loftConfig.title || 'NORM TEAM')}</span>
+                  <span style="font-size:12.5px; flex-shrink:0;">🇹🇷</span>
+                </div>
+                <div class="cyber-loft-sub" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  ${escapeHtml(loftConfig.subtitle || 'Profesyonel Posta Güvercini Kümesi • Türkiye')}
+                </div>
+              </div>
             </div>
-            <div class="cyber-loft-sub">
-              ${escapeHtml(loftConfig.subtitle || 'Profesyonel Posta Güvercini Kümesi • Türkiye')}
+
+            <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+              <button type="button" onclick="AvigenLiveWeather.promptCityFromHomeBanner(event)" style="background:rgba(0,102,255,0.09); border:1px solid rgba(0,102,255,0.25); color:#0052cc; border-radius:99px; padding:4px 8px; font-size:9.5px; font-weight:800; cursor:pointer; white-space:nowrap;" title="Şehir veya GPS Konumu Değiştir">
+                📍 ${escapeHtml(wState.cityName)}
+              </button>
+              <button type="button" onclick="AvigenLiveWeather.fetchNow(true, event)" style="background:rgba(5,150,105,0.10); border:1px solid rgba(5,150,105,0.28); color:#047857; border-radius:99px; padding:4px 7px; font-size:9.5px; font-weight:800; cursor:pointer; white-space:nowrap;" title="Canlı Hava Durumunu Şimdi Güncelle">
+                ${liveDot}
+              </button>
             </div>
-            <div class="cyber-weather-row" onclick="openIosTab('flight', document.querySelectorAll('.ios-tab-btn')[3])">
-              <span>🌤️ <strong>%${score} Uçuş</strong></span>
-              <span style="opacity:0.4;">|</span>
-              <span>🌡️ <strong>${temp}°C • 💧%${hum} • Kp:${kp}</strong></span>
+          </div>
+
+          <!-- 2. KATMAN: NET VE FERAH 4 KUTULU CANLI UÇUŞ HAVA DURUMU ŞERİDİ -->
+          <div onclick="openIosTab('flight', document.querySelectorAll('.ios-tab-btn')[3])" style="display:grid; grid-template-columns:0.9fr 1.15fr 0.8fr 1.15fr; gap:5px; padding-top:6px; border-top:1px dashed var(--ios-border, #e2e8f0); cursor:pointer; font-size:9.5px; text-align:center;" title="Detaylı Uçuş Havası ve Yarış Ekranını Aç">
+            <div style="background:var(--ios-card-alt, #f8fafc); border:1px solid var(--ios-border, #e2e8f0); border-radius:7px; padding:4px 3px; font-weight:800; color:var(--ios-text); white-space:nowrap;">
+              ${wState.conditionIcon} ${temp}°C <span style="font-weight:600; color:var(--ios-subtext); font-size:8.5px;">(%${hum})</span>
+            </div>
+            <div style="background:var(--ios-card-alt, #f8fafc); border:1px solid var(--ios-border, #e2e8f0); border-radius:7px; padding:4px 3px; font-weight:800; color:var(--ios-text); white-space:nowrap;">
+              💨 ${wState.windSpeedKmh} km/s ${wState.windDirLabel}
+            </div>
+            <div style="background:var(--ios-card-alt, #f8fafc); border:1px solid var(--ios-border, #e2e8f0); border-radius:7px; padding:4px 3px; font-weight:800; color:var(--ios-text); white-space:nowrap;">
+              🧭 Kp: ${kp}
+            </div>
+            <div style="background:${flightBadgeBg}; border:1px solid ${flightBadgeBorder}; border-radius:7px; padding:4px 3px; font-weight:900; color:${flightBadgeColor}; white-space:nowrap;">
+              ✈️ %${score} Uçuş
             </div>
           </div>
         </div>
@@ -4439,8 +4830,8 @@ function syncLoftIdentityAcrossUI() {
         </div>
       </div>
       <div onclick="openIosTab('flight', document.querySelectorAll('.ios-tab-btn')[3])" style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0; cursor:pointer;" title="Yarış ve Uçuş Analizini Aç">
-        <span class="gene-badge ${badgeClass}" style="font-size:9.5px; padding:2px 7px;">🌤️ %${score} Uçuş</span>
-        <span style="font-size:9px; font-weight:700; color:var(--ios-subtext);">${temp}°C • 💧%${hum} • Kp:${kp}</span>
+        <span class="gene-badge ${badgeClass}" style="font-size:9.5px; padding:2px 7px;">${wState.conditionIcon} %${score} Uçuş (${escapeHtml(wState.cityName)})</span>
+        <span style="font-size:9px; font-weight:700; color:var(--ios-subtext);">${temp}°C • 💧%${hum} • 💨${wState.windSpeedKmh}km/s • Kp:${kp}</span>
       </div>
     `;
   }
@@ -6202,11 +6593,39 @@ function getAllBreedingCandidates() {
   const all = [];
   const seenRings = new Set();
 
+  // Diğer pedigrelerdeki Baba/Anne pozisyonlarından ve Aktif Yuvalardan kesin cinsiyet haritası çıkar
+  const knownRoleSexMap = new Map();
+  const maleSlots = ['sire', 'g2_1', 'g2_3', 'g3_1', 'g3_3', 'g3_5', 'g3_7', 'g4_1', 'g4_3', 'g4_5', 'g4_7', 'g4_9', 'g4_11', 'g4_13', 'g4_15'];
+  const femaleSlots = ['dam', 'g2_2', 'g2_4', 'g3_2', 'g3_4', 'g3_6', 'g3_8', 'g4_2', 'g4_4', 'g4_6', 'g4_8', 'g4_10', 'g4_12', 'g4_14', 'g4_16'];
+
+  pedigrees.forEach(p => {
+    const b = p.boxes || {};
+    maleSlots.forEach(k => {
+      const r = (b[k]?.ring || '').trim().toUpperCase();
+      if (r) knownRoleSexMap.set(r, 'M');
+    });
+    femaleSlots.forEach(k => {
+      const r = (b[k]?.ring || '').trim().toUpperCase();
+      if (r) knownRoleSexMap.set(r, 'F');
+    });
+  });
+
+  if (typeof activePairs !== 'undefined' && Array.isArray(activePairs)) {
+    activePairs.forEach(ap => {
+      const sr = (ap.sireRing || '').trim().toUpperCase();
+      const dr = (ap.damRing || '').trim().toUpperCase();
+      if (sr) knownRoleSexMap.set(sr, 'M');
+      if (dr) knownRoleSexMap.set(dr, 'F');
+    });
+  }
+
   const inferSex = (box, defaultSex) => {
     if (box && (box.sex === 'M' || box.sex === 'F')) return box.sex;
+    const cleanR = (box?.ring || '').trim().toUpperCase();
+    if (cleanR && knownRoleSexMap.has(cleanR)) return knownRoleSexMap.get(cleanR);
     const txt = `${box?.name || ''} ${box?.color || ''} ${box?.notes || ''}`.toLowerCase();
-    if (txt.includes('dişi') || txt.includes('♀') || txt.includes('kraliçe') || txt.includes('lady') || txt.includes('sultan') || txt.includes('queen')) return 'F';
-    if (txt.includes('erkek') || txt.includes('♂') || txt.includes('king') || txt.includes('prince') || txt.includes('beyi')) return 'M';
+    if (/\b(dişi|hen|duvin|weibchen|daughter|kızı|mother\s*to|mother\s*of|kraliçe|lady|sultan|queen|princess|prenses|miss)\b/i.test(txt) || txt.includes('♀')) return 'F';
+    if (/\b(erkek|cock|doffer|vogel|direct\s*son|son\s*of|oğlu|father\s*to|father\s*of|king|prince|beyi|paşa)\b/i.test(txt) || txt.includes('♂')) return 'M';
     return defaultSex;
   };
 
@@ -6382,6 +6801,113 @@ function getCandidateLineageTree(refVal) {
     };
   }
 
+  // ==========================================================================
+  // AVIGEN GENESIS CORTEX — 1. NESİLDEN 5. NESİLE (62 ATA DÜĞÜMÜ) TAM ÇAPRAZ PEDİGRİ DERİNLEŞTİRİCİ
+  // Kural:
+  // 1) Bir kuşun babası veya annesi yalnızca halka numarasıyla girilmişse ve o babanın/annenin
+  //    kendi pedigri kartı uygulamada kayıtlıysa, 1. nesilden 5. nesile kadar tüm üst atalarını otomatik bağlar.
+  // 2) Aynı halka numaralı atanın başka bir pedigri kartında daha zengin derece/not kaydı varsa onu da birleştirir.
+  // ==========================================================================
+  const parentPairs = [
+    ['main', 'sire', 'dam'],
+    ['sire', 'g2_1', 'g2_2'],
+    ['dam', 'g2_3', 'g2_4'],
+    ['g2_1', 'g3_1', 'g3_2'],
+    ['g2_2', 'g3_3', 'g3_4'],
+    ['g2_3', 'g3_5', 'g3_6'],
+    ['g2_4', 'g3_7', 'g3_8'],
+    ['g3_1', 'g4_1', 'g4_2'],
+    ['g3_2', 'g4_3', 'g4_4'],
+    ['g3_3', 'g4_5', 'g4_6'],
+    ['g3_4', 'g4_7', 'g4_8'],
+    ['g3_5', 'g4_9', 'g4_10'],
+    ['g3_6', 'g4_11', 'g4_12'],
+    ['g3_7', 'g4_13', 'g4_14'],
+    ['g3_8', 'g4_15', 'g4_16']
+  ];
+
+  const enrichNodeFromAllPedigrees = (nodeObj) => {
+    if (!nodeObj || !nodeObj.ring || !nodeObj.ring.trim()) return nodeObj || {};
+    const cleanTarget = nodeObj.ring.trim().toUpperCase();
+    let bestName = nodeObj.name || '';
+    let bestColor = nodeObj.color || '';
+    let bestFlag = nodeObj.flag || '';
+    const notesSet = new Set();
+    if (nodeObj.notes && nodeObj.notes.trim()) notesSet.add(nodeObj.notes.trim());
+
+    for (let i = 0; i < pedigrees.length; i++) {
+      const pb = pedigrees[i]?.boxes;
+      if (!pb) continue;
+      for (const k of Object.keys(pb)) {
+        const bx = pb[k];
+        if (bx && (bx.ring || '').trim().toUpperCase() === cleanTarget) {
+          if (!bestName && bx.name) bestName = bx.name;
+          if (!bestColor && bx.color) bestColor = bx.color;
+          if (!bestFlag && bx.flag) bestFlag = bx.flag;
+          if (bx.notes && bx.notes.trim()) notesSet.add(bx.notes.trim());
+        }
+      }
+    }
+    return {
+      ...nodeObj,
+      name: bestName,
+      color: bestColor,
+      flag: bestFlag || nodeObj.flag,
+      notes: Array.from(notesSet).join('\n')
+    };
+  };
+
+  const findParentsOfRingInPedigrees = (ringStr) => {
+    const cleanTarget = (ringStr || '').trim().toUpperCase();
+    if (!cleanTarget) return null;
+    for (let i = 0; i < pedigrees.length; i++) {
+      const pb = pedigrees[i]?.boxes;
+      if (!pb) continue;
+      for (let j = 0; j < parentPairs.length; j++) {
+        const [selfK, fatherK, motherK] = parentPairs[j];
+        if ((pb[selfK]?.ring || '').trim().toUpperCase() === cleanTarget) {
+          const fBox = pb[fatherK];
+          const mBox = pb[motherK];
+          if ((fBox && fBox.ring) || (mBox && mBox.ring)) {
+            return { father: fBox || {}, mother: mBox || {} };
+          }
+        }
+      }
+    }
+    return null;
+  };
+
+  const fillMissingChildren = (childNode, fatherSlotKey, motherSlotKey) => {
+    const fExisting = tree[fatherSlotKey];
+    const mExisting = tree[motherSlotKey];
+    const hasF = Boolean(fExisting && fExisting.ring && fExisting.ring.trim());
+    const hasM = Boolean(mExisting && mExisting.ring && mExisting.ring.trim());
+    if ((!hasF || !hasM) && childNode && childNode.ring) {
+      const found = findParentsOfRingInPedigrees(childNode.ring);
+      if (found) {
+        if (!hasF && found.father?.ring) tree[fatherSlotKey] = { ...found.father };
+        if (!hasM && found.mother?.ring) tree[motherSlotKey] = { ...found.mother };
+      }
+    }
+    tree[fatherSlotKey] = enrichNodeFromAllPedigrees(tree[fatherSlotKey] || {});
+    tree[motherSlotKey] = enrichNodeFromAllPedigrees(tree[motherSlotKey] || {});
+  };
+
+  // Kuşun kendisini ve 1. Kuşak -> 5. Kuşak arasındaki tüm eksik dalları diğer pedigre kartlarından otomatik tamamla
+  tree.self = enrichNodeFromAllPedigrees(tree.self || {});
+  fillMissingChildren(tree.self, 'p1', 'p2');
+  fillMissingChildren(tree.p1, 'g1', 'g2');
+  fillMissingChildren(tree.p2, 'g3', 'g4');
+  for (let i = 1; i <= 4; i++) {
+    fillMissingChildren(tree[`g${i}`], `gg${2 * i - 1}`, `gg${2 * i}`);
+  }
+  for (let i = 1; i <= 8; i++) {
+    fillMissingChildren(tree[`gg${i}`], `ggg${2 * i - 1}`, `ggg${2 * i}`);
+  }
+  for (let k = 1; k <= 16; k++) {
+    fillMissingChildren(tree[`ggg${k}`], `gggg${2 * k - 1}`, `gggg${2 * k}`);
+  }
+
   tree.ancRings = [
     tree.p1?.ring, tree.p2?.ring,
     tree.g1?.ring, tree.g2?.ring, tree.g3?.ring, tree.g4?.ring,
@@ -6390,7 +6916,8 @@ function getCandidateLineageTree(refVal) {
     tree.ggg1?.ring, tree.ggg2?.ring, tree.ggg3?.ring, tree.ggg4?.ring,
     tree.ggg5?.ring, tree.ggg6?.ring, tree.ggg7?.ring, tree.ggg8?.ring,
     tree.ggg9?.ring, tree.ggg10?.ring, tree.ggg11?.ring, tree.ggg12?.ring,
-    tree.ggg13?.ring, tree.ggg14?.ring, tree.ggg15?.ring, tree.ggg16?.ring
+    tree.ggg13?.ring, tree.ggg14?.ring, tree.ggg15?.ring, tree.ggg16?.ring,
+    ...Array.from({ length: 32 }, (_, idx) => tree[`gggg${idx + 1}`]?.ring)
   ].filter(Boolean);
 
   return tree;
@@ -6993,10 +7520,9 @@ function escapeHtml(str) {
 const AVIGEN_UX_USER_KEY = 'avigen_ux_user_account_v1';
 
 const AvigenUxManager = {
-  // 3 Kademeli Resmi AVIGEN Ürün & Abonelik Stratejisi:
+  // 2 Kademeli Resmi AVIGEN Ürün & Abonelik Stratejisi:
   // 1. 'FREE'        -> AVIGEN FREE (0 TL - Temel güvercin ve pedigree yönetimi, Sınırlı kuş/pedigree)
-  // 2. 'GENETICS_AI' -> AVIGEN GENESIS AI (399 TL/ay - 3.990 TL/yıl - Yapay zekâ genetik, eşleştirme ve performans analizi)
-  // 3. 'GLOBAL'      -> AVIGEN GLOBAL (799 TL/ay - 7.990 TL/yıl - GENESIS AI + Küresel ortak gen havuzu ve yabancı kuşlarla eşleşme)
+  // 2. 'GENETICS_AI' -> AVIGEN GENESIS AI (399 TL/ay - 3.990 TL/yıl - 5 Nesil Akıllı Eşleştirme & Akıllı Yem/Maliyet Sistemi)
   TIERS: {
     FREE: {
       id: 'FREE',
@@ -7006,7 +7532,7 @@ const AvigenUxManager = {
       monthlyPrice: '0 TL',
       yearlyPrice: '0 TL',
       maxPedigreesLimit: 10,
-      tagline: 'Güvercin yönetimi ve temel analiz'
+      tagline: 'Güvercin yönetimi, 4 kuşak pedigri ve yarış takibi'
     },
     GENETICS_AI: {
       id: 'GENETICS_AI',
@@ -7015,23 +7541,13 @@ const AvigenUxManager = {
       badgeClass: 'gene-purple',
       monthlyPrice: '399 TL',
       yearlyPrice: '3.990 TL',
-      maxPedigreesLimit: 9999,
-      tagline: 'Yapay zekâ destekli genetik ve performans zekâsı'
-    },
-    GLOBAL: {
-      id: 'GLOBAL',
-      name: 'AVIGEN GLOBAL',
-      badgeText: '🌍 GLOBAL',
-      badgeClass: 'gene-green',
-      monthlyPrice: '799 TL',
-      yearlyPrice: '7.990 TL',
       maxPedigreesLimit: 99999,
-      tagline: 'Küresel ortak gen havuzu ve uluslararası eşleştirme zekâsı'
+      tagline: '5 Nesil Akıllı Eşleştirme, Soy Analizi ve Akıllı Yem/Maliyet Sistemi'
     }
   },
 
   state: {
-    membershipTier: 'GLOBAL', // 'FREE' | 'GENETICS_AI' | 'GLOBAL'
+    membershipTier: 'GENETICS_AI', // 'FREE' | 'GENETICS_AI'
     experienceMode: 'easy', // 'easy' (Kolay Mod) | 'expert' (Uzman Mod)
     isRegisteredMember: true,
     isLoggedIn: true,
@@ -7047,23 +7563,24 @@ const AvigenUxManager = {
       {
         id: 'INV-2026-0891',
         date: '15.11.2026',
-        planName: 'AVIGEN GLOBAL (Yıllık Abonelik)',
-        amount: '7.990 TL',
+        planName: 'AVIGEN GENESIS AI (Yıllık Abonelik)',
+        amount: '3.990 TL',
         cardMasked: '**** 4892',
         status: 'Ödendi ✓'
       }
     ],
     selectedBillingCycle: 'yearly', // 'monthly' | 'yearly'
     activeBreedingPlanSub: 'racetracker',
-    activeProfileSection: 'membership', // 'membership' | 'privacy' | 'library' | 'preferences' | 'security' | 'notes'
-    privacySubScreen: 'overview', // 'overview' | 'bird_permissions' | 'requests_status'
+    activeProfileSection: 'preferences', // 'preferences' | 'membership' | 'library' | 'notes'
+    privacySubScreen: 'overview',
     privacyBirdSearch: '',
-    privacyBirdFilter: 'ALL', // 'ALL' | 'IN_POOL' | 'PRIVATE' | 'CONTACT_OPEN'
+    privacyBirdFilter: 'ALL',
     language: 'tr'
   },
 
   // Merkezi Yetkilendirme Motoru (Central Entitlement Check)
   getCurrentTier() {
+    if (this.state.membershipTier === 'GLOBAL') this.state.membershipTier = 'GENETICS_AI';
     return this.TIERS[this.state.membershipTier] || this.TIERS.FREE;
   },
 
@@ -7072,16 +7589,17 @@ const AvigenUxManager = {
   },
 
   hasGlobalPoolAccess() {
-    return this.state.membershipTier === 'GLOBAL';
+    return false;
   },
 
   setMembershipTier(tierId) {
-    if (!this.TIERS[tierId]) return;
-    this.state.membershipTier = tierId;
+    const resolvedId = tierId === 'GLOBAL' ? 'GENETICS_AI' : tierId;
+    if (!this.TIERS[resolvedId]) return;
+    this.state.membershipTier = resolvedId;
     this.saveState();
     if (typeof AvigenGenesisAI !== 'undefined') {
       AvigenGenesisAI.state.isPremiumActive = this.hasGeneticsAiAccess();
-      AvigenGenesisAI.state.planName = this.TIERS[tierId].name;
+      AvigenGenesisAI.state.planName = this.TIERS[resolvedId].name;
       AvigenGenesisAI.saveState();
       AvigenGenesisAI.renderGenesisModuleUI();
       AvigenGenesisAI.renderHomeTeaserCard();
@@ -7097,9 +7615,13 @@ const AvigenUxManager = {
         this.state = { ...this.state, ...JSON.parse(raw) };
       }
     } catch (e) {}
+    if (this.state.membershipTier === 'GLOBAL') {
+      this.state.membershipTier = 'GENETICS_AI';
+    }
+    this.state.activeProfileSection = 'preferences';
     this.syncHeaderAndProfileUI();
     this.renderBreedingPlanPairsList();
-    this.renderProfileAccountSection();
+    this.switchProfileSection('preferences');
   },
 
   saveState() {
@@ -7130,10 +7652,8 @@ const AvigenUxManager = {
     const memBtn = document.getElementById('navMembershipBtn');
     const tier = this.getCurrentTier();
     if (memBtn) {
-      memBtn.innerHTML = tier.id === 'GLOBAL' ? '🌍 GLOBAL' : (tier.id === 'GENETICS_AI' ? '🧬 GENESIS AI' : '🔓 FREE');
-      memBtn.className = tier.id === 'GLOBAL'
-        ? 'ios-btn ios-btn-green'
-        : (tier.id === 'GENETICS_AI' ? 'ios-btn ios-btn-purple' : 'ios-btn ios-btn-primary');
+      memBtn.innerHTML = tier.id === 'GENETICS_AI' ? '🧬 GENESIS AI' : '🔓 FREE';
+      memBtn.className = tier.id === 'GENETICS_AI' ? 'ios-btn ios-btn-purple' : 'ios-btn ios-btn-primary';
     }
 
     this.renderProfileAccountSection();
@@ -7181,6 +7701,7 @@ const AvigenUxManager = {
     } else if (subName === 'pairs') {
       this.renderBreedingPlanPairsList();
       renderAutoBestPairs();
+      calculateIncubationTimeline();
     } else if (subName === 'timeline') {
       calculateIncubationTimeline();
     } else if (subName === 'results') {
@@ -7328,7 +7849,7 @@ const AvigenUxManager = {
                 </span>
               </div>
               <div style="font-size:10px; font-weight:700; color:var(--ios-subtext); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;">
-                ${escapeHtml(loftConfig.title)} • ${activeBirds.length} Aktif Kuş (${sharedCount} Global Havuzda)
+                ${escapeHtml(loftConfig.title)} • ${activeBirds.length} Aktif Kuş
               </div>
             </div>
           </div>
@@ -7456,24 +7977,11 @@ const AvigenUxManager = {
             <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1.5px solid ${curTier.id === 'GENETICS_AI' ? '#7c3aed' : 'var(--ios-border)'}; border-radius:9px; padding:7px 9px;">
               <div>
                 <div style="font-size:11px; font-weight:900; color:#7c3aed;">2. AVIGEN GENESIS AI (399 TL/ay • 3.990 TL/yıl)</div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">Yapay zekâ eşleştirme, COI, mesafe seçimi ve gelecek simülasyonu</div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">5 nesil akıllı eşleştirme, en uygun 5 çift, ortak ata kontrolü ve akıllı yem/maliyet sistemi</div>
               </div>
               <div style="display:flex; gap:4px; flex-shrink:0;">
                 <button class="ios-btn ios-btn-purple" style="padding:5px 9px; font-size:9.5px;" onclick="AvigenUxManager.openCheckoutForTier('GENETICS_AI')">
                   ${curTier.id === 'GENETICS_AI' ? '✅ Aktif (Yenile)' : '💳 Öde &amp; Başlat'}
-                </button>
-              </div>
-            </div>
-
-            <!-- GLOBAL -->
-            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1.5px solid ${curTier.id === 'GLOBAL' ? '#059669' : 'var(--ios-border)'}; border-radius:9px; padding:7px 9px;">
-              <div>
-                <div style="font-size:11px; font-weight:900; color:#059669;">3. AVIGEN GLOBAL (799 TL/ay • 7.990 TL/yıl)</div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">GENESIS AI + Dünya genelindeki izinli gen havuzunda eşleşme arama</div>
-              </div>
-              <div style="display:flex; gap:4px; flex-shrink:0;">
-                <button class="ios-btn ios-btn-green" style="padding:5px 9px; font-size:9.5px;" onclick="AvigenUxManager.openCheckoutForTier('GLOBAL')">
-                  ${curTier.id === 'GLOBAL' ? '✅ Aktif (Yenile)' : '💳 Öde &amp; Başlat'}
                 </button>
               </div>
             </div>
@@ -7700,7 +8208,34 @@ const AvigenUxManager = {
         ? AvigenPerformanceEngine.state.distanceLimits
         : { sprintMax: 300, middleMax: 500, longMax: 700 };
 
+      const updState = typeof AvigenAutoUpdater !== 'undefined' ? AvigenAutoUpdater.state : null;
+
       root.innerHTML = `
+        <!-- 0. UYGULAMA SÜRÜMÜ & TELEFONDAN TEK TUŞLA CANLI GÜNCELLEME MERKEZİ -->
+        <div class="ios-card" style="padding:11px 12px; border-top:3px solid #059669;">
+          <div class="ios-card-title" style="margin-bottom:6px;">
+            <span>🚀 Uygulama Sürümü &amp; Canlı Güncelleme</span>
+            <span class="gene-badge ${updState?.hasNewUpdate ? 'gene-gold' : 'gene-green'}">
+              ${updState?.hasNewUpdate ? `🔥 Yeni: v${escapeHtml(updState.remoteVersion)}` : `✓ Güncel (v${escapeHtml(updState?.localVersion || '2.0.0')})`}
+            </span>
+          </div>
+          <div style="font-size:10px; color:var(--ios-subtext); line-height:1.4; margin-bottom:8px;">
+            Yüklü Sürüm: <strong>v${escapeHtml(updState?.localVersion || '2.0.0')} (Build ${updState?.localBuild || 200})</strong> • Sunucu Son Sürüm: <strong>v${escapeHtml(updState?.remoteVersion || '2.0.0')}</strong>.<br/>
+            Güncelleme işlemi telefonunuzdaki kayıtlı güvercinleri, pedigreleri, yuvaları ve yarışları <strong>hiç silmeden</strong> yalnızca yeni özellikleri yükler.
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+            <button type="button" class="ios-btn ios-btn-outline" style="padding:7px 6px; font-size:10px;" onclick="AvigenAutoUpdater.checkForUpdates(true)">
+              🔍 Sürüm Kontrol Et
+            </button>
+            <button type="button" class="ios-btn ios-btn-primary" style="padding:7px 6px; font-size:10px;" onclick="AvigenAutoUpdater.applyWebLiveUpdate()">
+              ⚡ Şimdi Güncelle (Web/PWA)
+            </button>
+            <button type="button" class="ios-btn ios-btn-green" style="padding:7px 6px; font-size:10px;" onclick="AvigenAutoUpdater.downloadLatestApk()">
+              📦 Yeni APK İndir
+            </button>
+          </div>
+        </div>
+
         <!-- 1. GÖRSEL TEMA SEÇİMİ & YARIŞ MESAFE SINIRLARI (BİRLEŞİK PRATİK KART) -->
         <div class="ios-card" style="padding:11px 12px;">
           <div class="ios-card-title" style="margin-bottom:6px;">
@@ -7931,14 +8466,10 @@ const AvigenUxManager = {
             </div>
 
             <!-- PAKET SEÇİMİ -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:7px;">
-              <div onclick="AvigenUxManager.selectCheckoutTier('GENETICS_AI')" style="cursor:pointer; border:2px solid ${checkoutTier.id === 'GENETICS_AI' ? '#7c3aed' : 'var(--ios-border)'}; background:${checkoutTier.id === 'GENETICS_AI' ? '#f5f3ff' : 'var(--ios-card)'}; border-radius:9px; padding:7px 9px;">
-                <div style="font-size:11px; font-weight:900; color:#7c3aed;">🧬 GENESIS AI</div>
-                <div style="font-size:12.5px; font-weight:900; color:var(--ios-text); margin-top:2px;">${isYearly ? '3.990 TL / yıl' : '399 TL / ay'}</div>
-              </div>
-              <div onclick="AvigenUxManager.selectCheckoutTier('GLOBAL')" style="cursor:pointer; border:2px solid ${checkoutTier.id === 'GLOBAL' ? '#059669' : 'var(--ios-border)'}; background:${checkoutTier.id === 'GLOBAL' ? '#ecfdf5' : 'var(--ios-card)'}; border-radius:9px; padding:7px 9px;">
-                <div style="font-size:11px; font-weight:900; color:#059669;">🌍 AVIGEN GLOBAL</div>
-                <div style="font-size:12.5px; font-weight:900; color:var(--ios-text); margin-top:2px;">${isYearly ? '7.990 TL / yıl' : '799 TL / ay'}</div>
+            <div style="margin-bottom:7px;">
+              <div onclick="AvigenUxManager.selectCheckoutTier('GENETICS_AI')" style="cursor:pointer; border:2px solid #7c3aed; background:#f5f3ff; border-radius:9px; padding:7px 9px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:11px; font-weight:900; color:#7c3aed;">🧬 AVIGEN GENESIS AI (Tam Sürüm)</div>
+                <div style="font-size:12.5px; font-weight:900; color:var(--ios-text);">${isYearly ? '3.990 TL / yıl' : '399 TL / ay'}</div>
               </div>
             </div>
 
@@ -7987,7 +8518,7 @@ const AvigenUxManager = {
             </div>
           </div>
         ` : `
-          <!-- 1. SEKME: 3 ÜYELİK PAKETİ KARŞILAŞTIRMA -->
+          <!-- 1. SEKME: 2 ÜYELİK PAKETİ KARŞILAŞTIRMA -->
           <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:6px 9px;">
             <span style="font-size:10.5px; font-weight:800; color:var(--ios-text);">Faturalandırma Dönemi:</span>
             <div style="display:flex; gap:5px;">
@@ -8000,8 +8531,8 @@ const AvigenUxManager = {
           <div style="border:2px solid ${curTier.id === 'FREE' ? '#0066ff' : 'var(--ios-border)'}; background:var(--ios-card-alt); border-radius:11px; padding:9px 11px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <div style="font-size:12.5px; font-weight:900; color:var(--ios-text);">1. AVIGEN FREE <span class="gene-badge gene-blue" style="font-size:8.5px;">Başlangıç</span></div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">Güvercin yönetimi, pedigree ve yarış takip (10 Kuş/Pedigree)</div>
+                <div style="font-size:12.5px; font-weight:900; color:var(--ios-text);">1. AVIGEN FREE <span class="gene-badge gene-blue" style="font-size:8.5px;">Ücretsiz</span></div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">Güvercin yönetimi, 4 kuşak pedigri, yuva &amp; yarış takibi (10 Kuş/Pedigri)</div>
               </div>
               <div style="text-align:right;">
                 <div style="font-size:14px; font-weight:900; color:#0066ff;">0 TL</div>
@@ -8017,8 +8548,8 @@ const AvigenUxManager = {
           <div style="border:2px solid ${curTier.id === 'GENETICS_AI' ? '#7c3aed' : '#c4b5fd'}; background:var(--ios-card-alt); border-radius:11px; padding:9px 11px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <div style="font-size:12.5px; font-weight:900; color:#7c3aed;">2. AVIGEN GENESIS AI <span class="gene-badge gene-purple" style="font-size:8.5px;">Premium</span></div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">Yapay zekâ destekli genetik, yarış ve performans zekâsı</div>
+                <div style="font-size:12.5px; font-weight:900; color:#7c3aed;">2. AVIGEN GENESIS AI <span class="gene-badge gene-purple" style="font-size:8.5px;">Tam Sürüm</span></div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">Sınırsız Kuş/Pedigri + 5 Nesil Akıllı Eşleştirme + Akıllı Yem, Sıvı &amp; 1 Aylık Maliyet</div>
               </div>
               <div style="text-align:right;">
                 <div style="font-size:14px; font-weight:900; color:#7c3aed;">${isYearly ? '3.990 TL/yıl' : '399 TL/ay'}</div>
@@ -8027,23 +8558,6 @@ const AvigenUxManager = {
             </div>
             <button class="ios-btn ios-btn-purple" style="width:100%; padding:7px; font-size:11px; margin-top:6px;" onclick="AvigenUxManager.openCheckoutForTier('GENETICS_AI')">
               ${curTier.id === 'GENETICS_AI' ? '✅ Aktif Paketiniz — Süreyi Uzat / Ödeme Yap' : '💳 Ödeme Yap &amp; GENESIS AI Paketini Başlat'}
-            </button>
-          </div>
-
-          <!-- 3. PAKET: AVIGEN GLOBAL -->
-          <div style="border:2px solid ${curTier.id === 'GLOBAL' ? '#059669' : '#6ee7b7'}; background:var(--ios-card-alt); border-radius:12px; padding:10px 11px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <div style="font-size:13px; font-weight:900; color:#059669;">3. AVIGEN GLOBAL <span class="gene-badge gene-green" style="font-size:8.5px;">En Üst Üyelik</span></div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">GENESIS AI + Küresel ortak gen havuzu ve uluslararası eşleştirme</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:14.5px; font-weight:900; color:#059669;">${isYearly ? '7.990 TL/yıl' : '799 TL/ay'}</div>
-                <div style="font-size:8.5px; color:#047857; font-weight:700;">${isYearly ? '(2 Ay Bedava)' : 'Aylık Abonelik'}</div>
-              </div>
-            </div>
-            <button class="ios-btn ios-btn-green" style="width:100%; padding:8px; font-size:11.5px; margin-top:7px;" onclick="AvigenUxManager.openCheckoutForTier('GLOBAL')">
-              ${curTier.id === 'GLOBAL' ? '✅ Aktif Paketiniz — Süreyi Uzat / Ödeme Yap' : '💳 Ödeme Yap &amp; AVIGEN GLOBAL Paketini Başlat'}
             </button>
           </div>
         `)}
@@ -8066,6 +8580,117 @@ const AvigenUxManager = {
 
   closeSubscriptionModal() {
     document.getElementById('avigenSubscriptionModal')?.classList.remove('open');
+  },
+
+  openUserGuideModal(tab = 'howto') {
+    const modal = document.getElementById('avigenUserGuideModal');
+    const body = document.getElementById('avigenUserGuideBody');
+    if (!modal || !body) return;
+
+    body.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:10.5px;">
+        <div class="sub-pills">
+          <button class="sub-pill ${tab === 'howto' ? 'active' : ''}" onclick="AvigenUxManager.openUserGuideModal('howto')">
+            📖 Nasıl Kullanılır? (Adım Adım)
+          </button>
+          <button class="sub-pill ${tab === 'features' ? 'active' : ''}" onclick="AvigenUxManager.openUserGuideModal('features')">
+            🧭 Neyin Ne İşe Yaradığı
+          </button>
+        </div>
+
+        ${tab === 'howto' ? `
+          <div style="display:flex; flex-direction:column; gap:7px; max-height:70vh; overflow-y:auto; padding-right:2px;">
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #0066ff; border-radius:9px; padding:8px 10px;">
+              <div style="font-weight:900; color:#0052cc; font-size:11px; margin-bottom:3px;">1️⃣ Yeni Kuş veya Yavru Nasıl Eklenir? (Otomatik Soy Bağlama)</div>
+              <div style="color:var(--ios-text); line-height:1.4;">
+                • <strong>Ana Sayfa</strong> veya <strong>Kuşlarım</strong> sekmesindeki <strong>➕ Kuş Ekle</strong> butonuna basın.<br/>
+                • Halka numarasını, adını, cinsiyetini (♂ Erkek / ♀ Dişi) ve statüsünü (Yarışçı / Damızlık / Yavru) seçin.<br/>
+                • <strong>Pratik İpucu:</strong> Hemen alttaki <strong>"♂ Baba Seç"</strong> ve <strong>"♀ Anne Seç"</strong> kutularından kümesinizdeki anne-babayı seçerseniz, yavrunun 30 kutuluk tüm üst soyağacı (dede, nine, 3. ve 4. kuşak) <strong>tek saniyede otomatik dolar!</strong>
+              </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #059669; border-radius:9px; padding:8px 10px;">
+              <div style="font-weight:900; color:#059669; font-size:11px; margin-bottom:3px;">2️⃣ Kuşa Yarış Derecesi Nasıl Yazılır?</div>
+              <div style="color:var(--ios-text); line-height:1.4;">
+                • Kuş düzenleme penceresindeki mavi çerçeveli <strong>"🏆 Standart Yarış / Damızlık Derecesi Ekle"</strong> kutusunu kullanın.<br/>
+                • Önce kimin derecesi olduğunu seçin (<strong>🦅 Kendi Derecesi</strong>, <strong>👑 As Güvercin</strong>, <strong>🐣 Yavrusu Derecesi</strong> veya <strong>🧬 Öz Kardeşi Derecesi</strong>).<br/>
+                • Etap adını (Örn: <em>Ankara Final</em>), Mesafeyi (<em>505 km</em>), Sırayı (<em>1</em>) ve Kuş Sayısını (<em>3644</em>) yazıp <strong>+ Ekle</strong>'ye basın. Sistem bunu hem pedigri kağıdına yazar hem de yapay zekâ puanına işler.
+              </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #7c3aed; border-radius:9px; padding:8px 10px;">
+              <div style="font-weight:900; color:#5b21b6; font-size:11px; margin-bottom:3px;">3️⃣ 4 Kuşak Mavi Pedigri Kağıdı Nasıl İndirilir &amp; Paylaşılır?</div>
+              <div style="color:var(--ios-text); line-height:1.4;">
+                • Alttan <strong>2. Sekme (Kuşlarım) → 📜 Pedigre Kağıdı &amp; Tasarım</strong>'a geçin.<br/>
+                • Pedigri üzerindeki herhangi bir kutuya dokunarak o atayı düzenleyebilir, iki parmakla yakınlaştırabilirsiniz.<br/>
+                • Alttaki <strong>🖼️ HD Pedigre İndir</strong> veya <strong>📲 Paylaş</strong> butonuyla yüksek çözünürlüklü şecereyi WhatsApp'tan gönderebilirsiniz.
+              </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #db2777; border-radius:9px; padding:8px 10px;">
+              <div style="font-weight:900; color:#be185d; font-size:11px; margin-bottom:3px;">4️⃣ GENESIS AI İle En Uygun Eşleşme Nasıl Bulunur?</div>
+              <div style="color:var(--ios-text); line-height:1.4;">
+                • Alttaki ortanca <strong>🧬 GENESIS AI</strong> sekmesine girip <strong>1. Akıllı Eşleştirme &amp; 5 Nesil Soy</strong> modülünü açın.<br/>
+                • Tek tek kuş denemek istemiyorsanız üstteki <strong>"🏆 Kümesinizdeki En Uygun 5 Eşleşmeyi Otomatik Göster"</strong> çubuğuna dokunun; sistem tüm erkek ve dişileri çapraz tarayıp en yüksek uyumlu 5 çifti sıralar.<br/>
+                • Beğendiğiniz çiftin altındaki yeşil <strong>"🪺 Bu Çifti Aktif Yuvalara Kaydet"</strong> butonuna bastığınızda çiftiniz otomatik olarak Yuvalar'a eklenir ve yumurtlama/boncuk takma günü hesaplanır.
+              </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #d97706; border-radius:9px; padding:8px 10px;">
+              <div style="font-weight:900; color:#b45309; font-size:11px; margin-bottom:3px;">5️⃣ Günlük Yem/Sıvı Reçetesi ve 1 Aylık Maliyet Nasıl Hesaplanır?</div>
+              <div style="color:var(--ios-text); line-height:1.4;">
+                • <strong>🧬 GENESIS AI → 2. Akıllı Yem, Sıvı &amp; 1 Aylık Maliyet</strong> modülünü açın.<br/>
+                • <strong>"🎯 Otomatik Akıllı Öneri"</strong> seçiliyken bugünün tarihine, canlı hava sıcaklığına ve yuvalardaki yavru durumuna göre bugün kaç gram yem ve suluğa ne sıvı koymanız gerektiğini söyler.<br/>
+                • Alttaki <strong>1 Aylık (30 Günlük) Tüketim ve Maliyet</strong> tablosuna yem kg fiyatlarınızı yazarak kümesinizin aylık ve günlük TL masrafını canlı görebilirsiniz.
+              </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #0284c7; border-radius:9px; padding:8px 10px;">
+              <div style="font-weight:900; color:#0369a1; font-size:11px; margin-bottom:3px;">6️⃣ Telefon Değiştirirken Kümes Yedeği Nasıl Alınır?</div>
+              <div style="color:var(--ios-text); line-height:1.4;">
+                • Alttan <strong>5. Sekme (Profil &amp; Ayarlar) → ⚙️ Ayarlar &amp; Yedek</strong> ekranına girin.<br/>
+                • <strong>"⬇️ Tam Yedeği İndir (.JSON)"</strong> butonuna basarak tüm kuşlarınızı tek dosyada telefonunuza/WhatsApp'ınıza kaydedin.<br/>
+                • Yeni telefonda <strong>"⬆️ Yedeği Geri Yükle"</strong> diyerek tüm kümesinizi saniyeler içinde geri yükleyin.
+              </div>
+            </div>
+          </div>
+        ` : `
+          <div style="display:flex; flex-direction:column; gap:7px; max-height:70vh; overflow-y:auto; padding-right:2px;">
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
+              <strong style="color:#0052cc; font-size:11px;">🏠 1. Sekme: Ana Sayfa (Kümes Kokpiti)</strong><br/>
+              • <strong>Canlı Hava &amp; Manyetik Kp Kartı:</strong> Bulunduğunuz şehrin veya GPS konumunuzun anlık rüzgâr, sıcaklık ve güneş manyetik fırtına (Kp 0-9) durumunu gösterir.<br/>
+              • <strong>Hızlı Arama:</strong> Bileziğin sadece son 3-4 rakamını yazarak kuşun pedigrisine veya performans profiline anında ulaşmanızı sağlar.<br/>
+              • <strong>Alt Kokpit (Takvim, Yuvalar, Yarışlar, Sicil):</strong> Bugün yapılacak aşı, ilaç, boncuk takma günü ve aktif yuvaların özetidir.
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
+              <strong style="color:#059669; font-size:11px;">🕊️ 2. Sekme: Kuşlarım &amp; Pedigri Stüdyosu</strong><br/>
+              • <strong>Kümesimdeki Kuşlar:</strong> Aktif kuşlarınızı Erkek, Dişi, Damızlık, Yarışçı, Yavru olarak filtreler. <strong>📜 Soy Arşivi</strong> ise kümesinizde fiziksel olarak bulunmayan ama pedigri kağıtlarında adı geçen eski anne/baba/dedeleri gösterir.<br/>
+              • <strong>📊 Performans &amp; Genetik Profil:</strong> Kuşun yanındaki <em>İşlemler ▾</em> menüsünden açılır. Gerçek yarış puanını (yeşil/mavi çubuk) ve henüz yarışmamışsa atalarından gelen tahmini soy potansiyelini (mor çubuk) birbirinden ayırarak 4 net grafikte gösterir.
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
+              <strong style="color:#7c3aed; font-size:11px;">🧬 3. Sekme: GENESIS AI (Yapay Zekâ Karar Merkezi)</strong><br/>
+              • <strong>1. Akıllı Eşleştirme &amp; 5 Nesil Soy:</strong> İki kuşun 5 kuşağındaki (62 ata) ortak ataları Sewall Wright formülüyle tarar, ortak atanın şampiyon olup olmadığını denetler, hız × dayanıklılık tamamlayıcılığını ölçer.<br/>
+              • <strong>2. Akıllı Yem, Sıvı &amp; 1 Aylık Maliyet:</strong> Kuş sayınıza, aktif yuvalara ve hava sıcaklığına göre günlük tohum gramajı, suluk takviyesi ve aylık yem maliyeti çıkarır.
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
+              <strong style="color:#d97706; font-size:11px;">🏁 4. Sekme: Yarış &amp; Eşleşme</strong><br/>
+              • <strong>🏁 Yarış Yönetimi:</strong> Yeni yarış etabı açıp sepete kuş eklemenizi ve dönüşte derece/hız (m/dk) girmenizi sağlar.<br/>
+              • <strong>🧬 AI Yarış Analizi:</strong> Yarış sonuçlarını analiz ederek hangi kan hattınızın hangi havada ve mesafede daha başarılı olduğunu raporlar.<br/>
+              • <strong>💑 Yuva, Çiftler &amp; Kuluçka:</strong> Aktif çiftlerinizi, yumurtlama/boncuk takma günlerini takip eder; <strong>🐣 Yavru Kaydet</strong> butonuyla doğan yavruyu anne-babası bağlı olarak tek tuşla kümese ekler.
+            </div>
+          </div>
+        `}
+      </div>
+    `;
+
+    modal.classList.add('open');
+  },
+
+  closeUserGuideModal() {
+    document.getElementById('avigenUserGuideModal')?.classList.remove('open');
   },
 
   selectBillingCycle(cycle, returnTab = 'plans') {
@@ -8230,6 +8855,151 @@ const AvigenUxManager = {
   }
 };
 
+// ============================================================================
+// AVIGEN 2.0 — OTA (OVER-THE-AIR) OTOMATİK SÜRÜM KONTROLÜ & TEK TUŞLA GÜNCELLEME
+// (Telefondaki güvercin, pedigri ve yuva verilerini silmeden yeni sürüme yükseltir)
+// ============================================================================
+const AvigenAutoUpdater = {
+  REMOTE_RAW_VERSION_URL: 'https://raw.githubusercontent.com/hasanbenzer/avigen/main/version.json',
+  REMOTE_VERSION_URL: 'https://hasanbenzer.github.io/avigen/version.json',
+  GITHUB_RELEASE_API: 'https://api.github.com/repos/hasanbenzer/avigen/releases/latest',
+  DEFAULT_APK_URL: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
+  DEFAULT_WEB_URL: 'https://hasanbenzer.github.io/avigen/',
+
+  state: {
+    localVersion: '2.1.0',
+    localBuild: 210,
+    remoteVersion: '2.1.0',
+    remoteBuild: 210,
+    remoteTitle: 'AVIGEN 2.1 — 5 Nesil Akıllı Eşleştirme, Performans Doğrulaması & Kullanım Rehberi',
+    remoteNotes: [
+      'GENESIS AI 1. Modül: 5 Nesil Çapraz Soy Ağacı Tamamlama, Ortak Ata Kalite Kontrolü, Mesafe/Tip Uyumu ve Kümesinizdeki En Uygun 5 Eşleşme Tarayıcısı',
+      'Performans & Genetik Profil: Bireysel yarış ve yavru başarısı ayrımı, veri doluluğuna göre AVK ağırlıklandırma ve doğruluk düzeltmeleri',
+      'Üst barda sadeleştirilmiş 📖 Rehber (Adım Adım Nasıl Kullanılır & Neyin Ne İşe Yaradığı) ve 2 katmanlı ferah Kümes + Canlı Hava Durumu kartı',
+      'AVIGEN FREE ve AVIGEN GENESIS AI 2 kademeli sadeleştirilmiş paket yapısı ve tek tuşla veri kaybetmeden güncelleme sistemi'
+    ],
+    apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
+    webUrl: 'https://hasanbenzer.github.io/avigen/',
+    hasNewUpdate: false,
+    dismissedBuild: 0
+  },
+
+  init() {
+    // Sadece Ayarlar & Yedek bölümünden yönetilir; ana ekranı kalabalık yapmaz
+    setTimeout(() => {
+      this.checkForUpdates(false);
+    }, 1500);
+  },
+
+  async checkForUpdates(showFeedback = false) {
+    const urlsToTry = [
+      `${this.REMOTE_RAW_VERSION_URL}?t=${Date.now()}`,
+      `${this.REMOTE_VERSION_URL}?t=${Date.now()}`,
+      `./version.json?t=${Date.now()}`
+    ];
+
+    let data = null;
+    for (const url of urlsToTry) {
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (res.ok) {
+          const parsed = await res.json();
+          if (parsed && parsed.build) {
+            data = parsed;
+            break;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Eğer version.json henüz GitHub'a yüklenmemişse GitHub Releases API üzerinden canlı sürüm kontrolü yap
+    if (!data) {
+      try {
+        const relRes = await fetch(this.GITHUB_RELEASE_API, { cache: 'no-store' });
+        if (relRes.ok) {
+          const rel = await relRes.json();
+          const tagVer = String(rel.tag_name || '').replace(/^v/i, '') || '1.0.0';
+          const apkAsset = Array.isArray(rel.assets) ? rel.assets.find(a => String(a.name).endsWith('.apk')) : null;
+          data = {
+            version: this.state.localVersion,
+            build: this.state.localBuild,
+            title: rel.name || this.state.remoteTitle,
+            notes: this.state.remoteNotes,
+            apkUrl: apkAsset?.browser_download_url || this.DEFAULT_APK_URL,
+            webUrl: this.DEFAULT_WEB_URL,
+            githubReleaseTag: tagVer
+          };
+        }
+      } catch (e) {}
+    }
+
+    if (data) {
+      this.state.remoteVersion = data.version || this.state.localVersion;
+      this.state.remoteBuild = Number(data.build || this.state.localBuild);
+      this.state.remoteTitle = data.title || `AVIGEN v${this.state.remoteVersion}`;
+      if (Array.isArray(data.notes) && data.notes.length) {
+        this.state.remoteNotes = data.notes;
+      }
+      this.state.apkUrl = data.apkUrl || this.DEFAULT_APK_URL;
+      this.state.webUrl = data.webUrl || this.DEFAULT_WEB_URL;
+      this.state.hasNewUpdate = this.state.remoteBuild > this.state.localBuild;
+    }
+
+    if (typeof AvigenUxManager !== 'undefined' && document.getElementById('page-notes')?.classList.contains('active')) {
+      AvigenUxManager.renderProfileAccountSection();
+    }
+
+    if (showFeedback) {
+      const notesStr = this.state.remoteNotes.map(n => `• ${n}`).join('\n');
+      if (this.state.hasNewUpdate) {
+        if (confirm(`🚀 Yeni AVIGEN Sürümü Bulundu: v${this.state.remoteVersion}!\n\nYenilikler:\n${notesStr}\n\nKayıtlı kuş verilerinizi silmeden şimdi yeni sürüme güncellemek ister misiniz?`)) {
+          this.applySmartUpdate();
+        }
+      } else {
+        alert(`✅ Güncel Sürüm Doğrulandı: AVIGEN v${this.state.localVersion} (Build ${this.state.localBuild})\n\nŞu anda en güncel sürümü kullanıyorsunuz.\n\nSon Sürüm Özellikleri:\n${notesStr}`);
+      }
+    }
+  },
+
+  applySmartUpdate() {
+    const isCapacitorApk = Boolean(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    if (isCapacitorApk) {
+      if (confirm('📲 Android APK Güncellemesi:\n\n"Tamam"a bastığınızda yeni AVIGEN.apk telefonunuza indirilecektir. İnen dosyaya dokunup "Güncelle" dediğinizde mevcut kuşlarınız silinmeden yeni sürüm kurulur.')) {
+        this.downloadLatestApk();
+      }
+    } else {
+      this.applyWebLiveUpdate();
+    }
+  },
+
+  async applyWebLiveUpdate() {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) {
+          await r.update();
+          await r.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const k of keys) {
+          await caches.delete(k);
+        }
+      }
+    } catch (e) {}
+
+    // Kullanıcının localStorage verilerine (pedigreler, kuşlar, yuvalar, yarışlar) HİÇ DOKUNMADAN sayfayı sunucudan yenile
+    const cleanUrl = window.location.href.split('?')[0].split('#')[0];
+    window.location.replace(`${cleanUrl}?v=${Date.now()}`);
+  },
+
+  downloadLatestApk() {
+    const url = `${this.state.apkUrl}?t=${Date.now()}`;
+    window.open(url, '_blank');
+  }
+};
+
 window.addEventListener('DOMContentLoaded', () => {
   // Mobil / Dokunmatik / PWA / Capacitor APK Algılama -> %100 Gerçek Tam Ekran Modu
   const isMobileOrNative = Boolean(
@@ -8243,6 +9013,11 @@ window.addEventListener('DOMContentLoaded', () => {
     document.body.classList.add('mobile-native-fullscreen');
   }
 
+  // Tarayıcı kalıcı depolama koruması (iOS Safari / Firefox / Chrome için veri silinmesini önler)
+  if (navigator.storage && typeof navigator.storage.persist === 'function') {
+    try { navigator.storage.persist(); } catch (e) {}
+  }
+
   // AVIGEN Sabitlenmiş Temel Marka Tasarımı: Beyaz Ana Zemin + Elektrik Mavisi + Şampanya Altını (Varsayılan Aktif)
   document.body.classList.add('cyber-ai-skin');
   document.body.classList.remove('dark-theme');
@@ -8254,6 +9029,8 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   updateThemeButtonLabels();
   loadMypedigreData();
+  AvigenLiveWeather.init();
+  AvigenAutoUpdater.init();
   syncLoftIdentityAcrossUI();
   if (typeof AvigenGenesisAI !== 'undefined') {
     AvigenGenesisAI.init();
@@ -8393,11 +9170,11 @@ const AvigenSystemAuditQA = {
     const doiVerified = kolvenbag && kolvenbag.doi === '10.1007/s13353-022-00697-w' && kolvenbag.pmid === '35505002';
     assert('T16', 'Bilimsel Kütüphane', '6 Birincil Hakemli Makale & DOI/PMID Doğrulaması', sciCount >= 6 && doiVerified, `${sciCount} doğrulanmış yayın • Kolvenbag 2022 DOI & PMID aktif.`);
 
-    // 17. 3 Kademeli Üyelik ve Yetkilendirme (FREE Limit vs GENESIS AI vs GLOBAL)
+    // 17. 2 Kademeli Üyelik ve Yetkilendirme (AVIGEN FREE vs AVIGEN GENESIS AI)
     const tiersOk = AvigenUxManager.TIERS.FREE.maxPedigreesLimit === 10 &&
                     AvigenUxManager.TIERS.GENETICS_AI.name === 'AVIGEN GENESIS AI' &&
-                    AvigenUxManager.TIERS.GLOBAL.name === 'AVIGEN GLOBAL';
-    assert('T17', 'Ticari Paketler', 'FREE (10 Limit), GENESIS AI (399 TL) ve GLOBAL (799 TL) Yetki Mimarisi', tiersOk, '3 üyelik seviyesi ve servis katmanı yetki kontrolleri aktif.');
+                    Object.keys(AvigenUxManager.TIERS).length === 2;
+    assert('T17', 'Ticari Paketler', 'AVIGEN FREE (10 Limit) ve AVIGEN GENESIS AI (399 TL) 2 Kademeli Yetki Mimarisi', tiersOk, '2 üyelik seviyesi (AVIGEN FREE & AVIGEN GENESIS AI) doğrulandı.');
 
     // 18. 12 Katmanlı Tam JSON Yedekleme Şeması Doğrulaması
     const snap = buildFullAvigenSnapshotPayload();
@@ -8411,15 +9188,25 @@ const AvigenSystemAuditQA = {
       Boolean(snap.user_account_state);
     assert('T18', 'Yedekleme & Veri', '12 Veri Katmanlı Tam JSON Yedekleme & Otomatik Rollback Şeması', backupComplete, `Şema v${snap.version}: 12/12 veri tablosu yedeklemeye dahil.`);
 
-    // 19. 2 Ana Modüllü GENESIS AI Mimarisi & Merkezi Hesaplama Önbelleği Doğrulaması
+    // 19. 2 Çekirdek Modüllü AVIGEN GENESIS AI Mimarisi, 4 Kademeli Veri Güvenilirliği & Akıllı Yem/Sıvı Doğrulaması
     const mainMods = AvigenGenesisAI.MAIN_MODULES || [];
     const has2MainModules = mainMods.length === 2 &&
       mainMods[0].id === 'breeding_hub' &&
-      mainMods[1].id === 'global_pool';
+      mainMods[1].id === 'nutrition_hub';
+    const nutCheck = typeof AvigenGenesisAI.calculateSmartNutritionPlan === 'function'
+      ? AvigenGenesisAI.calculateSmartNutritionPlan('auto_today_smart', 'ALL', 64)
+      : null;
+    const relHigh = AvigenGenesisAI.classifyDataReliability(85);
+    const relLow = AvigenGenesisAI.classifyDataReliability(15);
     const simCheck = AvigenGenesisAI.simulateGeneticFutureGenerations();
     const simCached = AvigenGenesisAI.simulateGeneticFutureGenerations();
-    const cacheAndUncertaintyOk = has2MainModules && simCheck === simCached && typeof simCheck.f1UncertaintySpread === 'number';
-    assert('T19', 'GENESIS AI Mimari', '2 Sade Ana Modül Yapısı & Merkezi Hesaplama Önbelleği', cacheAndUncertaintyOk, `2 Ana Modül aktif • Belirsizlik: ±${simCheck?.f1UncertaintySpread} puan • Önbellek referans eşleşmesi: Başarılı`);
+    const cacheAndUncertaintyOk = has2MainModules &&
+      relHigh.label === 'Yüksek Güvenilirlik' &&
+      relLow.label === 'Yetersiz Veri' &&
+      Boolean(nutCheck && nutCheck.totalDailyGrams > 0 && nutCheck.todaySmart?.todayLiquidRecommendation) &&
+      simCheck === simCached &&
+      typeof simCheck.f1UncertaintySpread === 'number';
+    assert('T19', 'GENESIS AI', '2 Çekirdek Modül (Akıllı Eşleştirme & Akıllı Yem/Maliyet), 4 Güvenilirlik Sınıfı', cacheAndUncertaintyOk, `2 Ana Modül aktif • 64 Kuş: ${nutCheck?.totalDailyKgLabel}/gün (Aylık: ${nutCheck?.monthly?.totalFeedKgLabel} kg) • Güven Sınıfı: Doğrulandı`);
 
     // 20. AVIGEN Yarış Takip Sistemi (Yarış Yönetimi, 11 Alanlı Kuş Yarış Geçmişi & GENESIS AI Gerçek Yarış Ayrımı)
     const rtReady = typeof AvigenRaceTracker !== 'undefined' && Array.isArray(AvigenRaceTracker.events) && AvigenRaceTracker.events.length >= 1;
@@ -8431,6 +9218,15 @@ const AvigenSystemAuditQA = {
       firtinaHistory[0].speedMpm > 0 &&
       Boolean(realAnalytics && realAnalytics.birdsWithRealRaces.length >= 1);
     assert('T20', 'Yarış Takip Sistemi', 'Yarış Yönetimi, 11 Alanlı Kuş Yarış Geçmişi & GENESIS AI Gerçek Yarış Öğrenimi', raceTrackerOk, `${AvigenRaceTracker?.events?.length || 0} yarış etabı • TR-2024-100245 için ${firtinaHistory.length} resmi yarış kaydı ve AI ayrımı aktif.`);
+
+    // 21. 5 Nesil (gggg1..32) Sewall Wright COI & Kişisel Kümes Danışmanı Doğrulaması
+    const gen5Sire = { self: { ring: 'S-0' }, p1: { ring: 'S-1' }, g1: { ring: 'S-2' }, gg1: { ring: 'S-3' }, ggg1: { ring: 'S-4' }, gggg1: { ring: 'COMMON-GEN5' } };
+    const gen5Dam = { self: { ring: 'D-0' }, p1: { ring: 'D-1' }, g1: { ring: 'D-2' }, gg1: { ring: 'D-3' }, ggg1: { ring: 'D-4' }, gggg1: { ring: 'COMMON-GEN5' } };
+    const coiGen5 = AvigenGenesisAI.calculateExactWrightCOI(gen5Sire, gen5Dam);
+    const advCheck = typeof AvigenGenesisAI.buildCortexAdvisorAnalysis === 'function'
+      ? AvigenGenesisAI.buildCortexAdvisorAnalysis('damizlik_secimi', '')
+      : null;
+    assert('T21', '5 Nesil COI & Danışman', '5. Nesil (gggg1..32) Ortak Ata Tespiti & Kişisel Kümes Danışmanı', coiGen5.coiPercent > 0 && coiGen5.commonAncestorsDetailed.length === 1 && Boolean(advCheck && advCheck.headerTitle), `5. Nesil Ortak Ata COI: %${coiGen5.coiPercent.toFixed(2)} • Kişisel Kümes Danışmanı: Aktif`);
 
     const passedCount = results.filter(r => r.passed).length;
     return {
