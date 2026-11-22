@@ -1,13 +1,13 @@
 {
-  "version": "3.0.0",
-  "build": 300,
+  "version": "4.0.0",
+  "build": 400,
   "releaseDate": "2026-11-22",
-  "title": "AVIGEN v3.0 — 81 İl Haritalı Yarış Simülasyonu, Hızlı Toplu Sonuç Girişi & Fenotip/Çifte Yavru Mimarisi",
+  "title": "AVIGEN v4.0 — APK İçi Canlı OTA Güncelleme Motoru, Kümes Sabah Özeti & WhatsApp Tek Tuş Yedekleme",
   "notes": [
-    "Haritalı Akıllı Yarış Simülasyonu (81 İl): Türkiye haritasında salım ve varış seçimi, canlı rüzgâr/hava çekme, kümes konumunu sabitleme ve önerilen kadroyu tek tuşla gerçek yarışa sepetleme",
-    "Pazar Günü Hızlı Sonuç & Saat Damgalama: Tek dokunuşla '⚡ Şimdi İndi' anlık varış saati damgalama ve tüm kuşları 30 saniyede tek ekrandan kaydetmeyi sağlayan '📋 Toplu Hızlı Sonuç Tablosu'",
-    "Kuşçu Ele Alma (Fenotip) & Çifte Yavru: Kuş kartında Gövde, Kas, Çatal Kemik, Kanat seçicileri, Kuş Durumu (Aktif/Dinlenmede/Kayıp/Satıldı) ve yuvadan tek seferde ardışık bilezikli Çifte Yavru kaydı",
-    "GENESIS AI v3.0: Akıllı Eşleştirme ekranında 5 görsel yavru potansiyel çubuğu, tek tuşla yuva kaydı ve sadeleştirilmiş Kuş & Yuva / Yarışlar menü mimarisi"
+    "APK İçi Canlı OTA Yama Motoru: Tekrar APK indirmeye gerek kalmadan yeni özellikleri doğrudan GitHub üzerinden uygulama içine canlı yükleme (⚡ Şimdi Güncelle)",
+    "Ana Sayfa Kümes Sabah Özeti: Yaklaşan yavru çıkışları, bugün bilezik takılacak yuvalar, sonuç bekleyen aktif yarış kısayolu ve bugünkü yem/suluk gramaj özeti tek kartta",
+    "Kuş & Yuva Hızlı Durum Filtreleri: Kuşlarım listesinde '🟠 Dinlenmede' ve '🔴 Kayıp/Satıldı' filtre çipleri ile 18 gün kuluçka / 7. gün bilezik takma geri sayımı",
+    "Profil & Yedekleme v4.0: '📲 WhatsApp Yedek Gönder' ile tüm kümes verisini (.JSON) tek dokunuşla WhatsApp/Drive üzerinden paylaşma ve QR kodlu Dijital Kümes Kimlik Kartı"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"

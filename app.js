@@ -1613,6 +1613,7 @@ function renderHomeDashboard() {
   }
 
   renderHomeFlightWeatherStrip();
+  renderHomeMorningBriefingCard();
   renderHomeSubPanelContent();
 
   // Ana Sayfa İçin GENESIS AI Vitrin Kartını Çiz (Sadece GENESIS AI sekmesi gerçekten açıksa modülü çiz)
@@ -1628,6 +1629,146 @@ function renderHomeDashboard() {
 function renderHomeFlightWeatherStrip() {
   // Birleşik Kümes Kimlik & Canlı Hava Durumu Kartını Güncelle
   syncLoftIdentityAcrossUI();
+}
+
+// AVIGEN v4.0 — Ana Sayfa "Kümes Sabah Özeti & Bugün Ne Yapmalıyım?" Akıllı Kokpit Kartı
+function renderHomeMorningBriefingCard() {
+  const box = document.getElementById('homeMorningBriefingCard');
+  if (!box) return;
+
+  const activeBirdsCount = collectUniqueLoftBirds().filter(b => b.isActiveLoftBird).length;
+
+  // 1. Yuvalarda yaklaşan yavru çıkışları veya bilezik takma günü gelen yuvalar
+  const nestAlerts = [];
+  activePairsList.forEach(p => {
+    const dyn = computeDynamicBreedingStage(p.eventType || 'hatch', p.eventDate);
+    if (!dyn) return;
+    if (dyn.phaseType === 'CHICK_RING_NOW') {
+      nestAlerts.push({
+        type: 'ring_now',
+        pairId: p.id,
+        icon: '💍',
+        color: '#dc2626',
+        bg: '#fef2f2',
+        border: '#fecaca',
+        text: `<strong>${escapeHtml(p.nest)}</strong> yavruları ${dyn.chickAgeDays} günlük oldu — <strong>Bugün bilezik takma günü!</strong>`,
+        btnText: '🐣 Bilezik Tak',
+        btnAction: `registerChickFromActivePair('${p.id}')`
+      });
+    } else if (dyn.phaseType === 'INCUBATION' && dyn.daysToHatch >= 0 && dyn.daysToHatch <= 4) {
+      nestAlerts.push({
+        type: 'hatch_soon',
+        pairId: p.id,
+        icon: '🐣',
+        color: '#b45309',
+        bg: '#fffbeb',
+        border: '#fde68a',
+        text: `<strong>${escapeHtml(p.nest)}</strong> kuluçka ${dyn.incubationDay}/18. gün — <strong>Yavru çıkışına ${dyn.daysToHatch === 0 ? 'bugün!' : dyn.daysToHatch + ' gün kaldı'}</strong> (${escapeHtml(dyn.estHatchDateLabel)})`,
+        btnText: '🪺 Yuvayı Gör',
+        btnAction: `openHomeItemModal('${p.id}', 'pairs')`
+      });
+    } else if (dyn.phaseType === 'CHICK_PRE_RING' && dyn.daysToRing >= 0 && dyn.daysToRing <= 3) {
+      nestAlerts.push({
+        type: 'ring_soon',
+        pairId: p.id,
+        icon: '💍',
+        color: '#0369a1',
+        bg: '#f0f9ff',
+        border: '#bae6fd',
+        text: `<strong>${escapeHtml(p.nest)}</strong> yavrusu ${dyn.chickAgeDays} günlük — Bilezik gününe <strong>${dyn.daysToRing} gün kaldı</strong> (${escapeHtml(dyn.estRingDateLabel)})`,
+        btnText: '🐣 Yavru Kaydet',
+        btnAction: `registerChickFromActivePair('${p.id}')`
+      });
+    }
+  });
+
+  // 2. Aktif / Sonuç Bekleyen Yarış Durumu
+  let activeRaceEvent = null;
+  let pendingBirdsCount = 0;
+  if (typeof AvigenRaceTracker !== 'undefined' && Array.isArray(AvigenRaceTracker.events)) {
+    activeRaceEvent = AvigenRaceTracker.events.find(ev => {
+      const pending = (ev.entries || []).filter(e => e.resultStatus !== 'ENTERED').length;
+      if (pending > 0) {
+        pendingBirdsCount = pending;
+        return true;
+      }
+      return false;
+    });
+  }
+
+  // 3. Bugünün Kısa Yem & Suluk Özeti (GENESIS AI Beslenme Motorundan Canlı)
+  let feedSummaryText = 'Sabah hafif, akşam tam porsiyon dengeli tahıl rasyonu ve taze içme suyu.';
+  let feedGramsPerBird = 33;
+  let totalDailyKg = '';
+  if (typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.calculateSmartNutritionPlan === 'function') {
+    const plan = AvigenGenesisAI.calculateSmartNutritionPlan('auto_today_smart', 'ALL', Math.max(1, activeBirdsCount));
+    if (plan) {
+      feedGramsPerBird = plan.gramsPerBird;
+      totalDailyKg = plan.totalDailyKgLabel;
+      const topSeeds = (plan.seeds || []).slice(0, 2).map(s => `${s.name} %${s.pct}`).join(', ');
+      const liquidShort = (plan.todaySmart?.todayLiquidRecommendation || '').split('.')[0] || 'Temiz içme suyu';
+      feedSummaryText = `Kuş başı <strong>${feedGramsPerBird} gr</strong> (Toplam <strong>${escapeHtml(totalDailyKg)}/gün</strong> • ${escapeHtml(topSeeds)}) • 💧 ${escapeHtml(liquidShort)}.`;
+    }
+  }
+
+  const todayStr = new Date().toLocaleDateString('tr-TR', { weekday: 'short', day: '2-digit', month: 'short' });
+
+  box.innerHTML = `
+    <div class="ios-card" style="padding:9px 11px; border-left:4px solid #0066ff; background:var(--ios-card);">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px;">
+        <div style="display:flex; align-items:center; gap:5px;">
+          <span style="font-size:13px;">☀️</span>
+          <span style="font-size:11.5px; font-weight:900; color:var(--ios-text);">Kümes Sabah Özeti &amp; Bugün Yapılacaklar</span>
+        </div>
+        <span class="gene-badge gene-blue" style="font-size:8.5px; padding:2px 6px;">📅 ${escapeHtml(todayStr)}</span>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        ${activeRaceEvent ? `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; background:#eff6ff; border:1px solid #93c5fd; border-radius:8px; padding:6px 8px;">
+            <div style="font-size:10px; color:#1e3a8a; line-height:1.35; flex:1; min-width:0;">
+              🏁 <strong>Aktif Yarış:</strong> ${escapeHtml(activeRaceEvent.codeTitle)} (${activeRaceEvent.distanceKm} km) • <strong>${pendingBirdsCount} kuşun dönüş sonucu bekleniyor!</strong>
+            </div>
+            <div style="display:flex; gap:4px; flex-shrink:0;">
+              <button type="button" class="ios-btn ios-btn-green" style="padding:4px 7px; font-size:9.3px;" onclick="openIosTab('flight'); AvigenUxManager.switchBreedingPlanSub('racetracker'); setTimeout(()=>AvigenRaceTracker.openBatchResultModal('${activeRaceEvent.id}'), 60);">
+                📋 Toplu Sonuç Gir
+              </button>
+            </div>
+          </div>
+        ` : ''}
+
+        ${nestAlerts.length > 0 ? nestAlerts.slice(0, 3).map(na => `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; background:${na.bg}; border:1px solid ${na.border}; border-radius:8px; padding:5px 8px;">
+            <div style="font-size:9.8px; color:${na.color}; line-height:1.35; flex:1; min-width:0;">
+              ${na.icon} ${na.text}
+            </div>
+            <button type="button" class="nest-mini-action-btn gold" style="flex-shrink:0;" onclick="${na.btnAction}">
+              ${na.btnText}
+            </button>
+          </div>
+        `).join('') : `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:5px 8px;">
+            <div style="font-size:9.8px; color:var(--ios-subtext); line-height:1.35;">
+              🪺 <strong>Yuva &amp; Kuluçka:</strong> ${activePairsList.length > 0 ? `${activePairsList.length} aktif yuva takipte, bugün acil bilezik/çıkış uyarısı yok.` : 'Henüz aktif yuva kaydı yok.'}
+            </div>
+            <button type="button" class="nest-mini-action-btn" style="flex-shrink:0;" onclick="openIosTab('pedigrees', document.querySelectorAll('.ios-tab-btn')[1]); switchBirdsViewMode('nests');">
+              💑 Yuvalar →
+            </button>
+          </div>
+        `}
+
+        <!-- BUGÜNÜN KISA YEM & SULUK NOTU -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:5px 8px;">
+          <div style="font-size:9.8px; color:var(--ios-text); line-height:1.35; flex:1; min-width:0;">
+            🥣 <strong>Bugünkü Yem &amp; Suluk:</strong> ${feedSummaryText}
+          </div>
+          <button type="button" class="nest-mini-action-btn" style="flex-shrink:0;" onclick="if(typeof AvigenGenesisAI!=='undefined') AvigenGenesisAI.openModuleDirectlyFromHome('nutrition');">
+            Reçete →
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 // Ana Sayfa Hızlı Güvercin Arama (1-Dokunuşla Pedigre, Profil veya GENESIS Analiz Açma)
@@ -2893,7 +3034,7 @@ function openLoftWithFilter(filterCode) {
   switchBirdsViewMode('list');
 
   const chips = document.querySelectorAll('#loftFilterChips .sub-pill');
-  const mapIdx = { ALL: 0, M: 1, F: 2, BREEDER: 3, RACER: 4, YOUNG: 5 };
+  const mapIdx = { ALL: 0, M: 1, F: 2, BREEDER: 3, RACER: 4, YOUNG: 5, RESTING: 6, LOST_SOLD: 7, ARCHIVE: 8 };
   chips.forEach(c => c.classList.remove('active'));
   if (chips[mapIdx[filterCode] ?? 0]) chips[mapIdx[filterCode] ?? 0].classList.add('active');
   renderLoftBirdsDirectory();
@@ -3053,9 +3194,11 @@ function renderLoftBirdsDirectory() {
   const cleanQuery = query.replace(/[-\s./]+/g, '');
   const allBirds = collectUniqueLoftBirds();
 
-  // Sekme Başlıklarındaki (🏠 Kümesim, ♂ Erkek, ♀ Dişi, Damızlık, Yarışçı, Yavru, 📜 Soy Arşivi) Canlı Kuş Sayılarını Güncelle
+  // Sekme Başlıklarındaki (🏠 Kümesim, ♂ Erkek, ♀ Dişi, Damızlık, Yarışçı, Yavru, 🟠 Dinlenmede, 🔴 Kayıp/Satıldı, 📜 Soy Arşivi) Canlı Kuş Sayılarını Güncelle
   const activeLoftBirds = allBirds.filter(b => b.isActiveLoftBird);
-  const archiveBirds = allBirds.filter(b => !b.isActiveLoftBird);
+  const cntResting = allBirds.filter(b => b.birdStatus === 'RESTING').length;
+  const cntLostSold = allBirds.filter(b => b.birdStatus === 'LOST' || b.birdStatus === 'SOLD').length;
+  const archiveBirds = allBirds.filter(b => !b.isActiveLoftBird && b.birdStatus !== 'LOST' && b.birdStatus !== 'SOLD');
   const cntAll = activeLoftBirds.length;
   const cntMale = activeLoftBirds.filter(b => b.sex === 'M').length;
   const cntFemale = activeLoftBirds.filter(b => b.sex === 'F').length;
@@ -3072,6 +3215,8 @@ function renderLoftBirdsDirectory() {
     `Damızlık (${cntBreeder})`,
     `Yarışçı (${cntRacer})`,
     `Yavru (${cntYoung})`,
+    `🟠 Dinlenmede (${cntResting})`,
+    `🔴 Kayıp/Satıldı (${cntLostSold})`,
     `📜 Soy Arşivi (${cntArchive})`
   ];
   filterChips.forEach((chipEl, idx) => {
@@ -3092,8 +3237,11 @@ function renderLoftBirdsDirectory() {
 
   let filtered = allBirds.filter(b => {
     if (activeLoftFilter === 'ARCHIVE') {
-      // "📜 Soy Arşivi" seçildiğinde yalnızca kümesimizde fiziksel olarak OLMAYAN (pedigrede adı geçen anne/baba/dede/ata) kuşları göster
-      if (b.isActiveLoftBird) return false;
+      if (b.isActiveLoftBird || b.birdStatus === 'LOST' || b.birdStatus === 'SOLD') return false;
+    } else if (activeLoftFilter === 'LOST_SOLD') {
+      if (b.birdStatus !== 'LOST' && b.birdStatus !== 'SOLD') return false;
+    } else if (activeLoftFilter === 'RESTING') {
+      if (b.birdStatus !== 'RESTING') return false;
     } else {
       // Diğer tüm filtrelerde (🏠 Kümesim, ♂ Erkek, ♀ Dişi, Damızlık, Yarışçı, Yavru) SADECE kümesimizde gerçekten mevcut olan kuşları göster!
       if (!b.isActiveLoftBird) return false;
@@ -4395,6 +4543,36 @@ function exportFullAvigenBackup() {
   a.download = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
   a.href = URL.createObjectURL(blob);
   a.click();
+}
+
+// AVIGEN v4.0 — Tek Tuşla Kümes Yedeğini (.json) WhatsApp, Google Drive veya E-Posta İle Paylaşma
+async function shareFullAvigenBackupViaWhatsApp() {
+  const payload = buildFullAvigenSnapshotPayload();
+  const jsonStr = JSON.stringify(payload, null, 2);
+  const safeName = (loftConfig.title || 'AVIGEN').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const fileName = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const backupFile = new File([blob], fileName, {
+    type: 'application/json',
+    lastModified: Date.now()
+  });
+
+  if (navigator.share) {
+    try {
+      if (!navigator.canShare || navigator.canShare({ files: [backupFile] })) {
+        await navigator.share({
+          files: [backupFile],
+          title: `${loftConfig.title || 'AVIGEN'} Tam Kümes Yedek Dosyası (.JSON)`
+        });
+        return;
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+
+  exportFullAvigenBackup();
+  alert(`💾 "${fileName}" yedek dosyanız cihazınıza indirildi!\n\nWhatsApp'ta kendinize veya bir sohbete girip ataç (📎 Belge) simgesinden bu .json dosyasını göndererek bulutta saklayabilirsiniz.`);
 }
 
 function importFullAvigenBackup(event) {
@@ -7829,12 +8007,21 @@ const AvigenUxManager = {
     if (!topEl) return;
 
     const curTier = this.getCurrentTier();
-    const activeBirds = collectUniqueLoftBirds().filter(b => b.isActiveLoftBird);
+    const allBirds = collectUniqueLoftBirds();
+    const activeBirds = allBirds.filter(b => b.isActiveLoftBird);
+    const breedersCnt = activeBirds.filter(b => b.roleCategory === 'BREEDER').length;
+    const racersCnt = activeBirds.filter(b => b.roleCategory === 'RACER').length;
+    const cityName = (typeof AvigenLiveWeather !== 'undefined' && AvigenLiveWeather.state?.cityName)
+      ? AvigenLiveWeather.state.cityName
+      : 'Türkiye';
+    const loftQrSvg = typeof makeQrSvg === 'function'
+      ? makeQrSvg(`AVIGEN_LOFT||${loftConfig.title}||${this.state.memberName}||${cityName}||${activeBirds.length}`)
+      : '';
 
     topEl.innerHTML = `
       <div class="ios-card" style="padding:10px 12px; border:1.5px solid var(--ios-border);">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-          <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+          <div style="display:flex; align-items:center; gap:9px; min-width:0; flex:1;">
             <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,#0044aa,#0066ff); border:1.5px solid #7c3aed; color:#fff; display:flex; align-items:center; justify-content:center; font-size:19px; font-weight:900; flex-shrink:0; box-shadow:0 3px 10px rgba(0,102,255,0.22);">
               ${loftConfig.logo ? `<img src="${loftConfig.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:11px;" />` : '🏆'}
             </div>
@@ -7842,25 +8029,26 @@ const AvigenUxManager = {
               <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
                 <span style="font-size:13px; font-weight:900; color:var(--ios-text);">${this.state.isLoggedIn ? escapeHtml(this.state.memberName) : 'Misafir Yetiştirici'}</span>
                 <span class="gene-badge ${curTier.badgeClass}" style="font-size:8px; padding:1px 6px;">${curTier.name}</span>
-                <span class="gene-badge ${this.state.isLoggedIn ? 'gene-green' : 'gene-purple'}" style="font-size:8px; padding:1px 6px;">
-                  ${this.state.isLoggedIn ? '🔒 Oturum Açık' : '🔑 Giriş Bekleniyor'}
-                </span>
               </div>
-              <div style="font-size:10px; font-weight:700; color:var(--ios-subtext); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;">
-                ${escapeHtml(loftConfig.title)} • ${activeBirds.length} Aktif Kuş
+              <div style="font-size:10px; font-weight:800; color:#0052cc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;">
+                🏠 ${escapeHtml(loftConfig.title)} • 📍 ${escapeHtml(cityName)}
+              </div>
+              <div style="font-size:9.3px; font-weight:700; color:var(--ios-subtext); margin-top:1px;">
+                🕊️ ${activeBirds.length} Aktif Kuş (${breedersCnt} Damızlık • ${racersCnt} Yarışçı) • 🪺 ${activePairsList.length} Yuva
               </div>
             </div>
           </div>
 
-          <!-- HIZLI GİRİŞ / ÖDEME BUTONU -->
-          <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
+          <!-- DİJİTAL KÜMES QR KİMLİK & HIZLI ABONELİK -->
+          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+            <div title="Dijital Kümes Kimlik QR Kodu" style="flex-shrink:0;">${loftQrSvg}</div>
             ${this.state.isLoggedIn ? `
-              <button type="button" class="ios-btn ios-btn-purple" style="padding:5px 9px; font-size:9.5px;" onclick="AvigenUxManager.openSubscriptionModal('checkout')">
-                💳 Abonelik &amp; Ödeme
+              <button type="button" class="ios-btn ios-btn-purple" style="padding:5px 8px; font-size:9px;" onclick="AvigenUxManager.openSubscriptionModal('checkout')">
+                💳 Paket
               </button>
             ` : `
-              <button type="button" class="ios-btn ios-btn-primary" style="padding:5px 9px; font-size:9.5px;" onclick="AvigenUxManager.openSubscriptionModal('auth')">
-                🔑 Giriş Yap / Üye Ol
+              <button type="button" class="ios-btn ios-btn-primary" style="padding:5px 8px; font-size:9px;" onclick="AvigenUxManager.openSubscriptionModal('auth')">
+                🔑 Giriş
               </button>
             `}
           </div>
@@ -8074,24 +8262,27 @@ const AvigenUxManager = {
           </div>
         </div>
 
-        <!-- 2. VERİ YEDEKLEME (.JSON) & GERİ YÜKLEME -->
+        <!-- 2. VERİ YEDEKLEME (.JSON), WHATSAPP YEDEK PAYLAŞIMI & GERİ YÜKLEME -->
         <div class="ios-card" style="padding:11px 12px;">
           <div class="ios-card-title" style="margin-bottom:6px;">
             <span>💾 Kümes Verilerini Yedekle &amp; Geri Yükle (.JSON)</span>
             <span class="gene-badge gene-green">Tam Veri Koruması</span>
           </div>
           <div style="font-size:10px; color:var(--ios-subtext); margin-bottom:8px; line-height:1.35;">
-            Tüm kuşlarınızı, 4 kuşak pedigrelerinizi, yarış takip kayıtlarınızı ve ayarlarınızı tek dokunuşla yedekleyin veya başka bir cihaza aktarın:
+            Tüm kuşlarınızı, 4 kuşak pedigrelerinizi, yuvalarınızı ve yarış kayıtlarınızı tek dokunuşla yedekleyin veya WhatsApp'tan kendinize gönderin:
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <button type="button" class="ios-btn ios-btn-primary" style="padding:9px 8px; font-size:10.5px;" onclick="exportFullAvigenBackup()">
-              ⬇️ Tam Yedeği İndir (.JSON)
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:7px;">
+            <button type="button" class="ios-btn ios-btn-green" style="padding:9px 8px; font-size:10.5px;" onclick="shareFullAvigenBackupViaWhatsApp()">
+              📲 WhatsApp Yedek Gönder
             </button>
-            <label class="ios-btn ios-btn-green" style="padding:9px 8px; font-size:10.5px; cursor:pointer; text-align:center;">
-              ⬆️ Yedeği Geri Yükle (.JSON)
-              <input type="file" accept=".json" style="display:none;" onchange="importFullAvigenBackup(event)" />
-            </label>
+            <button type="button" class="ios-btn ios-btn-primary" style="padding:9px 8px; font-size:10.5px;" onclick="exportFullAvigenBackup()">
+              ⬇️ Cihaza Yedek İndir (.JSON)
+            </button>
           </div>
+          <label class="ios-btn ios-btn-outline" style="width:100%; padding:8px; font-size:10.5px; cursor:pointer; text-align:center; display:block;">
+            ⬆️ Kayıtlı Yedek Dosyasını (.JSON) Geri Yükle
+            <input type="file" accept=".json" style="display:none;" onchange="importFullAvigenBackup(event)" />
+          </label>
         </div>
 
         <!-- 3. KÜMES NOT DEFTERİ & GEÇMİŞ ANALİZLER + SİSTEM DOĞRULAMA -->
@@ -8690,23 +8881,25 @@ const AvigenUxManager = {
 // (Telefondaki güvercin, pedigri ve yuva verilerini silmeden yeni sürüme yükseltir)
 // ============================================================================
 const AvigenAutoUpdater = {
+  REMOTE_RAW_BASE_URL: 'https://raw.githubusercontent.com/hasanbenzer/avigen/main/',
   REMOTE_RAW_VERSION_URL: 'https://raw.githubusercontent.com/hasanbenzer/avigen/main/version.json',
   REMOTE_VERSION_URL: 'https://hasanbenzer.github.io/avigen/version.json',
   GITHUB_RELEASE_API: 'https://api.github.com/repos/hasanbenzer/avigen/releases/latest',
   DEFAULT_APK_URL: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
   DEFAULT_WEB_URL: 'https://hasanbenzer.github.io/avigen/',
+  OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '3.0.0',
-    localBuild: 300,
-    remoteVersion: '3.0.0',
-    remoteBuild: 300,
-    remoteTitle: 'AVIGEN v3.0 — 81 İl Haritalı Yarış Simülasyonu, Hızlı Toplu Sonuç Girişi & Fenotip/Çifte Yavru Mimarisi',
+    localVersion: '4.0.0',
+    localBuild: 400,
+    remoteVersion: '4.0.0',
+    remoteBuild: 400,
+    remoteTitle: 'AVIGEN v4.0 — APK İçi Canlı OTA Güncelleme Motoru, Kümes Sabah Özeti & WhatsApp Tek Tuş Yedekleme',
     remoteNotes: [
-      'Haritalı Akıllı Yarış Simülasyonu (81 İl): Türkiye haritasında salım ve varış seçimi, canlı rüzgâr/hava çekme, kümes konumunu sabitleme ve önerilen kadroyu tek tuşla gerçek yarışa sepetleme',
-      'Pazar Günü Hızlı Sonuç & Saat Damgalama: Tek dokunuşla "⚡ Şimdi İndi" anlık varış saati damgalama ve tüm kuşları 30 saniyede tek ekrandan kaydetmeyi sağlayan "📋 Toplu Hızlı Sonuç Tablosu"',
-      'Kuşçu Ele Alma (Fenotip) & Çifte Yavru: Kuş kartında Gövde, Kas, Çatal Kemik, Kanat seçicileri, Kuş Durumu (Aktif/Dinlenmede/Kayıp/Satıldı) ve yuvadan tek seferde ardışık bilezikli Çifte Yavru kaydı',
-      'GENESIS AI v3.0: Akıllı Eşleştirme ekranında 5 görsel yavru potansiyel çubuğu, tek tuşla yuva kaydı ve sadeleştirilmiş Kuş & Yuva / Yarışlar menü mimarisi'
+      'APK İçi Canlı OTA Yama Motoru: Tekrar APK indirmeye gerek kalmadan yeni özellikleri doğrudan GitHub üzerinden uygulama içine canlı yükleme (⚡ Şimdi Güncelle)',
+      'Ana Sayfa Kümes Sabah Özeti: Yaklaşan yavru çıkışları, bugün bilezik takılacak yuvalar, sonuç bekleyen aktif yarış kısayolu ve bugünkü yem/suluk gramaj özeti tek kartta',
+      'Kuş & Yuva Hızlı Durum Filtreleri: Kuşlarım listesinde "🟠 Dinlenmede" ve "🔴 Kayıp/Satıldı" filtre çipleri ile 18 gün kuluçka / 7. gün bilezik takma geri sayımı',
+      'Profil & Yedekleme v4.0: "📲 WhatsApp Yedek Gönder" ile tüm kümes verisini (.JSON) tek dokunuşla WhatsApp/Drive üzerinden paylaşma ve QR kodlu Dijital Kümes Kimlik Kartı'
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',
@@ -8715,10 +8908,37 @@ const AvigenAutoUpdater = {
   },
 
   init() {
+    this.applySavedOtaBundleIfNewer();
     // Sadece Ayarlar & Yedek bölümünden yönetilir; ana ekranı kalabalık yapmaz
     setTimeout(() => {
       this.checkForUpdates(false);
     }, 1500);
+  },
+
+  applySavedOtaBundleIfNewer() {
+    try {
+      const raw = localStorage.getItem(this.OTA_BUNDLE_STORAGE_KEY);
+      if (!raw) return;
+      const bundle = JSON.parse(raw);
+      if (!bundle || !bundle.build || Number(bundle.build) <= this.state.localBuild) return;
+      if (bundle.css) {
+        let st = document.getElementById('avigenOtaLiveCss');
+        if (!st) {
+          st = document.createElement('style');
+          st.id = 'avigenOtaLiveCss';
+          document.head.appendChild(st);
+        }
+        st.textContent = bundle.css;
+      }
+      if (bundle.genesisJs) {
+        try { (0, eval)(bundle.genesisJs); } catch (e) {}
+      }
+      if (bundle.perfJs) {
+        try { (0, eval)(bundle.perfJs); } catch (e) {}
+      }
+      this.state.localVersion = bundle.version || this.state.localVersion;
+      this.state.localBuild = Number(bundle.build) || this.state.localBuild;
+    } catch (e) {}
   },
 
   async checkForUpdates(showFeedback = false) {
@@ -8792,17 +9012,44 @@ const AvigenAutoUpdater = {
   },
 
   applySmartUpdate() {
-    const isCapacitorApk = Boolean(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-    if (isCapacitorApk) {
-      if (confirm('📲 Android APK Güncellemesi:\n\n"Tamam"a bastığınızda yeni AVIGEN.apk telefonunuza indirilecektir. İnen dosyaya dokunup "Güncelle" dediğinizde mevcut kuşlarınız silinmeden yeni sürüm kurulur.')) {
-        this.downloadLatestApk();
-      }
-    } else {
-      this.applyWebLiveUpdate();
-    }
+    this.applyWebLiveUpdate();
   },
 
   async applyWebLiveUpdate() {
+    // 1. Önce GitHub üzerinden en güncel version.json, styles.css, genesis-ai.js ve performance-profile.js dosyalarını çekip yerel OTA önbelleğine kaydet
+    try {
+      const ts = Date.now();
+      const verRes = await fetch(`${this.REMOTE_RAW_VERSION_URL}?t=${ts}`, { cache: 'no-store' });
+      if (verRes.ok) {
+        const verData = await verRes.json();
+        let cssText = '';
+        let genesisJs = '';
+        let perfJs = '';
+        try {
+          const [cssRes, genRes, perfRes] = await Promise.all([
+            fetch(`${this.REMOTE_RAW_BASE_URL}styles.css?t=${ts}`, { cache: 'no-store' }),
+            fetch(`${this.REMOTE_RAW_BASE_URL}genesis-ai.js?t=${ts}`, { cache: 'no-store' }),
+            fetch(`${this.REMOTE_RAW_BASE_URL}performance-profile.js?t=${ts}`, { cache: 'no-store' })
+          ]);
+          if (cssRes.ok) cssText = await cssRes.text();
+          if (genRes.ok) genesisJs = await genRes.text();
+          if (perfRes.ok) perfJs = await perfRes.text();
+        } catch (e) {}
+
+        if (verData && verData.build) {
+          localStorage.setItem(this.OTA_BUNDLE_STORAGE_KEY, JSON.stringify({
+            version: verData.version,
+            build: verData.build,
+            updatedAt: new Date().toISOString(),
+            css: cssText,
+            genesisJs,
+            perfJs
+          }));
+        }
+      }
+    } catch (e) {}
+
+    // 2. Service Worker ve Cache Storage önbelleklerini temizle
     try {
       if ('serviceWorker' in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
@@ -8819,14 +9066,29 @@ const AvigenAutoUpdater = {
       }
     } catch (e) {}
 
-    // Kullanıcının localStorage verilerine (pedigreler, kuşlar, yuvalar, yarışlar) HİÇ DOKUNMADAN sayfayı sunucudan yenile
+    // 3. Eğer Capacitor APK içindeysek ve uzak sunucuda daha yeni bir sürüm varsa, verileri koruyarak canlı güncellemeyi uygula
+    const isCapacitorApk = Boolean(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    if (isCapacitorApk && this.state.remoteBuild > this.state.localBuild) {
+      this.applySavedOtaBundleIfNewer();
+      alert(`✅ AVIGEN v${this.state.remoteVersion} (Build ${this.state.remoteBuild}) canlı güncellemesi uygulandı!`);
+    }
+
+    // Kullanıcının localStorage verilerine (pedigreler, kuşlar, yuvalar, yarışlar) HİÇ DOKUNMADAN sayfayı yenile
     const cleanUrl = window.location.href.split('?')[0].split('#')[0];
     window.location.replace(`${cleanUrl}?v=${Date.now()}`);
   },
 
   downloadLatestApk() {
-    const url = `${this.state.apkUrl}?t=${Date.now()}`;
-    window.open(url, '_blank');
+    // GÜVENLİK KORUMASI: Kullanıcı yeni APK indirmeden 1 saniye önce tüm kümes verisini otomatik olarak (.JSON) cihazına yedekler!
+    try {
+      if (typeof exportFullAvigenBackup === 'function') {
+        exportFullAvigenBackup();
+      }
+    } catch (e) {}
+    setTimeout(() => {
+      const url = `${this.state.apkUrl}?t=${Date.now()}`;
+      window.open(url, '_blank');
+    }, 600);
   }
 };
 
