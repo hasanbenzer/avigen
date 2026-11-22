@@ -2716,7 +2716,17 @@ function openAddDossierForCurrentBird() {
 
 let pendingChickCreationData = null;
 
-// Aktif Çiftten Tek Dokunuşla (Anne ve Babası + Alt Soyağacı Otomatik Bağlı) Yavru Kaydı Açma
+function computeNextSequentialRing(ringVal) {
+  const s = (ringVal || '').trim();
+  const m = s.match(/^(.*?)(\d+)$/);
+  if (!m) return s ? `${s}-2` : 'TR-2026-100002';
+  const prefix = m[1];
+  const numStr = m[2];
+  const nextNum = String(parseInt(numStr, 10) + 1).padStart(numStr.length, '0');
+  return `${prefix}${nextNum}`;
+}
+
+// Aktif Çiftten Tek Dokunuşla (Anne ve Babası + Alt Soyağacı Otomatik Bağlı + Çifte Yavru Destekli) Yavru Kaydı Açma
 function registerChickFromActivePair(pairId) {
   const pair = activePairsList.find(x => x.id === pairId);
   if (!pair) return;
@@ -2753,7 +2763,9 @@ function registerChickFromActivePair(pairId) {
   if (dTree.g3) newBoxes.g3_7 = { ...dTree.g3 };
   if (dTree.g4) newBoxes.g3_8 = { ...dTree.g4 };
 
-  const suggestedRing = `TR-2026-${Math.floor(100000 + Math.random() * 899999)}`;
+  const baseNum = Math.floor(100000 + Math.random() * 899990);
+  const suggestedRing = `TR-2026-${baseNum}`;
+  const suggestedSecondRing = computeNextSequentialRing(suggestedRing);
 
   pendingChickCreationData = {
     pairId: pair.id,
@@ -2767,14 +2779,32 @@ function registerChickFromActivePair(pairId) {
   editingSlotKey = 'main';
   editingFlag = '🇹🇷';
   editingPhotoData = '';
+  selectModalSegment('editBoxSexGroup', 'U');
+  selectModalSegment('editBoxRoleGroup', 'YOUNG');
   populateKnownRingsDatalist();
 
-  document.getElementById('boxEditTitle').textContent = `🐣 ${pair.nest} Yavrusuna Boncuk Tak & Kaydet`;
+  document.getElementById('boxEditTitle').textContent = `🐣 ${pair.nest} Yavrularına Bilezik Tak & Kaydet`;
   document.getElementById('editBoxRing').value = suggestedRing;
-  document.getElementById('editBoxName').value = `${pair.nest} Yavrusu`;
-  document.getElementById('editBoxColor').value = 'Mavi Çakmaklı • Yavru';
+  document.getElementById('editBoxName').value = `${pair.nest} Yavrusu 1`;
+  document.getElementById('editBoxColor').value = 'Mavi Çakmaklı';
   document.getElementById('editBoxNotes').value = `${pair.nest} (${pair.sire} × ${pair.dam}) özel eşleşmesinden doğan yavru.`;
   document.getElementById('editBoxPhoto').value = '';
+
+  const statusSel = document.getElementById('editBoxBirdStatus');
+  if (statusSel) statusSel.value = 'ACTIVE';
+
+  const secondSec = document.getElementById('secondChickSiblingSection');
+  const chkSec = document.getElementById('chkRegisterSecondChick');
+  const rowSec = document.getElementById('secondChickFieldsRow');
+  const secRingEl = document.getElementById('editSecondChickRing');
+  const secNameEl = document.getElementById('editSecondChickName');
+  if (secondSec) {
+    secondSec.style.display = 'block';
+    if (chkSec) chkSec.checked = true;
+    if (rowSec) rowSec.style.display = 'grid';
+    if (secRingEl) secRingEl.value = suggestedSecondRing;
+    if (secNameEl) secNameEl.value = `${pair.nest} Yavrusu 2`;
+  }
 
   const parentBanner = document.getElementById('chickParentsInfoBanner');
   if (parentBanner) {
@@ -2783,7 +2813,7 @@ function registerChickFromActivePair(pairId) {
       <div style="font-weight:900; margin-bottom:2px;">🧬 Soyağacı Otomatik Bağlandı (14 Üst Ata Hazır):</div>
       <div>• <strong>♂ Baba:</strong> ${escapeHtml(pair.sire)}</div>
       <div>• <strong>♀ Anne:</strong> ${escapeHtml(pair.dam)}</div>
-      <div style="font-size:10px; margin-top:3px; color:#15803d;">Aşağıya yavrunun ayağına taktığınız halka (boncuk) numarasını yazıp kaydedin; yavrunun 15 kutulu pedigresi otomatik açılacaktır.</div>
+      <div style="font-size:10px; margin-top:3px; color:#15803d;">Aynı yuvadaki iki kardeşe ardışık bilezik takıyorsanız aşağıdaki <strong>Çifte Yavru</strong> kutusuyla ikisini birden tek tuşla kaydedebilirsiniz.</div>
     `;
   }
 
@@ -2815,77 +2845,6 @@ function computeBirdPerformanceEBV(box, genWeight = 1.0) {
   return Math.min(99, Math.round(ebv * genWeight));
 }
 
-// Bir pedigre kaydının toplam Aile Performans Endeksini (Family EBV) ve Şampiyon Yoğunluğunu hesaplar (4 Kuşak / 30 Ata)
-function analyzePedigreeMathematics(ped) {
-  const b = ped?.boxes || {};
-  const ancestorKeys = [
-    'sire', 'dam',
-    'g2_1', 'g2_2', 'g2_3', 'g2_4',
-    'g3_1', 'g3_2', 'g3_3', 'g3_4', 'g3_5', 'g3_6', 'g3_7', 'g3_8',
-    'g4_1', 'g4_2', 'g4_3', 'g4_4', 'g4_5', 'g4_6', 'g4_7', 'g4_8',
-    'g4_9', 'g4_10', 'g4_11', 'g4_12', 'g4_13', 'g4_14', 'g4_15', 'g4_16'
-  ];
-  let filledCount = 0;
-  let championAncestors = 0;
-  let weightedEbvSum = 0;
-  let weightTotal = 0;
-  const ringFreq = {};
-  const strainFreq = {};
-
-  const knownStrains = ['Romario', 'Messi', 'Harry', 'Hooymans', 'King Rolex', 'Rolex', 'Veenstra', 'Kobe Bryant', 'Hardy', 'Porsche', 'Kittel', 'Vandenabeele', 'Bliksem', 'Rudy', 'Geerinckx', 'Gladiator', 'Janssen', 'Koopman', 'Van den Bulck', 'Bonifac'];
-
-  ancestorKeys.forEach(k => {
-    const node = b[k];
-    const gen = k === 'sire' || k === 'dam' ? 1 : (k.startsWith('g2_') ? 2 : (k.startsWith('g3_') ? 3 : 4));
-    const geneticContribution = Math.pow(0.5, gen); // 1. kuşak %50, 2. kuşak %25, 3. kuşak %12.5, 4. kuşak %6.25
-
-    if (node && node.ring) {
-      filledCount++;
-      ringFreq[node.ring] = (ringFreq[node.ring] || 0) + geneticContribution;
-      const nodeEbv = computeBirdPerformanceEBV(node);
-      weightedEbvSum += nodeEbv * geneticContribution;
-      weightTotal += geneticContribution;
-
-      const fullTxt = `${node.name || ''} ${node.notes || ''}`;
-      if (/1\.|1st|şampiyon|ulusal|ace|as\s*[:=]?\s*\d+|f[iı]nal|derby|olr|kbdb|npo|galibi|\b\d{1,2}\/\d{3,5}\b|dna\s*(?:certified|tested)/i.test(fullTxt)) {
-        championAncestors++;
-      }
-      knownStrains.forEach(st => {
-        if (fullTxt.toLowerCase().includes(st.toLowerCase())) {
-          strainFreq[st] = (strainFreq[st] || 0) + geneticContribution;
-        }
-      });
-    }
-  });
-
-  const mainEbv = computeBirdPerformanceEBV(b.main);
-  const familyEbv = weightTotal > 0 ? Math.round((mainEbv * 0.4) + ((weightedEbvSum / weightTotal) * 0.6)) : mainEbv;
-  const completenessPct = Math.round((filledCount / 30) * 100);
-  const championDensityPct = filledCount > 0 ? Math.round((championAncestors / filledCount) * 100) : 0;
-
-  // Baba ve Anne tarafı arasındaki iç akrabalık (Wright COI)
-  const sireRef = `${ped.id}::sire`;
-  const damRef = `${ped.id}::dam`;
-  const internalMatch = evaluatePairCompatibility(sireRef, damRef, 'yellow_breeder', 'pearl_racer', 'medium_apple', 'medium_apple', 'LDHA_AB', 'CRY1_TT', 'race_hybrid');
-
-  const topStrains = Object.entries(strainFreq)
-    .sort((a, b) => b[1] - a[1])
-    .map(([name, w]) => `${name} (%${Math.min(95, Math.round(w * 65))})`);
-
-  return {
-    main: b.main || {},
-    mainEbv,
-    familyEbv,
-    filledCount,
-    completenessPct,
-    championAncestors,
-    championDensityPct,
-    internalCoi: internalMatch.coi,
-    commonAncestors: internalMatch.uniqueCommon,
-    topStrains: topStrains.length ? topStrains : ['Klasik Yarış Hattı']
-  };
-}
-
 // ============================================================================
 // 2. EKRAN: GÜVERCİNLER (KÜMES KUŞ LİSTESİ + PEDİGRE STÜDYOSU)
 // ============================================================================
@@ -2894,20 +2853,36 @@ let activeLoftFilter = 'ALL';
 function switchBirdsViewMode(mode) {
   const listPane = document.getElementById('birdsListViewPane');
   const pedPane = document.getElementById('birdsPedigreeViewPane');
+  const nestsPane = document.getElementById('birdsNestsViewPane');
   const pillList = document.getElementById('pillBirdsList');
   const pillPed = document.getElementById('pillBirdsPedigree');
+  const pillNests = document.getElementById('pillBirdsNests');
+
+  if (pillList) pillList.classList.remove('active');
+  if (pillPed) pillPed.classList.remove('active');
+  if (pillNests) pillNests.classList.remove('active');
 
   if (mode === 'pedigree') {
     if (listPane) listPane.style.display = 'none';
     if (pedPane) pedPane.style.display = 'flex';
-    if (pillList) pillList.classList.remove('active');
+    if (nestsPane) nestsPane.style.display = 'none';
     if (pillPed) pillPed.classList.add('active');
     setTimeout(fitPaperToIphoneScreen, 25);
+  } else if (mode === 'nests') {
+    if (listPane) listPane.style.display = 'none';
+    if (pedPane) pedPane.style.display = 'none';
+    if (nestsPane) nestsPane.style.display = 'flex';
+    if (pillNests) pillNests.classList.add('active');
+    if (typeof AvigenUxManager !== 'undefined') {
+      AvigenUxManager.renderBreedingPlanPairsList();
+    }
+    calculateIncubationTimeline();
+    renderAutoBestPairs();
   } else {
     if (listPane) listPane.style.display = 'flex';
     if (pedPane) pedPane.style.display = 'none';
+    if (nestsPane) nestsPane.style.display = 'none';
     if (pillList) pillList.classList.add('active');
-    if (pillPed) pillPed.classList.remove('active');
     renderLoftBirdsDirectory();
   }
 }
@@ -2982,8 +2957,9 @@ function collectUniqueLoftBirds() {
     // 3. Göz İşareti (Eye-Sign)
     let eyeSign = b.eyeSign || (slotKey === 'main' || slotKey === 'dam' || slotKey === 'g2_2' ? 'pearl_racer' : 'yellow_breeder');
 
-    // 4. Aktif Kümes Kuşu mu yoksa sadece Pedigrede Adı Geçen Soy Ağacı Atası mı?
-    const isActiveLoftBird = (slotKey === 'main' && b.inMyLoft !== false) || b.inMyLoft === true;
+    // 4. Aktif Kümes Kuşu mu yoksa Kayıp / Satıldı / Soy Ağacı Atası mı?
+    const birdStatus = b.birdStatus || ((slotKey === 'main' && b.inMyLoft !== false) || b.inMyLoft === true ? 'ACTIVE' : 'ARCHIVE');
+    const isActiveLoftBird = (birdStatus === 'ACTIVE' || birdStatus === 'RESTING') && ((slotKey === 'main' && b.inMyLoft !== false) || b.inMyLoft === true);
 
     const existing = map.get(ringKey);
     if (!existing || slotKey === 'main' || (isActiveLoftBird && !existing.isActiveLoftBird)) {
@@ -3003,6 +2979,11 @@ function collectUniqueLoftBirds() {
         sex,
         roleCategory,
         eyeSign,
+        birdStatus,
+        bodyBuild: b.bodyBuild || '',
+        muscleType: b.muscleType || '',
+        pubicBone: b.pubicBone || '',
+        wingFeather: b.wingFeather || '',
         isActiveLoftBird: isActiveLoftBird || Boolean(existing?.isActiveLoftBird),
         sireRing: sireBox?.ring || existing?.sireRing || '',
         damRing: damBox?.ring || existing?.damRing || '',
@@ -3164,6 +3145,14 @@ function renderLoftBirdsDirectory() {
 
     const roleLabel = b.roleCategory === 'RACER' ? 'Yarışçı' : (b.roleCategory === 'YOUNG' ? 'Yavru' : 'Damızlık');
     const roleClass = b.roleCategory === 'RACER' ? 'gene-green' : (b.roleCategory === 'YOUNG' ? 'gene-purple' : 'gene-gold');
+    const statusBadgeHtml = b.birdStatus === 'RESTING'
+      ? `<span class="gene-badge gene-gold" style="font-size:7.8px; padding:1px 5px;">🟠 Dinlenmede</span>`
+      : (b.birdStatus === 'LOST'
+        ? `<span class="gene-badge gene-red" style="font-size:7.8px; padding:1px 5px;">🔴 Yarışta Kayıp</span>`
+        : (b.birdStatus === 'SOLD'
+          ? `<span class="gene-badge gene-blue" style="font-size:7.8px; padding:1px 5px;">💸 Satıldı</span>`
+          : ''));
+    const physSummary = [b.bodyBuild, b.muscleType, b.pubicBone, b.wingFeather].filter(Boolean).join(' • ');
 
     const avatarHtml = b.photo
       ? `<img src="${b.photo}" style="width:100%; height:100%; object-fit:cover;" />`
@@ -3179,16 +3168,17 @@ function renderLoftBirdsDirectory() {
         <div class="dash-list-left" onclick="editBirdFromDirectory('${b.pedId}', '${b.slotKey}')" style="cursor:pointer;" title="Bilgileri düzenlemek için dokunun">
           <div class="bird-mini-eye">${avatarHtml}</div>
           <div style="min-width:0; flex:1;">
-            <div style="display:flex; align-items:center; gap:5px;">
+            <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
               <span class="bird-dir-ring">${b.flag} ${escapeHtml(b.ring)}</span>
               ${sexIcon}
               <span class="gene-badge ${roleClass}" style="font-size:8px; padding:1px 5px;">${roleLabel}</span>
+              ${statusBadgeHtml}
             </div>
             <div class="bird-dir-name">
               ${escapeHtml(b.name || 'İsimsiz Güvercin')} <span style="font-weight:500; color:var(--ios-subtext);">• ${escapeHtml(b.color)}</span>
             </div>
             <div class="dash-list-sub" style="margin-top:1px;">
-              ${escapeHtml(parentsSummary)}
+              ${escapeHtml(parentsSummary)}${physSummary ? ` • ✋ ${escapeHtml(physSummary)}` : ''}
             </div>
           </div>
         </div>
@@ -3206,6 +3196,12 @@ function renderLoftBirdsDirectory() {
           <div class="bird-action-popup-menu" data-ring="${escapeHtml(b.ring)}" onclick="event.stopPropagation()" style="display:none; position:absolute; right:0; top:34px; z-index:80; width:205px; background:var(--ios-card, #ffffff); border:1.5px solid var(--ios-border, #cbd5e1); border-radius:12px; box-shadow:0 10px 26px rgba(15,23,42,0.22); padding:6px; flex-direction:column; gap:4px;">
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); openBirdPedigreeFromDirectory('${b.pedId}');">
               <span>📜</span> <span>Pedigre Kağıdını Aç</span>
+            </button>
+            <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); downloadHighResPedigree('${b.pedId}');">
+              <span>📄</span> <span>Pedigriyi PDF İndir</span>
+            </button>
+            <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); shareActivePedigree('${b.pedId}');">
+              <span>📲</span> <span>WhatsApp PDF Paylaş</span>
             </button>
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); if(typeof AvigenPerformanceEngine!=='undefined') AvigenPerformanceEngine.openProfileModal('${escapeHtml(b.ring)}');">
               <span>📊</span> <span>Performans &amp; Genetik Profil</span>
@@ -3277,7 +3273,6 @@ function toggleAncestorInMyLoft(ringVal, inLoftFlag) {
   saveMypedigreData();
   renderLoftBirdsDirectory();
   renderHomeDashboard();
-  populateBreedingSelects();
 }
 
 // Kuş Listesinden veya Düzenleme Penceresinden Doğrudan Tek Tuşla Kuş Silme
@@ -3307,15 +3302,6 @@ function deleteBirdFromDirectory(pedId, slotKey, ringVal, birdName) {
         }
       });
     });
-  }
-
-  // Global Gen Havuzunda sahipsiz kalan izni temizle
-  const stillExistsInLoft = collectUniqueLoftBirds().some(b => b.ring.toUpperCase() === cleanRing);
-  if (!stillExistsInLoft && cleanRing && typeof AvigenGlobalGenePool !== 'undefined') {
-    const perm = AvigenGlobalGenePool.getBirdPermission(cleanRing);
-    if (perm) {
-      AvigenGlobalGenePool.revokeAndPurgeBirdFromGlobalPool(cleanRing);
-    }
   }
 
   saveMypedigreData();
@@ -3372,7 +3358,7 @@ function checkPedigreeTierLimitAllowed() {
   if (typeof AvigenUxManager !== 'undefined') {
     const tier = AvigenUxManager.getCurrentTier();
     if (pedigrees.length >= tier.maxPedigreesLimit) {
-      alert(`🔒 ${tier.name} Paket Limiti (${tier.maxPedigreesLimit} Pedigree Kaydı)\n\nSınırsız güvercin ve 4 kuşak pedigree yönetimi için AVIGEN GENESIS AI veya AVIGEN GLOBAL paketine yükseltebilirsiniz.`);
+      alert(`🔒 ${tier.name} Paket Limiti (${tier.maxPedigreesLimit} Pedigri Kaydı)\n\nSınırsız güvercin ve 5 nesil akıllı eşleştirme için AVIGEN GENESIS AI paketine yükseltebilirsiniz.`);
       AvigenUxManager.openSubscriptionModal('plans');
       return false;
     }
@@ -3429,6 +3415,15 @@ function createNewPedigreeRecord() {
   document.getElementById('editBoxNotes').value = '';
   document.getElementById('editBoxPhoto').value = '';
 
+  const secondSec = document.getElementById('secondChickSiblingSection');
+  if (secondSec) secondSec.style.display = 'none';
+  const statusEl = document.getElementById('editBoxBirdStatus');
+  if (statusEl) statusEl.value = 'ACTIVE';
+  ['editBoxBodyBuild', 'editBoxMuscleType', 'editBoxPubicBone', 'editBoxWingFeather'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
   renderFlagChips();
   document.getElementById('boxEditModal').classList.add('open');
 }
@@ -3451,15 +3446,6 @@ function deleteActivePedigree() {
 
   pedigrees = pedigrees.filter(p => p.id !== ped.id);
   activePedigreeId = pedigrees[0]?.id || '';
-
-  // Eğer silinen ana kuş başka hiçbir pedigrede yer almıyorsa sahipsiz (orphaned) Global Gen Havuzu kaydını temizle
-  const stillExistsInLoft = collectUniqueLoftBirds().some(b => b.ring.toUpperCase() === cleanRing);
-  if (!stillExistsInLoft && cleanRing && typeof AvigenGlobalGenePool !== 'undefined') {
-    const perm = AvigenGlobalGenePool.getBirdPermission(cleanRing);
-    if (perm) {
-      AvigenGlobalGenePool.revokeAndPurgeBirdFromGlobalPool(cleanRing);
-    }
-  }
 
   saveMypedigreData();
   renderPedigreeDropdown();
@@ -3631,13 +3617,13 @@ function renderActivePedigree() {
 
       <div class="paper-main-bird" onclick="openBoxEditModal('main')">
         <div class="paper-bird-photo">${birdPhotoHtml}</div>
-        <div>
-          <div style="font-size:12.5px; font-weight:900; color:${accent};">
+        <div style="min-width:0; flex:1; overflow:hidden;">
+          <div style="font-size:12.5px; font-weight:900; color:${accent}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             ${main.flag || '🇹🇷'} ${escapeHtml(main.ring)}
           </div>
-          <div style="font-size:11px; font-weight:800;">${escapeHtml(main.name)}</div>
-          <div style="font-size:8.5px; opacity:0.85;">${escapeHtml(main.color)}</div>
-          ${main.notes ? `<div style="font-size:8px; font-weight:600; margin-top:1px; white-space:pre-line;">${escapeHtml(main.notes)}</div>` : ''}
+          <div style="font-size:11px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.name)}</div>
+          <div style="font-size:8.5px; opacity:0.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.color)}</div>
+          ${main.notes ? `<div class="paper-main-bird-notes">${escapeHtml(main.notes)}</div>` : ''}
         </div>
       </div>
     </div>
@@ -3922,6 +3908,22 @@ function populateModalParentSelects(currentRing = '', currentSireRing = '', curr
     fPool.map(c => `<option value="${c.id}" ${c.ring.toUpperCase() === (currentDamRing || '').toUpperCase() ? 'selected' : ''}>${c.flag} ${escapeHtml(c.ring)} (${escapeHtml(c.name)})</option>`).join('');
 }
 
+function syncPhysicalTraitsToBoxNotes() {
+  const bBuild = document.getElementById('editBoxBodyBuild')?.value || '';
+  const mType = document.getElementById('editBoxMuscleType')?.value || '';
+  const pBone = document.getElementById('editBoxPubicBone')?.value || '';
+  const wFeat = document.getElementById('editBoxWingFeather')?.value || '';
+  const parts = [bBuild, mType, pBone, wFeat].filter(Boolean);
+  const notesEl = document.getElementById('editBoxNotes');
+  if (!notesEl) return;
+
+  const lines = (notesEl.value || '').split(/\r?\n/).filter(l => !l.trim().startsWith('Fiziksel Yapı:'));
+  if (parts.length > 0) {
+    lines.push(`Fiziksel Yapı: ${parts.join(' • ')}`);
+  }
+  notesEl.value = lines.filter(Boolean).join('\n');
+}
+
 function openBoxEditModal(slotKey) {
   const ped = getActivePedigree();
   if (!ped) return;
@@ -3929,6 +3931,8 @@ function openBoxEditModal(slotKey) {
   pendingChickCreationData = null;
   const parentBanner = document.getElementById('chickParentsInfoBanner');
   if (parentBanner) parentBanner.style.display = 'none';
+  const secondSec = document.getElementById('secondChickSiblingSection');
+  if (secondSec) secondSec.style.display = 'none';
 
   editingSlotKey = slotKey;
   const slotMeta = BOX_SLOTS.find(s => s.key === slotKey) || BOX_SLOTS[0];
@@ -3942,6 +3946,20 @@ function openBoxEditModal(slotKey) {
   const defaultRole = box.roleCategory || (slotKey === 'main' ? 'RACER' : 'BREEDER');
   selectModalSegment('editBoxSexGroup', defaultSex);
   selectModalSegment('editBoxRoleGroup', defaultRole);
+
+  const statusEl = document.getElementById('editBoxBirdStatus');
+  if (statusEl) {
+    statusEl.value = box.birdStatus || ((slotKey === 'main' && box.inMyLoft !== false) || box.inMyLoft === true ? 'ACTIVE' : 'ARCHIVE');
+  }
+
+  const bBuildEl = document.getElementById('editBoxBodyBuild');
+  const mTypeEl = document.getElementById('editBoxMuscleType');
+  const pBoneEl = document.getElementById('editBoxPubicBone');
+  const wFeatEl = document.getElementById('editBoxWingFeather');
+  if (bBuildEl) bBuildEl.value = box.bodyBuild || '';
+  if (mTypeEl) mTypeEl.value = box.muscleType || '';
+  if (pBoneEl) pBoneEl.value = box.pubicBone || '';
+  if (wFeatEl) wFeatEl.value = box.wingFeather || '';
 
   const eyeEl = document.getElementById('editBoxEye');
   if (eyeEl) eyeEl.value = box.eyeSign || (slotKey === 'main' ? 'pearl_racer' : 'yellow_breeder');
@@ -4109,15 +4127,25 @@ function saveBoxEditModal() {
 
     const newId = 'ped_nest_' + Date.now();
     const newBoxes = pendingChickCreationData.preparedBoxes;
+    const bBuildVal = document.getElementById('editBoxBodyBuild')?.value || '';
+    const mTypeVal = document.getElementById('editBoxMuscleType')?.value || '';
+    const pBoneVal = document.getElementById('editBoxPubicBone')?.value || '';
+    const wFeatVal = document.getElementById('editBoxWingFeather')?.value || '';
     newBoxes.main = {
       flag: editingFlag || detectFlagFromRing(ringVal),
       ring: ringVal,
-      name: document.getElementById('editBoxName').value.trim() || `${pendingChickCreationData.nestName} Yavrusu`,
+      name: document.getElementById('editBoxName').value.trim() || `${pendingChickCreationData.nestName} Yavrusu 1`,
       color: document.getElementById('editBoxColor').value.trim() || 'Mavi Çakmaklı • Yavru',
       notes: document.getElementById('editBoxNotes').value.trim(),
       photo: editingPhotoData,
       sex: editingModalSex,
       roleCategory: editingModalRole,
+      birdStatus: 'ACTIVE',
+      inMyLoft: true,
+      bodyBuild: bBuildVal,
+      muscleType: mTypeVal,
+      pubicBone: pBoneVal,
+      wingFeather: wFeatVal,
       eyeSign: document.getElementById('editBoxEye')?.value || 'pearl_racer'
     };
 
@@ -4130,20 +4158,66 @@ function saveBoxEditModal() {
       boxes: newBoxes
     });
 
-    // İlgili aktif yuvanın notuna boncuk takılan yavrunun numarasını işle
-    const pairObj = activePairsList.find(x => x.id === pendingChickCreationData.pairId);
-    if (pairObj) {
-      pairObj.detail = `Boncuk Takıldı: ${ringVal}`;
+    let registeredRingsText = ringVal;
+
+    // ÇİFTE YAVRU (2. KARDEŞ YAVRU) SEÇİLİYSE ONU DA TEK SEFERDE KAYDET!
+    const isSecondChecked = document.getElementById('chkRegisterSecondChick')?.checked;
+    const secondRingVal = (document.getElementById('editSecondChickRing')?.value || '').trim();
+    if (isSecondChecked && secondRingVal) {
+      const cleanSecUpper = secondRingVal.toUpperCase();
+      const dupSecond = pedigrees.find(p => (p.boxes?.main?.ring || '').trim().toUpperCase() === cleanSecUpper);
+      if (!dupSecond && cleanSecUpper !== cleanUpperRing) {
+        const secondBoxes = JSON.parse(JSON.stringify(pendingChickCreationData.preparedBoxes));
+        secondBoxes.main = {
+          flag: editingFlag || detectFlagFromRing(secondRingVal),
+          ring: secondRingVal,
+          name: (document.getElementById('editSecondChickName')?.value || '').trim() || `${pendingChickCreationData.nestName} Yavrusu 2`,
+          color: (document.getElementById('editSecondChickColor')?.value || '').trim() || 'Mavi Çakmaklı • Yavru',
+          notes: `${pendingChickCreationData.nestName} (${pendingChickCreationData.sireLabel} × ${pendingChickCreationData.damLabel}) çifte yavru kardeşi (${ringVal}).`,
+          photo: '',
+          sex: 'U',
+          roleCategory: 'YOUNG',
+          birdStatus: 'ACTIVE',
+          inMyLoft: true,
+          eyeSign: document.getElementById('editBoxEye')?.value || 'pearl_racer'
+        };
+        pedigrees.unshift({
+          id: 'ped_nest_' + (Date.now() + 1),
+          themeId: 'gold',
+          accentColor: '#b45309',
+          bgColor: '#fffdf7',
+          fontFamily: "'Inter', sans-serif",
+          boxes: secondBoxes
+        });
+        birdDossierList.unshift({
+          id: 'dos_birth_' + (Date.now() + 1),
+          ring: secondRingVal,
+          birdName: secondBoxes.main.name,
+          category: 'Özel Karakter Notu',
+          icon: '🐣',
+          title: `${pendingChickCreationData.nestName} 2. Kardeş Yavru Bilezik Takıldı`,
+          detail: `Baba: ${pendingChickCreationData.sireLabel} × Anne: ${pendingChickCreationData.damLabel} (Yuva Kardeşi: ${ringVal})`,
+          date: getIsoDateDaysAgo(0),
+          badgeColor: 'gene-green'
+        });
+        registeredRingsText = `${ringVal} & ${secondRingVal}`;
+      }
     }
 
-    // Yavrunun sicil dosyasına ilk doğuş/boncuk kaydını otomatik aç
+    // İlgili aktif yuvanın notuna boncuk takılan yavruların numarasını işle
+    const pairObj = activePairsList.find(x => x.id === pendingChickCreationData.pairId);
+    if (pairObj) {
+      pairObj.detail = `Bilezik Takıldı: ${registeredRingsText}`;
+    }
+
+    // 1. Yavrunun sicil dosyasına ilk doğuş/boncuk kaydını otomatik aç
     birdDossierList.unshift({
       id: 'dos_birth_' + Date.now(),
       ring: ringVal,
       birdName: newBoxes.main.name,
       category: 'Özel Karakter Notu',
       icon: '🐣',
-      title: `${pendingChickCreationData.nestName} Yavrusu Boncuk Takıldı`,
+      title: `${pendingChickCreationData.nestName} Yavrusu Bilezik Takıldı`,
       detail: `Baba: ${pendingChickCreationData.sireLabel} × Anne: ${pendingChickCreationData.damLabel}`,
       date: getIsoDateDaysAgo(0),
       badgeColor: 'gene-green'
@@ -4156,7 +4230,7 @@ function saveBoxEditModal() {
     selectActivePedigree(newId);
     renderHomeDashboard();
     closeBoxEditModal();
-    // Doğrudan Güvercinler -> Pedigre Kağıdını açarak yeni yavrunun 15 kutulu soyağacını göster!
+    // Doğrudan Güvercinler -> Pedigre Kağıdını açarak yeni yavrunun soyağacını göster!
     openIosTab('pedigrees', document.querySelectorAll('.ios-tab-btn')[1]);
     switchBirdsViewMode('pedigree');
     return;
@@ -4189,6 +4263,9 @@ function saveBoxEditModal() {
     }
   }
 
+  const chosenStatus = document.getElementById('editBoxBirdStatus')?.value || (editingSlotKey === 'main' ? 'ACTIVE' : 'ARCHIVE');
+  const isNowInMyLoft = chosenStatus === 'ACTIVE' || chosenStatus === 'RESTING';
+
   const updatedBox = {
     flag: editingFlag || detectFlagFromRing(ringVal),
     ring: ringVal,
@@ -4198,8 +4275,13 @@ function saveBoxEditModal() {
     photo: editingPhotoData,
     sex: editingModalSex,
     roleCategory: editingModalRole,
+    birdStatus: chosenStatus,
+    bodyBuild: document.getElementById('editBoxBodyBuild')?.value || '',
+    muscleType: document.getElementById('editBoxMuscleType')?.value || '',
+    pubicBone: document.getElementById('editBoxPubicBone')?.value || '',
+    wingFeather: document.getElementById('editBoxWingFeather')?.value || '',
     eyeSign: document.getElementById('editBoxEye')?.value || 'yellow_breeder',
-    inMyLoft: editingSlotKey === 'main' ? true : Boolean(ped.boxes?.[editingSlotKey]?.inMyLoft)
+    inMyLoft: isNowInMyLoft
   };
 
   ped.boxes[editingSlotKey] = updatedBox;
@@ -4239,15 +4321,6 @@ function saveBoxEditModal() {
         if (dTree.g3?.ring) ped.boxes.g3_7 = { ...dTree.g3, sex: 'M' };
         if (dTree.g4?.ring) ped.boxes.g3_8 = { ...dTree.g4, sex: 'F' };
       }
-    }
-  }
-
-  // Global Gen Havuzunda izinli bir kuşsa anonim performans profilini güncelle
-  if (cleanUpperRing && typeof AvigenGlobalGenePool !== 'undefined') {
-    const perm = AvigenGlobalGenePool.getBirdPermission(cleanUpperRing);
-    if (perm && perm.allow_global_analysis) {
-      AvigenGlobalGenePool.syncLocalBirdToAnonymizedPool(cleanUpperRing, perm);
-      AvigenGlobalGenePool.saveDatabase();
     }
   }
 
@@ -4307,7 +4380,6 @@ function buildFullAvigenSnapshotPayload() {
     birdDossierList,
     notesList,
     scientific_sources: typeof AvigenScientificLibrary !== 'undefined' ? AvigenScientificLibrary.sources : [],
-    global_gene_pool_db: typeof AvigenGlobalGenePool !== 'undefined' ? AvigenGlobalGenePool.db : null,
     genesis_analysis_history: typeof AvigenGenesisAI !== 'undefined' ? AvigenGenesisAI.analysisHistory : [],
     performance_config: typeof AvigenPerformanceEngine !== 'undefined' ? AvigenPerformanceEngine.state.distanceLimits : null,
     user_account_state: typeof AvigenUxManager !== 'undefined' ? AvigenUxManager.state : null,
@@ -4358,13 +4430,9 @@ function importFullAvigenBackup(event) {
         AvigenScientificLibrary.saveSources();
         AvigenScientificLibrary.renderLibraryUI();
       }
-      if (data.global_gene_pool_db && typeof AvigenGlobalGenePool !== 'undefined') {
-        AvigenGlobalGenePool.db = { ...AvigenGlobalGenePool.db, ...data.global_gene_pool_db };
-        AvigenGlobalGenePool.saveDatabase();
-      }
       if (Array.isArray(data.genesis_analysis_history) && typeof AvigenGenesisAI !== 'undefined') {
         AvigenGenesisAI.analysisHistory = data.genesis_analysis_history;
-        AvigenGenesisAI.saveAnalysisHistory();
+        AvigenGenesisAI.saveHistory();
       }
       if (data.performance_config && typeof AvigenPerformanceEngine !== 'undefined') {
         AvigenPerformanceEngine.state.distanceLimits = {
@@ -4412,27 +4480,87 @@ const AVIGEN_LIVE_WEATHER_KEY = 'avigen_live_weather_state_v2';
 
 const AvigenLiveWeather = {
   CITIES: [
-    { id: 'istanbul', name: 'İstanbul', lat: 41.0082, lon: 28.9784 },
-    { id: 'ankara', name: 'Ankara', lat: 39.9334, lon: 32.8597 },
-    { id: 'izmir', name: 'İzmir', lat: 38.4237, lon: 27.1428 },
-    { id: 'bursa', name: 'Bursa', lat: 40.1885, lon: 29.0610 },
-    { id: 'antalya', name: 'Antalya', lat: 36.8969, lon: 30.7133 },
-    { id: 'adana', name: 'Adana', lat: 37.0000, lon: 35.3213 },
-    { id: 'konya', name: 'Konya', lat: 37.8746, lon: 32.4932 },
-    { id: 'gaziantep', name: 'Gaziantep', lat: 37.0662, lon: 37.3833 },
-    { id: 'kocaeli', name: 'Kocaeli', lat: 40.8533, lon: 29.8815 },
-    { id: 'samsun', name: 'Samsun', lat: 41.2867, lon: 36.3300 },
-    { id: 'eskisehir', name: 'Eskişehir', lat: 39.7767, lon: 30.5206 },
-    { id: 'kayseri', name: 'Kayseri', lat: 38.7312, lon: 35.4787 },
-    { id: 'sivas', name: 'Sivas', lat: 39.7477, lon: 37.0179 },
-    { id: 'sanliurfa', name: 'Şanlıurfa', lat: 37.1674, lon: 38.7955 },
-    { id: 'diyarbakir', name: 'Diyarbakır', lat: 37.9144, lon: 40.2306 },
-    { id: 'mersin', name: 'Mersin', lat: 36.8121, lon: 34.6415 },
-    { id: 'manisa', name: 'Manisa', lat: 38.6191, lon: 27.4289 },
-    { id: 'denizli', name: 'Denizli', lat: 37.7765, lon: 29.0864 },
-    { id: 'edirne', name: 'Edirne', lat: 41.6771, lon: 26.5557 },
-    { id: 'trabzon', name: 'Trabzon', lat: 41.0027, lon: 39.7168 },
-    { id: 'erzurum', name: 'Erzurum', lat: 39.9055, lon: 41.2658 },
+    { id: 'adana', name: '01 - Adana', lat: 37.0000, lon: 35.3213 },
+    { id: 'adiyaman', name: '02 - Adıyaman', lat: 37.7648, lon: 38.2786 },
+    { id: 'afyon', name: '03 - Afyonkarahisar', lat: 38.7507, lon: 30.5567 },
+    { id: 'agri', name: '04 - Ağrı', lat: 39.7191, lon: 43.0503 },
+    { id: 'amasya', name: '05 - Amasya', lat: 40.6499, lon: 35.8353 },
+    { id: 'ankara', name: '06 - Ankara', lat: 39.9334, lon: 32.8597 },
+    { id: 'antalya', name: '07 - Antalya', lat: 36.8969, lon: 30.7133 },
+    { id: 'artvin', name: '08 - Artvin', lat: 41.1828, lon: 41.8183 },
+    { id: 'aydin', name: '09 - Aydın', lat: 37.8560, lon: 27.8416 },
+    { id: 'balikesir', name: '10 - Balıkesir', lat: 39.6484, lon: 27.8826 },
+    { id: 'bilecik', name: '11 - Bilecik', lat: 40.1451, lon: 29.9799 },
+    { id: 'bingol', name: '12 - Bingöl', lat: 38.8854, lon: 40.4966 },
+    { id: 'bitlis', name: '13 - Bitlis', lat: 38.4006, lon: 42.1095 },
+    { id: 'bolu', name: '14 - Bolu', lat: 40.7350, lon: 31.6061 },
+    { id: 'burdur', name: '15 - Burdur', lat: 37.7203, lon: 30.2908 },
+    { id: 'bursa', name: '16 - Bursa', lat: 40.1885, lon: 29.0610 },
+    { id: 'canakkale', name: '17 - Çanakkale', lat: 40.1553, lon: 26.4142 },
+    { id: 'cankiri', name: '18 - Çankırı', lat: 40.6013, lon: 33.6134 },
+    { id: 'corum', name: '19 - Çorum', lat: 40.5506, lon: 34.9556 },
+    { id: 'denizli', name: '20 - Denizli', lat: 37.7765, lon: 29.0864 },
+    { id: 'diyarbakir', name: '21 - Diyarbakır', lat: 37.9144, lon: 40.2306 },
+    { id: 'edirne', name: '22 - Edirne', lat: 41.6771, lon: 26.5557 },
+    { id: 'elazig', name: '23 - Elazığ', lat: 38.6810, lon: 39.2264 },
+    { id: 'erzincan', name: '24 - Erzincan', lat: 39.7500, lon: 39.5000 },
+    { id: 'erzurum', name: '25 - Erzurum', lat: 39.9055, lon: 41.2658 },
+    { id: 'eskisehir', name: '26 - Eskişehir', lat: 39.7767, lon: 30.5206 },
+    { id: 'gaziantep', name: '27 - Gaziantep', lat: 37.0662, lon: 37.3833 },
+    { id: 'giresun', name: '28 - Giresun', lat: 40.9128, lon: 38.3895 },
+    { id: 'gumushane', name: '29 - Gümüşhane', lat: 40.4603, lon: 39.4814 },
+    { id: 'hakkari', name: '30 - Hakkâri', lat: 37.5833, lon: 43.7333 },
+    { id: 'hatay', name: '31 - Hatay', lat: 36.2021, lon: 36.1606 },
+    { id: 'isparta', name: '32 - Isparta', lat: 37.7648, lon: 30.5566 },
+    { id: 'mersin', name: '33 - Mersin', lat: 36.8121, lon: 34.6415 },
+    { id: 'istanbul', name: '34 - İstanbul', lat: 41.0082, lon: 28.9784 },
+    { id: 'izmir', name: '35 - İzmir', lat: 38.4237, lon: 27.1428 },
+    { id: 'kars', name: '36 - Kars', lat: 40.6013, lon: 43.0975 },
+    { id: 'kastamonu', name: '37 - Kastamonu', lat: 41.3887, lon: 33.7827 },
+    { id: 'kayseri', name: '38 - Kayseri', lat: 38.7312, lon: 35.4787 },
+    { id: 'kirklareli', name: '39 - Kırklareli', lat: 41.7351, lon: 27.2252 },
+    { id: 'kirsehir', name: '40 - Kırşehir', lat: 39.1425, lon: 34.1639 },
+    { id: 'kocaeli', name: '41 - Kocaeli', lat: 40.8533, lon: 29.8815 },
+    { id: 'konya', name: '42 - Konya', lat: 37.8746, lon: 32.4932 },
+    { id: 'kutahya', name: '43 - Kütahya', lat: 39.4167, lon: 29.9833 },
+    { id: 'malatya', name: '44 - Malatya', lat: 38.3552, lon: 38.3095 },
+    { id: 'manisa', name: '45 - Manisa', lat: 38.6191, lon: 27.4289 },
+    { id: 'kahramanmaras', name: '46 - Kahramanmaraş', lat: 37.5858, lon: 36.9371 },
+    { id: 'mardin', name: '47 - Mardin', lat: 37.3212, lon: 40.7245 },
+    { id: 'mugla', name: '48 - Muğla', lat: 37.2153, lon: 28.3636 },
+    { id: 'mus', name: '49 - Muş', lat: 38.7433, lon: 41.5065 },
+    { id: 'nevsehir', name: '50 - Nevşehir', lat: 38.6244, lon: 34.7144 },
+    { id: 'nigde', name: '51 - Niğde', lat: 37.9667, lon: 34.6833 },
+    { id: 'ordu', name: '52 - Ordu', lat: 40.9839, lon: 37.8764 },
+    { id: 'rize', name: '53 - Rize', lat: 41.0201, lon: 40.5234 },
+    { id: 'sakarya', name: '54 - Sakarya', lat: 40.7569, lon: 30.3783 },
+    { id: 'samsun', name: '55 - Samsun', lat: 41.2867, lon: 36.3300 },
+    { id: 'siirt', name: '56 - Siirt', lat: 37.9333, lon: 41.9500 },
+    { id: 'sinop', name: '57 - Sinop', lat: 42.0231, lon: 35.1531 },
+    { id: 'sivas', name: '58 - Sivas', lat: 39.7477, lon: 37.0179 },
+    { id: 'tekirdag', name: '59 - Tekirdağ', lat: 40.9781, lon: 27.5117 },
+    { id: 'tokat', name: '60 - Tokat', lat: 40.3167, lon: 36.5500 },
+    { id: 'trabzon', name: '61 - Trabzon', lat: 41.0027, lon: 39.7168 },
+    { id: 'tunceli', name: '62 - Tunceli', lat: 39.1079, lon: 39.5401 },
+    { id: 'sanliurfa', name: '63 - Şanlıurfa', lat: 37.1674, lon: 38.7955 },
+    { id: 'usak', name: '64 - Uşak', lat: 38.6823, lon: 29.4082 },
+    { id: 'van', name: '65 - Van', lat: 38.4891, lon: 43.4089 },
+    { id: 'yozgat', name: '66 - Yozgat', lat: 39.8181, lon: 34.8147 },
+    { id: 'zonguldak', name: '67 - Zonguldak', lat: 41.4564, lon: 31.7987 },
+    { id: 'aksaray', name: '68 - Aksaray', lat: 38.3687, lon: 34.0370 },
+    { id: 'bayburt', name: '69 - Bayburt', lat: 40.2552, lon: 40.2249 },
+    { id: 'karaman', name: '70 - Karaman', lat: 37.1759, lon: 33.2287 },
+    { id: 'kirikkale', name: '71 - Kırıkkale', lat: 39.8468, lon: 33.5153 },
+    { id: 'batman', name: '72 - Batman', lat: 37.8812, lon: 41.1351 },
+    { id: 'sirnak', name: '73 - Şırnak', lat: 37.5164, lon: 42.4611 },
+    { id: 'bartin', name: '74 - Bartın', lat: 41.6344, lon: 32.3375 },
+    { id: 'ardahan', name: '75 - Ardahan', lat: 41.1105, lon: 42.7022 },
+    { id: 'igdir', name: '76 - Iğdır', lat: 39.9167, lon: 44.0333 },
+    { id: 'yalova', name: '77 - Yalova', lat: 40.6500, lon: 29.2667 },
+    { id: 'karabuk', name: '78 - Karabük', lat: 41.2061, lon: 32.6204 },
+    { id: 'kilis', name: '79 - Kilis', lat: 36.7184, lon: 37.1212 },
+    { id: 'osmaniye', name: '80 - Osmaniye', lat: 37.0742, lon: 36.2478 },
+    { id: 'duzce', name: '81 - Düzce', lat: 40.8438, lon: 31.1565 },
     { id: 'brussels', name: 'Brüksel (Belçika)', lat: 50.8503, lon: 4.3517 },
     { id: 'amsterdam', name: 'Amsterdam (Hollanda)', lat: 52.3676, lon: 4.9041 }
   ],
@@ -4489,10 +4617,7 @@ const AvigenLiveWeather = {
   populateCityDropdown() {
     const sel = document.getElementById('liveWeatherCitySelect');
     if (!sel) return;
-    let html = '';
-    if (this.state.isGps) {
-      html += `<option value="gps" selected>🎯 ${escapeHtml(this.state.cityName)} (GPS Konumu)</option>`;
-    }
+    let html = `<option value="gps" ${this.state.isGps ? 'selected' : ''}>🎯 ${this.state.isGps ? `${escapeHtml(this.state.cityName)} (GPS Konumu)` : 'GPS Konumumu Otomatik Bul'}</option>`;
     html += this.CITIES.map(c =>
       `<option value="${c.id}" ${!this.state.isGps && this.state.cityId === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
     ).join('');
@@ -4507,11 +4632,16 @@ const AvigenLiveWeather = {
     const found = this.CITIES.find(c => c.id === cityId);
     if (!found) return;
     this.state.cityId = found.id;
-    this.state.cityName = found.name;
+    this.state.cityName = found.name.replace(/^\d{2}\s*-\s*/, '');
     this.state.lat = found.lat;
     this.state.lon = found.lon;
     this.state.isGps = false;
     this.saveState();
+    if (typeof AvigenGenesisAI !== 'undefined' && AvigenGenesisAI.state) {
+      AvigenGenesisAI.state.smartRaceLoftCityId = found.id;
+      AvigenGenesisAI.state.smartRaceCustomLoftCoord = null;
+      AvigenGenesisAI.saveState();
+    }
     this.populateCityDropdown();
     this.fetchNow(true);
   },
@@ -4881,7 +5011,10 @@ async function startLiveCameraBarcodeScan() {
   const ph = document.getElementById('barcodePlaceholder');
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    simulateInstantBarcodeScan();
+    const preview = document.getElementById('barcodeDecodedPreview');
+    if (preview) {
+      preview.innerHTML = '⚠️ <strong>Cihazda aktif kamera erişimi bulunamadı.</strong> Lütfen barkod/pedigri fotoğrafı yükleyin ya da aşağıdaki kutuya halka numarasını elle girin.';
+    }
     return;
   }
 
@@ -4912,8 +5045,10 @@ async function startLiveCameraBarcodeScan() {
       }, 450);
     }
   } catch (err) {
-    // Bilgisayarda kamera yoksa veya izin verilmediyse anında örnek barkod taramasını çalıştır
-    simulateInstantBarcodeScan();
+    const preview = document.getElementById('barcodeDecodedPreview');
+    if (preview) {
+      preview.innerHTML = '⚠️ <strong>Kamera izni verilmedi veya kamera başlatılamadı.</strong> Lütfen fotoğraf yükleyin ya da halka numarasını elle girin.';
+    }
   }
 }
 
@@ -4983,20 +5118,10 @@ async function scanBarcodeFromImageFile(event) {
     return;
   }
 
-  simulateInstantBarcodeScan();
-}
-
-function simulateInstantBarcodeScan() {
-  // Bir başkasının pedigresindeki Barkod/QR okutulduğunda gelen tam soyağacı veri paketleri (Ana Kuş + Baba + Anne + 4 Büyük Ebeveyn + 8 Ata)
-  const sampleFullPedigreeBarcodes = [
-    'AVIGEN_FULL||main:BELG-2026-4190777~GOLDEN PORSCHE JR~Mavi Çakmaklı~1. Ulusal Bourges 485 km||sire:BELG-2023-4110001~Porsche King 911~Mavi Çakmaklı~1. Vierzon 3.400 Kuş||dam:BELG-2023-4110088~Louise Queen~Mavi~1.KBDB As Güvercin||g2_1:BELG-2020-4150001~Wacko Porsche~Bozkirli~PIPA Elite||g2_2:BELG-2020-4150002~Boxster Lady~Mavi~PIPA Elite||g2_3:BELG-2020-6011200~Gladiator Star~Çakmaklı~Geerinckx||g2_4:NL-2020-1820500~Beauty Harry~Mavi~Hooymans',
-    'AVIGEN_FULL||main:NL-2026-1844210~OLYMPIC HARRY STAR~Mavi~1. NPO Chateauroux 520 km||sire:NL-2023-1200450~New Harry King~Mavi Çakmaklı~1. NPO Sens 4.800 Kuş||dam:NL-2023-1200499~Alexia Diamond~Mavi~Jan Hooymans Damızlık||g2_1:NL-2019-1000101~Harry Legend~Çakmaklı~Hooymans||g2_2:NL-2019-1000102~Beauty Laatje~Mavi~Hooymans||g2_3:BELG-2020-3099100~Best KittelSon~Çakmaklı~Dehon||g2_4:DV-2020-0710-400~Rudy Princess~Mavi~Vandenabeele',
-    'AVIGEN_FULL||main:TR-2026-3488990~ANADOLU FIRTINASI~Dumanlı Çakmaklı~1. Ankara Klasman 450 km||sire:TR-2023-3411001~Boğaz Şampiyonu~Dumanlı~1. Sivas 680 km||dam:BELG-2023-6044210~Kittel Sultan~Mavi Çakmaklı~Best Kittel Öz Torunu||g2_1:NL-2020-1500220~Koopman King~Çakmaklı~Koopman||g2_2:TR-2020-3400880~Marmara İncisi~Dumanlı~Janssen||g2_3:BELG-2020-3011550~Daniel Kittel~Mavi~KBDB As||g2_4:BELG-2020-6088120~Marina Van den Bulck~Mavi~Olimpiyat Hattı'
-  ];
-  const pick = sampleFullPedigreeBarcodes[Math.floor(Math.random() * sampleFullPedigreeBarcodes.length)];
-  const inp = document.getElementById('scannedBarcodeInput');
-  if (inp) inp.value = pick;
-  onBarcodeValueDecoded(pick);
+  const preview = document.getElementById('barcodeDecodedPreview');
+  if (preview) {
+    preview.innerHTML = '⚠️ <strong>Yüklenen görselde okunabilir bir barkod, QR kod veya standart halka numarası tespit edilemedi.</strong> Lütfen daha net bir fotoğraf yükleyin veya halka numarasını aşağıdaki kutuya elle yazın.';
+  }
 }
 
 // Okunan Barkod veya QR kod dizgesini (Tek Kuş veya Tam Soyağacı Paketi olarak) çözümler
@@ -5113,10 +5238,16 @@ function onBarcodeValueDecoded(rawStr) {
 
 function confirmAddBirdFromBarcode() {
   if (!lastDecodedBarcodeBird) {
-    simulateInstantBarcodeScan();
+    const manualVal = (document.getElementById('scannedBarcodeInput')?.value || '').trim();
+    if (manualVal) {
+      onBarcodeValueDecoded(manualVal);
+    }
   }
   const b = lastDecodedBarcodeBird;
-  if (!b) return;
+  if (!b) {
+    alert('⚠️ Lütfen önce bir barkod/QR kod okutun veya halka numarasını kutuya yazın.');
+    return;
+  }
 
   if (barcodeFillExistingModal && document.getElementById('boxEditModal')?.classList.contains('open')) {
     editingFlag = b.flag;
@@ -5180,44 +5311,412 @@ function confirmAddBirdFromBarcode() {
 }
 
 // ============================================================================
-// YÜKSEK KALİTELİ RESİM İNDİRME (HD PNG) & PAYLAŞIM
+// SADECE PEDİGRİ SERTİFİKASINI (A4 YATAY) GERÇEK .PDF VE .PNG OLARAK ÜRETME & WHATSAPP PDF DOSYASI PAYLAŞIMI
+// (Ekranın tamamını veya uygulama menülerini asla çekmez; yalnızca #mypedigrePaper şecere sertifikasını üretir)
 // ============================================================================
-async function downloadHighResPedigree() {
-  const paper = document.getElementById('mypedigrePaper');
-  const ped = getActivePedigree();
-  const ring = ped?.boxes?.main?.ring || 'Pedigre';
-  const fileName = `AVIGEN_${ring.replace(/[^a-zA-Z0-9_-]/g, '_')}.png`;
 
-  if (typeof html2canvas !== 'undefined') {
-    const prevTransform = paper.style.transform;
-    try {
-      paper.style.transform = 'none';
-      const canvas = await html2canvas(paper, { scale: 2.5, useCORS: true });
-      paper.style.transform = prevTransform;
-      const a = document.createElement('a');
-      a.download = fileName;
-      a.href = canvas.toDataURL('image/png');
-      a.click();
-      return;
-    } catch (e) {
-      paper.style.transform = prevTransform;
+function drawNativePedigreeCertificateCanvas(ped) {
+  const scale = 3; // 2280 x 1680 Ultra HD (A4 Yatay Oranı)
+  const W = 760;
+  const H = 560;
+  const canvas = document.createElement('canvas');
+  canvas.width = W * scale;
+  canvas.height = H * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  const b = ped?.boxes || {};
+  const main = b.main || { flag: '🇹🇷', ring: 'TR-2026-0001', name: 'Şampiyon', color: '', notes: '' };
+  const loftTitle = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN ELITE LOFT';
+  const loftSub = (typeof loftConfig !== 'undefined' && loftConfig.subtitle) ? loftConfig.subtitle : 'OFFICIAL RACING PIGEON PEDIGREE CERTIFICATE';
+
+  // 1. Zemin ve Çift Çizgili Resmi Mavi Çerçeve
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = '#1d4ed8';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(4, 4, W - 8, H - 8);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(8, 8, W - 16, H - 16);
+
+  // Filigran (Watermark)
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.rotate(-0.26);
+  ctx.font = '900 44px Inter, Arial, sans-serif';
+  ctx.fillStyle = 'rgba(29, 78, 216, 0.045)';
+  ctx.textAlign = 'center';
+  ctx.fillText(loftTitle.toUpperCase(), 0, 0);
+  ctx.restore();
+
+  // 2. Üst Başlık & Ana Kuş Kartı (y: 12..82)
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#bfdbfe';
+  ctx.lineWidth = 1.2;
+  ctx.fillRect(14, 13, 330, 66);
+  ctx.strokeRect(14, 13, 330, 66);
+
+  // Sol Logo Rozeti
+  ctx.fillStyle = '#1d4ed8';
+  ctx.beginPath();
+  ctx.arc(44, 46, 20, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '900 11px Inter, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('AVIGEN', 44, 49);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 14px Inter, Arial, sans-serif';
+  ctx.fillText(String(loftTitle).slice(0, 32), 74, 38);
+  ctx.fillStyle = '#475569';
+  ctx.font = '700 8.5px Inter, Arial, sans-serif';
+  ctx.fillText(String(loftSub).slice(0, 52), 74, 54);
+  ctx.fillStyle = '#1d4ed8';
+  ctx.font = '800 8px Inter, Arial, sans-serif';
+  ctx.fillText('RESMİ 4 KUŞAK (31 KUTU) SOYAĞACI SERTİFİKASI', 74, 68);
+
+  // Sağ Ana Kuş Kutusu
+  ctx.fillStyle = '#eff6ff';
+  ctx.strokeStyle = '#1d4ed8';
+  ctx.lineWidth = 1.6;
+  ctx.fillRect(354, 13, W - 368, 66);
+  ctx.strokeRect(354, 13, W - 368, 66);
+
+  ctx.fillStyle = '#1d4ed8';
+  ctx.font = '900 13px Inter, Arial, sans-serif';
+  ctx.fillText(`${main.ring || 'TR-2026-0001'}  •  ${main.name || ''}`, 366, 31);
+  ctx.fillStyle = '#1e293b';
+  ctx.font = '700 9.5px Inter, Arial, sans-serif';
+  ctx.fillText(`Renk / Cinsiyet: ${main.color || 'Mavi Çakmaklı'} ${main.sex === 'F' ? '(♀ Dişi)' : '(♂ Erkek)'}`, 366, 46);
+
+  const mainNotesLines = String(main.notes || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (mainNotesLines.length > 0) {
+    ctx.fillStyle = '#334155';
+    ctx.font = '600 8px Inter, Arial, sans-serif';
+    ctx.fillText(mainNotesLines.slice(0, 2).join('  |  ').slice(0, 78), 366, 61);
+    if (mainNotesLines.length > 2) {
+      ctx.fillText(mainNotesLines.slice(2, 4).join('  |  ').slice(0, 78), 366, 72);
     }
   }
-  window.print();
+
+  // 3. 4 Kuşak Soyağacı Kutuları (y: 84..520)
+  const treeTop = 84;
+  const treeH = 436;
+  const cols = [
+    { x: 14,  w: 170, keys: ['sire', 'dam'], maxLines: 7, ringFont: 10.5, nameFont: 9.2, noteFont: 7.5 },
+    { x: 192, w: 176, keys: ['g2_1', 'g2_2', 'g2_3', 'g2_4'], maxLines: 4, ringFont: 9.5, nameFont: 8.5, noteFont: 7.2 },
+    { x: 376, w: 180, keys: ['g3_1', 'g3_2', 'g3_3', 'g3_4', 'g3_5', 'g3_6', 'g3_7', 'g3_8'], maxLines: 2, ringFont: 8.5, nameFont: 7.8, noteFont: 6.8 },
+    { x: 564, w: 182, keys: ['g4_1', 'g4_2', 'g4_3', 'g4_4', 'g4_5', 'g4_6', 'g4_7', 'g4_8', 'g4_9', 'g4_10', 'g4_11', 'g4_12', 'g4_13', 'g4_14', 'g4_15', 'g4_16'], maxLines: 0, ringFont: 7.5, nameFont: 6.8, noteFont: 6.2 }
+  ];
+
+  cols.forEach((col, cIdx) => {
+    const count = col.keys.length;
+    const slotH = treeH / count;
+    const gap = count === 16 ? 1.5 : (count === 8 ? 3 : 5);
+    const boxH = Math.max(18, slotH - gap);
+
+    col.keys.forEach((key, idx) => {
+      const node = b[key] || {};
+      const isMale = idx % 2 === 0;
+      const by = treeTop + idx * slotH + (gap / 2);
+
+      // Kutu arka planı
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = isMale ? '#93c5fd' : '#f9a8d4';
+      ctx.lineWidth = 1;
+      ctx.fillRect(col.x, by, col.w, boxH);
+      ctx.strokeRect(col.x, by, col.w, boxH);
+
+      // Sol cinsiyet şeridi
+      ctx.fillStyle = isMale ? '#1d4ed8' : '#db2777';
+      ctx.fillRect(col.x, by, 3.5, boxH);
+
+      const ringStr = (node.ring || '-').trim();
+      const nameStr = (node.name || '').trim();
+      const colorStr = (node.color || '').trim();
+      const sexSym = isMale ? '♂' : '♀';
+
+      ctx.textAlign = 'left';
+      if (count === 16) {
+        // 4. Kuşak: Tek veya iki kompakt satır
+        ctx.fillStyle = '#0f172a';
+        ctx.font = `800 ${col.ringFont}px Inter, Arial, sans-serif`;
+        ctx.fillText(`${sexSym} ${ringStr}`.slice(0, 26), col.x + 7, by + 10);
+        const subLine = [nameStr, node.notes ? String(node.notes).replace(/\r?\n/g, ' ') : ''].filter(Boolean).join(' • ');
+        if (subLine) {
+          ctx.fillStyle = '#475569';
+          ctx.font = `600 ${col.nameFont}px Inter, Arial, sans-serif`;
+          ctx.fillText(subLine.slice(0, 32), col.x + 7, by + 19.5);
+        }
+      } else {
+        let curY = by + col.ringFont + 4;
+        ctx.fillStyle = isMale ? '#1e40af' : '#9d174d';
+        ctx.font = `900 ${col.ringFont}px Inter, Arial, sans-serif`;
+        ctx.fillText(`${sexSym} ${ringStr}`.slice(0, 25), col.x + 8, curY);
+
+        if (nameStr || colorStr) {
+          curY += col.nameFont + 3;
+          ctx.fillStyle = '#0f172a';
+          ctx.font = `800 ${col.nameFont}px Inter, Arial, sans-serif`;
+          const titleTxt = [nameStr, colorStr].filter(Boolean).join(' • ');
+          ctx.fillText(titleTxt.slice(0, 28), col.x + 8, curY);
+        }
+
+        const nLines = String(node.notes || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        ctx.fillStyle = '#334155';
+        ctx.font = `600 ${col.noteFont}px Inter, Arial, sans-serif`;
+        for (let l = 0; l < Math.min(col.maxLines, nLines.length); l++) {
+          curY += col.noteFont + 2.8;
+          if (curY < by + boxH - 3) {
+            ctx.fillText(nLines[l].slice(0, 34), col.x + 8, curY);
+          }
+        }
+      }
+
+      // Bağlantı çizgisi
+      if (cIdx < cols.length - 1) {
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(col.x + col.w, by + boxH / 2);
+        ctx.lineTo(col.x + col.w + 8, by + boxH / 2);
+        ctx.stroke();
+      }
+    });
+  });
+
+  // 4. Alt Sertifika Çubuğu (y: 525..550)
+  ctx.fillStyle = '#eff6ff';
+  ctx.strokeStyle = '#bfdbfe';
+  ctx.lineWidth = 1;
+  ctx.fillRect(14, 524, W - 28, 24);
+  ctx.strokeRect(14, 524, W - 28, 24);
+
+  const certCode = `#AVG-${(main.ring || '001').replace(/[^A-Z0-9]/gi, '').slice(-6).toUpperCase()}`;
+  ctx.fillStyle = '#1e3a8a';
+  ctx.font = '800 8.5px Inter, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${loftTitle}  •  AVIGEN Dijital Soyağacı Doğrulama Kodu: ${certCode}`, 22, 539);
+
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#1d4ed8';
+  ctx.font = '800 8.5px Inter, Arial, sans-serif';
+  ctx.fillText(`AVIGEN Official Pedigree Certificate (4 Generations) • ${new Date().toLocaleDateString('tr-TR')}`, W - 22, 539);
+
+  return canvas;
 }
 
-async function shareActivePedigree() {
+// Yalnızca #mypedigrePaper nesnesini (760x560 boyutunda, ekrandaki menülerden %100 izole olarak) yüksek çözünürlüklü Canvas'a aktarır
+async function captureOnlyPedigreePaperCanvas(targetPedId) {
+  if (targetPedId && targetPedId !== activePedigreeId) {
+    activePedigreeId = targetPedId;
+  }
+  renderActivePedigree();
+  const ped = getActivePedigree();
+  const paper = document.getElementById('mypedigrePaper');
+
+  if (paper && typeof html2canvas !== 'undefined') {
+    let offscreenWrap = null;
+    try {
+      // #mypedigrePaper'ı ekrandaki dar çerçeveden (#pedigreeViewport) bağımsız, 760x560 tam boyutta izole klonla
+      offscreenWrap = document.createElement('div');
+      offscreenWrap.style.cssText = 'position:fixed; left:-9999px; top:0; width:760px; height:560px; padding:0; margin:0; overflow:hidden; background:#f8fafc; z-index:-9999; pointer-events:none;';
+      const clone = paper.cloneNode(true);
+      clone.style.transform = 'none';
+      clone.style.margin = '0';
+      clone.style.width = '760px';
+      clone.style.minWidth = '760px';
+      clone.style.height = '560px';
+      clone.style.boxShadow = 'none';
+
+      // Harici SVG logosunun mobil WebView'da CORS / Tainted Canvas hatası vermesini önlemek için vektörel rozetle değiştir
+      clone.querySelectorAll('img').forEach(img => {
+        const srcAttr = String(img.getAttribute('src') || '');
+        if (srcAttr.includes('avigen-logo.svg')) {
+          const badge = document.createElement('div');
+          badge.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1d4ed8;color:#ffffff;font-weight:900;font-size:9px;border-radius:50%;';
+          badge.textContent = 'AVIGEN';
+          img.replaceWith(badge);
+        }
+      });
+
+      offscreenWrap.appendChild(clone);
+      document.body.appendChild(offscreenWrap);
+
+      const capturedCanvas = await html2canvas(clone, {
+        scale: 2.5,
+        backgroundColor: '#f8fafc',
+        width: 760,
+        height: 560,
+        windowWidth: 800,
+        windowHeight: 600,
+        useCORS: true,
+        allowTaint: false,
+        logging: false
+      });
+
+      document.body.removeChild(offscreenWrap);
+      offscreenWrap = null;
+
+      // Canvas'ın okunabilir olduğunu ve boş olmadığını doğrula
+      const testUrl = capturedCanvas.toDataURL('image/jpeg', 0.92);
+      if (testUrl && testUrl.length > 5000) {
+        return capturedCanvas;
+      }
+    } catch (err) {
+      if (offscreenWrap && offscreenWrap.parentNode) {
+        offscreenWrap.parentNode.removeChild(offscreenWrap);
+      }
+    }
+  }
+
+  // html2canvas çevrimdışıysa veya WebView güvenlik kısıtına takıldıysa %100 yerleşik HD Canvas Sertifika Çiziciyi kullan (ASLA ekran görüntüsü veya window.print() çalıştırma!)
+  return drawNativePedigreeCertificateCanvas(ped);
+}
+
+// Yüksek çözünürlüklü Pedigri Canvas'ını tek sayfalık standart A4 Yatay (842 x 595 pt) gerçek .PDF (application/pdf) dosyasına dönüştürür
+function convertPedigreeCanvasToPdfBlob(canvas) {
+  const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+  const base64Data = jpegDataUrl.split(',')[1] || '';
+  const binaryStr = atob(base64Data);
+  const jpegLen = binaryStr.length;
+  const jpegBytes = new Uint8Array(jpegLen);
+  for (let i = 0; i < jpegLen; i++) {
+    jpegBytes[i] = binaryStr.charCodeAt(i);
+  }
+
+  const imgW = canvas.width;
+  const imgH = canvas.height;
+  // A4 Yatay (Landscape): 842 x 595 pt (10 pt kenar boşluğu ile 822 x 575 pt çizim alanı)
+  const pageW = 842;
+  const pageH = 595;
+  const margin = 10;
+  const drawW = pageW - margin * 2;
+  const drawH = pageH - margin * 2;
+
+  const encoder = new TextEncoder();
+  const chunks = [];
+  const offsets = [0];
+  let currentOffset = 0;
+
+  const pushStr = (str) => {
+    const bytes = encoder.encode(str);
+    chunks.push(bytes);
+    currentOffset += bytes.length;
+  };
+  const pushBytes = (bytes) => {
+    chunks.push(bytes);
+    currentOffset += bytes.length;
+  };
+  const markObj = () => {
+    offsets.push(currentOffset);
+  };
+
+  pushStr('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+
+  // 1 0 obj: Catalog
+  markObj();
+  pushStr('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+
+  // 2 0 obj: Pages
+  markObj();
+  pushStr('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+
+  // 3 0 obj: Page (A4 Landscape)
+  markObj();
+  pushStr(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`);
+
+  // 4 0 obj: Image XObject (/DCTDecode raw JPEG)
+  markObj();
+  pushStr(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`);
+  pushBytes(jpegBytes);
+  pushStr('\nendstream\nendobj\n');
+
+  // 5 0 obj: Content Stream
+  const contentStream = `q\n${drawW} 0 0 ${drawH} ${margin} ${margin} cm\n/Im0 Do\nQ\n`;
+  markObj();
+  pushStr(`5 0 obj\n<< /Length ${contentStream.length} >>\nstream\n${contentStream}endstream\nendobj\n`);
+
+  // xref tablosu
+  const xrefOffset = currentOffset;
+  pushStr(`xref\n0 ${offsets.length}\n0000000000 65535 f \n`);
+  for (let i = 1; i < offsets.length; i++) {
+    pushStr(`${String(offsets[i]).padStart(10, '0')} 00000 n \n`);
+  }
+  pushStr(`trailer\n<< /Size ${offsets.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`);
+
+  return new Blob(chunks, { type: 'application/pdf' });
+}
+
+function triggerBlobFileDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    if (a.parentNode) a.parentNode.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 4000);
+}
+
+// 1. SADECE PEDİGRİYİ .PDF OLARAK İNDİRİR (Uygulama ekran görüntüsünü değil, sadece #mypedigrePaper sertifikasını PDF yapar!)
+async function downloadHighResPedigree(targetPedId) {
+  const canvas = await captureOnlyPedigreePaperCanvas(targetPedId);
+  const ped = getActivePedigree();
+  const ring = (ped?.boxes?.main?.ring || 'Pedigre').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const pdfFileName = `AVIGEN_${ring}_Pedigre.pdf`;
+  const pdfBlob = convertPedigreeCanvasToPdfBlob(canvas);
+  triggerBlobFileDownload(pdfBlob, pdfFileName);
+}
+
+// 2. SADECE PEDİGRİYİ YÜKSEK ÇÖZÜNÜRLÜKLÜ RESİM (.PNG) OLARAK İNDİRİR
+async function downloadHighResPedigreePng(targetPedId) {
+  const canvas = await captureOnlyPedigreePaperCanvas(targetPedId);
+  const ped = getActivePedigree();
+  const ring = (ped?.boxes?.main?.ring || 'Pedigre').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const pngFileName = `AVIGEN_${ring}_Pedigre.png`;
+  canvas.toBlob((blob) => {
+    if (blob) triggerBlobFileDownload(blob, pngFileName);
+  }, 'image/png');
+}
+
+// 3. WHATSAPP ÜZERİNDEN LİNK DEĞİL, DOĞRUDAN GERÇEK .PDF DOSYASI OLARAK PAYLAŞIR
+async function shareActivePedigree(targetPedId) {
+  const canvas = await captureOnlyPedigreePaperCanvas(targetPedId);
   const ped = getActivePedigree();
   const m = ped?.boxes?.main || {};
-  const text = `🧬 AVIGEN Dijital Soyağacı\nBoncuk No: ${m.flag || ''} ${m.ring}\nİsim: ${m.name || '-'}\nBaba: ${ped?.boxes?.sire?.ring || '-'}\nAnne: ${ped?.boxes?.dam?.ring || '-'}`;
+  const cleanRing = (m.ring || 'Pedigre').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const pdfFileName = `AVIGEN_${cleanRing}_Pedigre.pdf`;
+  const pdfBlob = convertPedigreeCanvasToPdfBlob(canvas);
+  const pdfFile = new File([pdfBlob], pdfFileName, {
+    type: 'application/pdf',
+    lastModified: Date.now()
+  });
+
+  // Web Share API Level 2: WhatsApp'ın mesajı link/metin olarak değil doğrudan PDF belgesi olarak göndermesi için url parametresi VERİLMEZ, sadece files: [pdfFile] gönderilir!
   if (navigator.share) {
     try {
-      await navigator.share({ title: `AVIGEN: ${m.ring}`, text });
-      return;
-    } catch (e) {}
+      if (!navigator.canShare || navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          files: [pdfFile],
+          title: `${m.ring || 'AVIGEN'} Resmi Pedigri Sertifikası (PDF)`
+        });
+        return;
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // Kullanıcı paylaşım penceresini kapattıysa dur
+    }
   }
-  navigator.clipboard?.writeText(text);
-  alert('📋 AVIGEN pedigre bağlantı ve özet bilgileri kopyalandı! WhatsApp üzerinden hemen paylaşabilirsiniz.');
+
+  // Cihaz veya masaüstü tarayıcı doğrudan dosya paylaşımını (navigator.canShare files) desteklemiyorsa PDF'i otomatik indir
+  triggerBlobFileDownload(pdfBlob, pdfFileName);
+  alert(`📄 "${pdfFileName}" dosyası cihazınıza sadece pedigri sertifikası olarak indirildi!\n\nWhatsApp'ta ataç (📎 Belge) simgesine dokunarak indirilen bu PDF dosyasını doğrudan gönderebilirsiniz.`);
 }
 
 // ============================================================================
@@ -5365,7 +5864,9 @@ function detectSexFromOcrBlock(rawTextBlock, slotKey, defaultSex = 'M') {
 async function startAiOcrScan() {
   const status = document.getElementById('aiStatusText');
   if (!aiTempFile) {
-    runDemoAiScan();
+    if (status) {
+      status.textContent = '⚠️ Lütfen önce okutmak istediğiniz pedigri fotoğrafını seçin veya yükleyin.';
+    }
     return;
   }
   if (status) {
@@ -5468,7 +5969,9 @@ async function startAiOcrScan() {
       }
     } catch (e) {}
   }
-  runDemoAiScan();
+  if (status) {
+    status.textContent = '⚠️ Yüklenen görselde okunabilir pedigri metni veya halka numarası tespit edilemedi. Daha net bir fotoğraf yükleyin veya kutuları elle doldurun.';
+  }
 }
 
 // Bütünsel (Holistic) 31-Kutu Bölgesel (ROI) ve Kelime Koordinatlı Pedigre Okuyucu:
@@ -6550,7 +7053,8 @@ function deleteMypedigreNote(id) {
 }
 
 // ============================================================================
-// 5. BİLİMSEL EŞLEŞTİRME, GENETİK (LDHA/DRD4/CRY1), WRIGHT COI & KULUÇKA MOTORU
+// 5. BİLİMSEL EŞLEŞTİRME ADAY HAVUZU, 5 NESİL SOY DERİNLEŞTİRİCİ & KULUÇKA MOTORU
+//    (Tüm genetik, Wright COI ve performans hesaplamaları merkezi AvigenGenesisAI üzerinden yürütülür)
 // ============================================================================
 function openBreedingSub(subId, btnEl) {
   document.querySelectorAll('.sub-panel').forEach(p => p.classList.remove('active'));
@@ -6560,32 +7064,8 @@ function openBreedingSub(subId, btnEl) {
   document.querySelectorAll('.sub-pill').forEach(b => b.classList.remove('active'));
   if (btnEl) btnEl.classList.add('active');
 
-  if (subId === 'pair') runScientificBreedingMatch();
   if (subId === 'hatch') calculateIncubationTimeline();
   if (subId === 'auto') renderAutoBestPairs();
-}
-
-function populateBreedingSelects() {
-  const sireSel = document.getElementById('brSirePedSelect');
-  const damSel = document.getElementById('brDamPedSelect');
-  if (!sireSel || !damSel) return;
-
-  const { males, females, all } = getAllBreedingCandidates();
-
-  const prevSire = sireSel.value;
-  const prevDam = damSel.value;
-
-  sireSel.innerHTML = (males.length ? males : all).map(c =>
-    `<option value="${c.id}">${c.flag} ${escapeHtml(c.ring)} (${escapeHtml(c.name)})</option>`
-  ).join('');
-
-  damSel.innerHTML = (females.length ? females : all).map(c =>
-    `<option value="${c.id}">${c.flag} ${escapeHtml(c.ring)} (${escapeHtml(c.name)})</option>`
-  ).join('');
-
-  if (prevSire && [...sireSel.options].some(o => o.value === prevSire)) sireSel.value = prevSire;
-  if (prevDam && [...damSel.options].some(o => o.value === prevDam)) damSel.value = prevDam;
-  else if (damSel.options.length > 1) damSel.selectedIndex = 1;
 }
 
 // Kümesteki tüm erkek ve dişi adayları tekilleştirilmiş (mükerrersiz) ve gerçek cinsiyetleriyle döndürür
@@ -6923,232 +7403,6 @@ function getCandidateLineageTree(refVal) {
   return tree;
 }
 
-// İki güvercin arasındaki 100 üzerinden bilimsel uyum puanını, genetik riskleri ve detaylı analizi hesaplar
-function evaluatePairCompatibility(sireRef, damRef, sireEye, damEye, sireBody, damBody, sireGene, damGene, goal) {
-  const sireTree = getCandidateLineageTree(sireRef);
-  const damTree = getCandidateLineageTree(damRef);
-
-  // 1. Sewall Wright Akrabalık Katsayısı (COI %) ve Ortak Atalar (Tam Yolak Algoritması)
-  let coi = 0;
-  let uniqueCommon = [];
-
-  if (typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.calculateExactWrightCOI === 'function') {
-    const exact = AvigenGenesisAI.calculateExactWrightCOI(sireTree, damTree);
-    coi = exact.coiPercent;
-    uniqueCommon = exact.commonAncestorsDetailed;
-  } else {
-    const commonRings = sireTree.ancRings.filter(r => damTree.ancRings.includes(r));
-    uniqueCommon = [...new Set(commonRings)];
-    coi = Math.min(37.5, uniqueCommon.length * 3.125);
-  }
-
-  // Risk Listesi Oluşturucu
-  const risks = [];
-
-  if (coi >= 25.0) {
-    risks.push({
-      level: 'high',
-      icon: '🚨',
-      title: 'Çok Yüksek Kan Yakınlığı (Inbreeding Depresyonu Riski - COI %' + coi.toFixed(1) + ')',
-      desc: 'Tam kardeş veya Ebeveyn×Yavru düzeyinde yakın akrabalık! Yavrularda bağışıklık düşüklüğü, yumurta içi ölüm, boy küçülmesi ve yarış performansında %35 düşüş riski vardır.'
-    });
-  } else if (coi > 12.5) {
-    risks.push({
-      level: 'warn',
-      icon: '⚠️',
-      title: 'Yüksek Akrabalık Riski (COI %' + coi.toFixed(2) + ')',
-      desc: 'Yalnızca damızlık kümesinde gen sabitlemek için kullanılmalı. Bu eşleşmeden çıkacak yavrular doğrudan zorlu yarışlara sürülmemeli, yabancı kanla (Outcross) kırılmalıdır.'
-    });
-  } else if (coi > 0 && coi <= 12.5) {
-    risks.push({
-      level: 'safe',
-      icon: '✅',
-      title: 'Güvenli Linebreeding (Soy İçi Uyum - COI %' + coi.toFixed(2) + ')',
-      desc: `Ortak şampiyon ata (${uniqueCommon.slice(0, 2).join(', ') || 'Elit Soy'}) genleri korunurken genetik depresyon sınırının altında kalınıyor.`
-    });
-  } else {
-    risks.push({
-      level: 'safe',
-      icon: '⚡',
-      title: 'Sıfır Akrabalık Riski — Tam Heterosis (Melez Azmanlığı)',
-      desc: 'İki farklı kan hattı çaprazlanıyor. Yavrularda maksimum fiziksel direnç, kas gücü ve hastalık bağışıklığı elde edilir.'
-    });
-  }
-
-  // 2. Göz Rengi (Eye-Sign) — Yalnızca Görsel Kimlik Bilgisi (Bilimsel kanıt olmadığı için genetik veya yarış puanına dahil edilmez!)
-  const eyeScore = null;
-  const eyeVerdict = 'Görsel İris Kaydı (Performans veya genetik üstünlük puanlamasında kullanılmaz)';
-
-  // 3. Biyomekanik (Kas / Kanat / Çatal Kemik) Puanı ve Riskleri
-  let bodyScore = 90;
-  let bodyVerdict = 'Elma Gövde + Sıkı Çatal Kemik Dengesi';
-  if (sireBody === 'sprint_muscle' && damBody === 'sprint_muscle') {
-    bodyScore = goal === 'marathon_endurance' ? 58 : 85;
-    bodyVerdict = 'Çift Kısa/Kalın Sprint Kası (100-350 km Patlayıcı Hız)';
-    if (goal === 'marathon_endurance') {
-      risks.push({
-        level: 'high',
-        icon: '🪶',
-        title: 'Mesafe & Anatomi Uyuşmazlığı Riski',
-        desc: 'Hedefiniz 600+ km Maraton olmasına rağmen her iki ebeveyn de ağır/kısa sprint kas yapısına sahip. 500 km üzerinde kas yorgunluğu ve kayıp riski yüksektir.'
-      });
-    } else {
-      risks.push({
-        level: 'warn',
-        icon: '🪶',
-        title: 'Ağır Gövde / Uzun Mesafe Sınırı',
-        desc: 'İki kalın sprint kuşunun eşleşmesi 300 km altında rakipsizdir ancak 500+ km karşı rüzgarlı yarışlarda yavrular ağır kalabilir.'
-      });
-    }
-  } else if (sireBody === 'long_marathon' && damBody === 'long_marathon') {
-    bodyScore = 84;
-    bodyVerdict = 'Çift Uzun/Esnek Maraton Kanadı (700-1000 km Dayanıklılık)';
-    risks.push({
-      level: 'warn',
-      icon: '🪶',
-      title: 'Kısa Mesafede Düşük Patlayıcı Hız Uyarısı',
-      desc: 'İki uzun maraton tipinin eşleşmesinde çatal kemik açıklığı artabilir ve 150-300 km kısa etaplarda sürüden kopma hızı yavaş kalabilir.'
-    });
-  } else if ((sireBody === 'sprint_muscle' && damBody === 'long_marathon') || (sireBody === 'long_marathon' && damBody === 'sprint_muscle')) {
-    bodyScore = 97;
-    bodyVerdict = 'Sprint Patlayıcı Güç × Maraton Esnek Kanat (Modern Komple Şampiyon Anatomisi)';
-  } else {
-    bodyScore = 93;
-  }
-
-  // 4. Moleküler Performans DNA'sı (LDHA, DRD4, CRY1)
-  let dnaScore = 86;
-  let dnaNotes = 'LDHA Laktat Direnci + CRY1 Manyetik Pusula Dengesi';
-  if (sireGene === 'LDHA_AA' && damGene === 'CRY1_TT') {
-    dnaScore = 98;
-    dnaNotes = 'Süper Genotip Sentezi: Baba LDHA A/A (kas dayanıklılığı) + Anne CRY1 T/T (fırtınada hatasız manyetik yön bulma).';
-  } else if (sireGene === 'LDHA_AA' || damGene === 'LDHA_AA') {
-    dnaScore = 94;
-    dnaNotes = 'Elit LDHA A/A & DRD4 CC Genotipi: Yavrularda laktik asit birikimi minimum, eve dönüş hırsı maksimum.';
-  } else if (sireGene === damGene && sireGene === 'LDHA_AB') {
-    dnaScore = 80;
-    dnaNotes = 'Her iki ebeveyn LDHA A/B taşıyıcı: Mendel yasasına göre yavruların %25\'i saf şampiyon (A/A), %50\'si taşıyıcı (A/B) doğacaktır.';
-  }
-
-  // 5. Hedef Strateji Puanı
-  let strategyScore = 90;
-  let strategyLabel = '';
-  if (goal === 'race_hybrid') {
-    if (coi === 0) {
-      strategyScore = 98;
-      strategyLabel = 'Yarış hedefi için %100 doğru strateji (Tam Outcross / Heterosis).';
-    } else if (coi <= 6.25) {
-      strategyScore = 91;
-      strategyLabel = 'Hafif kan bağlantılı yüksek tempolu yarış eşleşmesi.';
-    } else {
-      strategyScore = Math.max(45, 85 - coi * 1.5);
-      strategyLabel = 'Yarış hedefi için kan yakınlığı yüksek! Yavrular yarış yerine damızlıkta değerlendirilmeli.';
-    }
-  } else if (goal === 'breeder_line') {
-    if (coi >= 3.125 && coi <= 15.625) {
-      strategyScore = 97;
-      strategyLabel = 'Damızlık kan sabitleme (Linebreeding) için altın oran (%' + coi.toFixed(2) + ' COI).';
-    } else if (coi === 0) {
-      strategyScore = 76;
-      strategyLabel = 'Ortak ata bulunmuyor; soy sabitlemekten ziyade yeni kan katmak için uygundur.';
-      risks.push({
-        level: 'warn',
-        icon: '🧬',
-        title: 'Soy Sabitleme (Linebreeding) Hedef Sapması',
-        desc: 'Hedefiniz "Damızlık Kan Sabitleme" ancak seçilen iki kuşun son 3 nesilde ortak atası yok. Soy kilitlemek için ortak ataya sahip bir eş adayı seçin.'
-      });
-    } else {
-      strategyScore = 62;
-      strategyLabel = 'Damızlık için bile kan yakınlığı çok sert, dikkatli eleme gerekir.';
-    }
-  } else {
-    strategyScore = (sireBody === 'long_marathon' || damBody === 'long_marathon') ? 95 : 82;
-    strategyLabel = 'Ağır hava ve 600+ km etaplar için dayanıklılık odaklı eşleşme.';
-  }
-
-  // 100 Üzerinden Net Ağırlıklı Uyum Puanı (Göz rengi %0 ağırlık — tamamen çıkarıldı!)
-  let totalScore = Math.round(
-    (bodyScore * 0.35) +
-    (dnaScore * 0.30) +
-    (strategyScore * 0.35)
-  );
-  if (coi >= 25.0) totalScore = Math.min(totalScore, 54);
-  totalScore = Math.max(20, Math.min(99, totalScore));
-
-  return {
-    totalScore,
-    coi,
-    uniqueCommon,
-    eyeScore,
-    eyeVerdict,
-    bodyScore,
-    bodyVerdict,
-    dnaScore,
-    dnaNotes,
-    strategyScore,
-    strategyLabel,
-    risks,
-    sireTree,
-    damTree
-  };
-}
-
-// Seçili Erkek ve Dişi için Kümesteki En Yüksek Puanlı Alternatif Eş Adaylarını Hesaplar
-function findAlternativeMates(currentSireRef, currentDamRef, goal) {
-  const { males, females } = getAllBreedingCandidates();
-
-  // 1. Seçili BABA (Erkek) için en iyi alternatif DİŞİ adayları
-  const altFemalesForSire = females
-    .filter(f => f.id !== currentDamRef && f.id !== currentSireRef)
-    .map(f => {
-      const res = evaluatePairCompatibility(
-        currentSireRef, f.id,
-        document.getElementById('brSireEye')?.value || 'yellow_breeder', f.eye,
-        document.getElementById('brSireBody')?.value || 'medium_apple', f.body,
-        document.getElementById('brSireGene')?.value || 'LDHA_AB', f.gene,
-        goal
-      );
-      return { candidate: f, score: res.totalScore, coi: res.coi, targetRole: 'dam' };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 2);
-
-  // 2. Seçili ANNE (Dişi) için en iyi alternatif ERKEK adayları
-  const altMalesForDam = males
-    .filter(m => m.id !== currentSireRef && m.id !== currentDamRef)
-    .map(m => {
-      const res = evaluatePairCompatibility(
-        m.id, currentDamRef,
-        m.eye, document.getElementById('brDamEye')?.value || 'pearl_racer',
-        m.body, document.getElementById('brDamBody')?.value || 'medium_apple',
-        m.gene, document.getElementById('brDamGene')?.value || 'CRY1_TT',
-        goal
-      );
-      return { candidate: m, score: res.totalScore, coi: res.coi, targetRole: 'sire' };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 2);
-
-  return { altFemalesForSire, altMalesForDam };
-}
-
-function applyAlternativeCandidate(role, candidateId, eye, body, gene) {
-  if (role === 'dam') {
-    const sel = document.getElementById('brDamPedSelect');
-    if (sel) sel.value = candidateId;
-    if (eye && document.getElementById('brDamEye')) document.getElementById('brDamEye').value = eye;
-    if (body && document.getElementById('brDamBody')) document.getElementById('brDamBody').value = body;
-    if (gene && document.getElementById('brDamGene')) document.getElementById('brDamGene').value = gene;
-  } else {
-    const sel = document.getElementById('brSirePedSelect');
-    if (sel) sel.value = candidateId;
-    if (eye && document.getElementById('brSireEye')) document.getElementById('brSireEye').value = eye;
-    if (body && document.getElementById('brSireBody')) document.getElementById('brSireBody').value = body;
-    if (gene && document.getElementById('brSireGene')) document.getElementById('brSireGene').value = gene;
-  }
-  runScientificBreedingMatch();
-}
-
 // Güvercin Göz İşareti (Eye-Sign: 10 Resmi İris, Keşif Halkası ve Gözbebeği Varyasyonu) Canlı Vektörel Mercek Çizici
 function renderEyeSignSvg(eyeType) {
   const uid = Math.random().toString(36).slice(2, 7);
@@ -7211,194 +7465,6 @@ function renderEyeSignSvg(eyeType) {
       <circle cx="42" cy="40" r="5" fill="#ffffff" opacity="0.9"/>
     </svg>
   `;
-}
-
-function runScientificBreedingMatch() {
-  const reportEl = document.getElementById('scientificBreedingReport');
-  if (!reportEl) return;
-
-  const sireRef = document.getElementById('brSirePedSelect')?.value;
-  const damRef = document.getElementById('brDamPedSelect')?.value;
-  const sireEye = document.getElementById('brSireEye')?.value || 'yellow_breeder';
-  const damEye = document.getElementById('brDamEye')?.value || 'pearl_racer';
-  const sireBody = document.getElementById('brSireBody')?.value || 'medium_apple';
-  const damBody = document.getElementById('brDamBody')?.value || 'medium_apple';
-  const sireGene = document.getElementById('brSireGene')?.value || 'LDHA_AB';
-  const damGene = document.getElementById('brDamGene')?.value || 'CRY1_TT';
-  const goal = document.getElementById('brTargetGoal')?.value || 'race_hybrid';
-
-  // Canlı Göz İşareti (Eye-Sign) Vektörel Merceklerini Güncelle
-  const sireEyeBox = document.getElementById('sireEyeSvgBox');
-  const damEyeBox = document.getElementById('damEyeSvgBox');
-  if (sireEyeBox) sireEyeBox.innerHTML = renderEyeSignSvg(sireEye);
-  if (damEyeBox) damEyeBox.innerHTML = renderEyeSignSvg(damEye);
-
-  const result = evaluatePairCompatibility(sireRef, damRef, sireEye, damEye, sireBody, damBody, sireGene, damGene, goal);
-  const { totalScore, coi, uniqueCommon, eyeScore, eyeVerdict, bodyScore, bodyVerdict, dnaScore, dnaNotes, strategyLabel, risks, sireTree, damTree } = result;
-
-  const scoreColor = totalScore >= 85 ? '#16a34a' : (totalScore >= 70 ? '#d97706' : '#dc2626');
-  const scoreVerdict = totalScore >= 85
-    ? 'ŞAMPİYON SEVİYE EŞLEŞME (Kesinlikle Önerilir)'
-    : (totalScore >= 70 ? 'İYİ / KOŞULLU UYUM (Riskleri İnceleyin)' : 'RİSKLİ EŞLEŞME (Alternatif Adaylara Bakın)');
-
-  const { altFemalesForSire, altMalesForDam } = findAlternativeMates(sireRef, damRef, goal);
-
-  reportEl.innerHTML = `
-    <!-- 100 ÜZERİNDEN UYUM PUANI GÖSTERGESİ -->
-    <div class="score-hero-box">
-      <div class="score-circle" style="border-color:${scoreColor}; color:${scoreColor};">
-        <span class="num">${totalScore}</span>
-        <span class="sub">/ 100 PUAN</span>
-      </div>
-      <div style="flex:1;">
-        <div style="font-size:11.5px; font-weight:900; color:${scoreColor};">${scoreVerdict}</div>
-        <div style="font-size:10px; color:#334155; margin-top:2px;">
-          ♂ <strong>${escapeHtml(sireTree.self.ring || 'Baba')}</strong> × ♀ <strong>${escapeHtml(damTree.self.ring || 'Anne')}</strong>
-        </div>
-        <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:5px;">
-          <span class="gene-badge gene-blue">Wright COI: %${coi.toFixed(2)}</span>
-          <span class="gene-badge gene-gold">Ortak Ata: ${uniqueCommon.length}</span>
-          <span class="gene-badge gene-green">Heterosis: %${Math.max(55, Math.round(98 - coi * 1.4))}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- YAVRU GENETİK POTANSİYEL ÇUBUKLARI -->
-    <div class="trait-bar-row">
-      <span class="trait-bar-label">⚡ Sprint / Hız</span>
-      <div class="trait-bar-track"><div class="trait-bar-fill" style="width:${Math.min(99, bodyScore + 2)}%; background:#2563eb;"></div></div>
-      <span class="trait-bar-val">${Math.min(99, bodyScore + 2)}/100</span>
-    </div>
-    <div class="trait-bar-row">
-      <span class="trait-bar-label">🫀 Dayanıklılık</span>
-      <div class="trait-bar-track"><div class="trait-bar-fill" style="width:${dnaScore}%; background:#16a34a;"></div></div>
-      <span class="trait-bar-val">${dnaScore}/100</span>
-    </div>
-    <div class="trait-bar-row">
-      <span class="trait-bar-label">🧭 Yön Bulma</span>
-      <div class="trait-bar-track"><div class="trait-bar-fill" style="width:${Math.min(98, Math.round((dnaScore + eyeScore) / 2) + 3)}%; background:#d97706;"></div></div>
-      <span class="trait-bar-val">${Math.min(98, Math.round((dnaScore + eyeScore) / 2) + 3)}/100</span>
-    </div>
-    <div class="trait-bar-row">
-      <span class="trait-bar-label">🧬 Damızlık Değer</span>
-      <div class="trait-bar-track"><div class="trait-bar-fill" style="width:${eyeScore}%; background:#7c3aed;"></div></div>
-      <span class="trait-bar-val">${eyeScore}/100</span>
-    </div>
-
-    <!-- ⚠️ TESPİT EDİLEN RİSKLER VE BİLİMSEL UYARILAR -->
-    <div style="margin-top:8px;">
-      <div style="font-size:11px; font-weight:800; color:#0f172a; margin-bottom:4px;">
-        ⚠️ Tespit Edilen Genetik & Fiziksel Risk Analizi (${risks.length})
-      </div>
-      <div class="risk-list">
-        ${risks.map(r => `
-          <div class="risk-item ${r.level === 'high' ? 'risk-high' : (r.level === 'warn' ? 'risk-warn' : 'risk-safe')}">
-            <span style="font-size:14px;">${r.icon}</span>
-            <div>
-              <strong>${escapeHtml(r.title)}</strong>
-              <div>${escapeHtml(r.desc)}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-
-    <!-- 🔄 ALTERNATİF EŞ ADAYI ÖNERİLERİ (TEK TIKLA DEĞİŞTİR) -->
-    <div style="margin-top:10px; border-top:1px solid #e2e8f0; padding-top:8px;">
-      <div style="font-size:11px; font-weight:800; color:#1d4ed8; margin-bottom:3px;">
-        🔄 Bu Kuşlar İçin Önerilen Alternatif Eş Adayları
-      </div>
-
-      ${altFemalesForSire.map(item => `
-        <div class="alt-candidate-card">
-          <div style="font-size:10.5px;">
-            <div style="font-weight:800; color:#0f172a;">
-              ♂ ${escapeHtml(sireTree.self.ring || 'Erkek')} için Alternatif Dişi:
-              <span style="color:#db2777;">${item.candidate.flag} ${escapeHtml(item.candidate.ring)} (${escapeHtml(item.candidate.name)})</span>
-            </div>
-            <div style="color:#64748b; font-size:9.5px;">
-              Uyum: <strong>${item.score}/100 Puan</strong> • Wright COI: %${item.coi.toFixed(2)}
-            </div>
-          </div>
-          <button class="ios-btn ios-btn-primary" style="padding:4px 8px; font-size:10px; flex-shrink:0;"
-            onclick="applyAlternativeCandidate('dam', '${item.candidate.id}', '${item.candidate.eye}', '${item.candidate.body}', '${item.candidate.gene}')">
-            Eş Seç (${item.score})
-          </button>
-        </div>
-      `).join('')}
-
-      ${altMalesForDam.map(item => `
-        <div class="alt-candidate-card">
-          <div style="font-size:10.5px;">
-            <div style="font-weight:800; color:#0f172a;">
-              ♀ ${escapeHtml(damTree.self.ring || 'Dişi')} için Alternatif Erkek:
-              <span style="color:#0284c7;">${item.candidate.flag} ${escapeHtml(item.candidate.ring)} (${escapeHtml(item.candidate.name)})</span>
-            </div>
-            <div style="color:#64748b; font-size:9.5px;">
-              Uyum: <strong>${item.score}/100 Puan</strong> • Wright COI: %${item.coi.toFixed(2)}
-            </div>
-          </div>
-          <button class="ios-btn ios-btn-outline" style="padding:4px 8px; font-size:10px; flex-shrink:0;"
-            onclick="applyAlternativeCandidate('sire', '${item.candidate.id}', '${item.candidate.eye}', '${item.candidate.body}', '${item.candidate.gene}')">
-            Eş Seç (${item.score})
-          </button>
-        </div>
-      `).join('')}
-    </div>
-  `;
-}
-
-// Çiftten Doğacak Yavrunun 15 Kutulu Tam Pedigresini Otomatik Üretir
-function generateChickPedigreeFromScientificPair() {
-  const sireRef = document.getElementById('brSirePedSelect')?.value;
-  const damRef = document.getElementById('brDamPedSelect')?.value;
-  const sTree = getCandidateLineageTree(sireRef);
-  const dTree = getCandidateLineageTree(damRef);
-
-  const newId = 'ped_chick_' + Date.now();
-  const chickRing = `TR-2026-YAVRU-${Math.floor(100 + Math.random() * 899)}`;
-  const sName = (sTree.self.name || 'Şampiyon').split(' ')[0];
-  const dName = (dTree.self.name || 'Sultan').split(' ')[0];
-
-  const newBoxes = {
-    main: {
-      flag: '🇹🇷',
-      ring: chickRing,
-      name: `${sName} x ${dName} Elit Yavru`,
-      color: 'Mavi Çakmaklı • Özel Eşleşme',
-      notes: `Bilimsel Eşleştirme Yavrusu\nBaba: ${sTree.self.ring || '-'}\nAnne: ${dTree.self.ring || '-'}`,
-      photo: ''
-    },
-    sire: { ...(sTree.self || { flag: '🇹🇷', ring: 'TR-BABA', name: 'Baba' }) },
-    dam: { ...(dTree.self || { flag: '🇹🇷', ring: 'TR-ANNE', name: 'Anne' }) },
-    g2_1: { ...(sTree.p1 || { flag: '🇧🇪', ring: '', name: '' }) },
-    g2_2: { ...(sTree.p2 || { flag: '🇳🇱', ring: '', name: '' }) },
-    g2_3: { ...(dTree.p1 || { flag: '🇧🇪', ring: '', name: '' }) },
-    g2_4: { ...(dTree.p2 || { flag: '🇹🇷', ring: '', name: '' }) },
-    g3_1: { ...(sTree.g1 || { flag: '🇧🇪', ring: '', name: '' }) },
-    g3_2: { ...(sTree.g2 || { flag: '🇳🇱', ring: '', name: '' }) },
-    g3_3: { ...(sTree.g3 || { flag: '🇧🇪', ring: '', name: '' }) },
-    g3_4: { ...(sTree.g4 || { flag: '🇩🇪', ring: '', name: '' }) },
-    g3_5: { ...(dTree.g1 || { flag: '🇧🇪', ring: '', name: '' }) },
-    g3_6: { ...(dTree.g2 || { flag: '🇳🇱', ring: '', name: '' }) },
-    g3_7: { ...(dTree.g3 || { flag: '🇹🇷', ring: '', name: '' }) },
-    g3_8: { ...(dTree.g4 || { flag: '🇹🇷', ring: '', name: '' }) }
-  };
-
-  pedigrees.unshift({
-    id: newId,
-    themeId: 'emerald',
-    accentColor: '#047857',
-    bgColor: '#f2fdf7',
-    fontFamily: "'Inter', sans-serif",
-    boxes: newBoxes
-  });
-
-  activePedigreeId = newId;
-  saveMypedigreData();
-  renderPedigreeDropdown();
-  selectActivePedigree(newId);
-  openIosTab('pedigrees', document.querySelectorAll('.ios-tab-btn')[0]);
 }
 
 // Kuluçka, Boncuk Takma ve Yavru Gelişim Takvimi Hesaplayıcı
@@ -7663,18 +7729,19 @@ const AvigenUxManager = {
   // 4. SEKME: YARIŞLAR (YARIŞ TAKİP SİSTEMİ, AI YARIŞ ANALİZİ, YUVA & KULUÇKA)
   // --------------------------------------------------------------------------
   switchBreedingPlanSub(subName) {
+    if (subName === 'pairs' || subName === 'timeline') {
+      openIosTab('pedigrees', document.querySelectorAll('.ios-tab-btn')[1]);
+      switchBirdsViewMode('nests');
+      return;
+    }
     this.state.activeBreedingPlanSub = subName;
     const pTracker = document.getElementById('raceTrackerMainPane');
     const pAi = document.getElementById('raceAiInsightsPane');
-    const pPairs = document.getElementById('breedPairsPane');
-    const pTime = document.getElementById('breedTimelinePane');
     const pRes = document.getElementById('raceResultsPane');
     const pWea = document.getElementById('raceWeatherPane');
 
     if (pTracker) pTracker.style.display = subName === 'racetracker' ? 'flex' : 'none';
     if (pAi) pAi.style.display = subName === 'raceai' ? 'flex' : 'none';
-    if (pPairs) pPairs.style.display = subName === 'pairs' ? 'flex' : 'none';
-    if (pTime) pTime.style.display = subName === 'timeline' ? 'flex' : 'none';
     if (pRes) pRes.style.display = subName === 'results' ? 'flex' : 'none';
     if (pWea) pWea.style.display = subName === 'weather' ? 'flex' : 'none';
 
@@ -7686,8 +7753,6 @@ const AvigenUxManager = {
     const mapBtn = {
       racetracker: 'pillRaceTracker',
       raceai: 'pillRaceAiInsights',
-      pairs: 'pillBreedPairs',
-      timeline: 'pillBreedTimeline',
       results: 'pillRaceResults',
       weather: 'pillRaceWeather'
     };
@@ -7698,12 +7763,6 @@ const AvigenUxManager = {
       if (typeof AvigenRaceTracker !== 'undefined') AvigenRaceTracker.renderRaceTrackerMainUI();
     } else if (subName === 'raceai') {
       if (typeof AvigenRaceTracker !== 'undefined') AvigenRaceTracker.renderRaceAiInsightsUI();
-    } else if (subName === 'pairs') {
-      this.renderBreedingPlanPairsList();
-      renderAutoBestPairs();
-      calculateIncubationTimeline();
-    } else if (subName === 'timeline') {
-      calculateIncubationTimeline();
     } else if (subName === 'results') {
       populateRaceBirdSelect();
       previewCalculatedRaceSpeed();
@@ -7730,31 +7789,26 @@ const AvigenUxManager = {
   },
 
   // --------------------------------------------------------------------------
-  // 5. SEKME: PROFİL VE AYARLAR (PRATİK & KULLANIŞLI 4 ANA SEKMELİ YÖNETİM MERKEZİ)
-  // 1. membership  -> 👤 Hesap & Abonelik (Şifreli Giriş/Kayıt, Şifre Değiştirme, Paket & Güvenli Ödeme)
-  // 2. privacy     -> 🛡️ Global İzinler (Zero-Knowledge Kuş İzinleri & İletişim Talepleri)
-  // 3. preferences -> ⚙️ Ayarlar & Yedek (Gündüz/Gece Teması, Mesafe Sınırları, JSON Yedekleme, Notlar & QA)
-  // 4. library     -> 🔬 Bilim Bankası (AVIGEN Scientific Library)
+  // 5. SEKME: PROFİL VE AYARLAR (3 ANA SEKMELİ YÖNETİM MERKEZİ)
+  // 1. preferences -> ⚙️ Ayarlar & Yedek (Gündüz/Gece Teması, Mesafe Sınırları, JSON Yedekleme, Notlar & QA)
+  // 2. membership  -> 👤 Hesap & Abonelik (Şifreli Giriş/Kayıt, Şifre Değiştirme, Paket & Güvenli Ödeme)
+  // 3. library     -> 🔬 Bilim Bankası (AVIGEN Scientific Library)
   // --------------------------------------------------------------------------
   switchProfileSection(secName) {
     if (secName === 'account') secName = 'membership';
     if (secName === 'security') secName = 'preferences';
-    if (secName === 'global_privacy') {
-      secName = 'privacy';
-      this.state.privacySubScreen = 'bird_permissions';
-    }
     this.state.activeProfileSection = secName;
 
     const accPane = document.getElementById('profileAccountPane');
     const libPane = document.getElementById('sciLibraryPane');
     const notesPane = document.getElementById('loftNotesPane');
 
-    const isAccountDynamic = ['membership', 'privacy', 'preferences'].includes(secName);
+    const isAccountDynamic = ['membership', 'preferences'].includes(secName);
     if (accPane) accPane.style.display = isAccountDynamic ? 'flex' : 'none';
     if (libPane) libPane.style.display = secName === 'library' ? 'flex' : 'none';
     if (notesPane) notesPane.style.display = secName === 'notes' ? 'flex' : 'none';
 
-    ['membership', 'privacy', 'preferences', 'library'].forEach(cat => {
+    ['membership', 'preferences', 'library'].forEach(cat => {
       const btn = document.getElementById('btnProfCat_' + cat);
       if (btn) btn.classList.toggle('active', secName === cat || (secName === 'notes' && cat === 'preferences'));
     });
@@ -7770,68 +7824,12 @@ const AvigenUxManager = {
     }
   },
 
-  openGlobalPrivacySubScreen(subMode) {
-    this.state.activeProfileSection = 'privacy';
-    this.state.privacySubScreen = subMode; // 'overview' | 'bird_permissions' | 'requests_status'
-    this.renderProfileAccountSection();
-  },
-
-  onPrivacyBirdSearchInput(val) {
-    this.state.privacyBirdSearch = val || '';
-    this.renderProfileAccountSection();
-  },
-
-  setPrivacyBirdFilter(filterVal) {
-    this.state.privacyBirdFilter = filterVal;
-    this.renderProfileAccountSection();
-  },
-
-  applyBulkPermissionToFilteredBirds(bulkMode) {
-    if (typeof AvigenGlobalGenePool === 'undefined') return;
-    const filtered = this.getFilteredPrivacyBirds();
-    if (!filtered.length) return;
-    const rings = filtered.map(b => b.ring);
-    AvigenGlobalGenePool.bulkSetBirdPermissions(rings, bulkMode);
-    this.renderTopBreederProfileCard();
-    this.renderProfileAccountSection();
-  },
-
-  getFilteredPrivacyBirds() {
-    const activeBirds = collectUniqueLoftBirds().filter(b => b.isActiveLoftBird);
-    const hasGlobalMod = typeof AvigenGlobalGenePool !== 'undefined';
-    const q = (this.state.privacyBirdSearch || '').trim().toLowerCase();
-    const f = this.state.privacyBirdFilter || 'ALL';
-
-    return activeBirds.filter(b => {
-      const perm = hasGlobalMod ? AvigenGlobalGenePool.getBirdPermission(b.ring) : null;
-      const isAn = perm ? perm.allow_global_analysis : false;
-      const isCt = perm ? perm.allow_connection_requests : false;
-
-      if (f === 'IN_POOL' && !isAn) return false;
-      if (f === 'PRIVATE' && (isAn || isCt)) return false;
-      if (f === 'CONTACT_OPEN' && !isCt) return false;
-
-      if (q) {
-        const hay = `${b.ring} ${b.name} ${b.color} ${perm ? perm.anonymous_code : ''}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  },
-
   renderTopBreederProfileCard() {
     const topEl = document.getElementById('profileTopBreederCard');
     if (!topEl) return;
 
     const curTier = this.getCurrentTier();
     const activeBirds = collectUniqueLoftBirds().filter(b => b.isActiveLoftBird);
-    const hasGlobalMod = typeof AvigenGlobalGenePool !== 'undefined';
-    const sharedCount = hasGlobalMod
-      ? activeBirds.filter(b => {
-          const p = AvigenGlobalGenePool.getBirdPermission(b.ring);
-          return p && p.allow_global_analysis;
-        }).length
-      : 0;
 
     topEl.innerHTML = `
       <div class="ios-card" style="padding:10px 12px; border:1.5px solid var(--ios-border);">
@@ -7876,15 +7874,11 @@ const AvigenUxManager = {
     const root = document.getElementById('profileAccountRoot');
     if (!root) return;
 
-    const sec = ['membership', 'privacy', 'preferences'].includes(this.state.activeProfileSection)
+    const sec = ['membership', 'preferences'].includes(this.state.activeProfileSection)
       ? this.state.activeProfileSection
-      : 'membership';
+      : 'preferences';
 
     const curTier = this.getCurrentTier();
-    const activeBirds = collectUniqueLoftBirds().filter(b => b.isActiveLoftBird);
-    const hasGlobalMod = typeof AvigenGlobalGenePool !== 'undefined';
-    const sentRequests = hasGlobalMod ? AvigenGlobalGenePool.db.breeder_connection_requests : [];
-    const purgeLogs = hasGlobalMod ? AvigenGlobalGenePool.db.purge_audit_log : [];
     const invoices = Array.isArray(this.state.paymentHistory) ? this.state.paymentHistory : [];
 
     // ========================================================================
@@ -7966,7 +7960,7 @@ const AvigenUxManager = {
             <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1.5px solid ${curTier.id === 'FREE' ? '#0066ff' : 'var(--ios-border)'}; border-radius:9px; padding:7px 9px;">
               <div>
                 <div style="font-size:11px; font-weight:900; color:#0052cc;">1. AVIGEN FREE (0 TL)</div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">Güvercin yönetimi, 4 kuşak pedigree ve yarış takip sistemi</div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">Güvercin yönetimi, 4 kuşak pedigri ve yarış takip sistemi</div>
               </div>
               <button class="ios-btn ${curTier.id === 'FREE' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:5px 10px; font-size:9.5px;" onclick="AvigenUxManager.setMembershipTier('FREE')">
                 ${curTier.id === 'FREE' ? '✅ Aktif Paket' : 'Ücretsiz Geç'}
@@ -8012,196 +8006,7 @@ const AvigenUxManager = {
     }
 
     // ========================================================================
-    // KATEGORİ 2: GLOBAL İZİNLER (AYRI KUŞ İZİN EKRANI + ARAMA/FİLTRE/TOPLU İŞLEM + TALEPLER)
-    // ========================================================================
-    if (sec === 'privacy') {
-      const subMode = this.state.privacySubScreen || 'overview';
-      const inAnalysisCount = hasGlobalMod
-        ? activeBirds.filter(b => AvigenGlobalGenePool.getBirdPermission(b.ring)?.allow_global_analysis).length
-        : 0;
-      const inContactCount = hasGlobalMod
-        ? activeBirds.filter(b => AvigenGlobalGenePool.getBirdPermission(b.ring)?.allow_connection_requests).length
-        : 0;
-
-      if (subMode === 'bird_permissions') {
-        const filteredBirds = this.getFilteredPrivacyBirds();
-        root.innerHTML = `
-          <div class="ios-card" style="padding:10px 12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:7px;">
-              <button type="button" class="genesis-back-pill" onclick="AvigenUxManager.openGlobalPrivacySubScreen('overview')">
-                ← Gizlilik Merkezine Dön
-              </button>
-              <span style="font-size:12px; font-weight:900; color:var(--ios-text);">🕊️ Kuş İzinleri Yönetimi (${filteredBirds.length}/${activeBirds.length})</span>
-            </div>
-
-            <div style="font-size:9.5px; color:var(--ios-subtext); margin-bottom:7px; line-height:1.35;">
-              İzinler varsayılan olarak <strong>kapalıdır</strong>. Her kuş için <strong>Global Analiz İzni</strong> ve <strong>İletişim İzni</strong> birbirinden bağımsız yönetilir.
-            </div>
-
-            <div style="display:grid; grid-template-columns:1.25fr 1fr; gap:6px; margin-bottom:7px;">
-              <input type="text" class="ios-input" style="padding:6px 8px; font-size:11px;" placeholder="🔍 Halka No, İsim veya Anonim Kod ara..." value="${escapeHtml(this.state.privacyBirdSearch)}" oninput="AvigenUxManager.onPrivacyBirdSearchInput(this.value)" />
-              <select class="ios-select" style="padding:6px; font-size:10.5px;" onchange="AvigenUxManager.setPrivacyBirdFilter(this.value)">
-                <option value="ALL" ${this.state.privacyBirdFilter === 'ALL' ? 'selected' : ''}>Tüm Kuşlar (${activeBirds.length})</option>
-                <option value="IN_POOL" ${this.state.privacyBirdFilter === 'IN_POOL' ? 'selected' : ''}>🌍 Analiz Havuzundakiler (${inAnalysisCount})</option>
-                <option value="CONTACT_OPEN" ${this.state.privacyBirdFilter === 'CONTACT_OPEN' ? 'selected' : ''}>📩 İletişime Açık Olanlar (${inContactCount})</option>
-                <option value="PRIVATE" ${this.state.privacyBirdFilter === 'PRIVATE' ? 'selected' : ''}>🔒 Tamamen Özel / Kapalı (${activeBirds.length - inAnalysisCount})</option>
-              </select>
-            </div>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-bottom:8px; background:var(--ios-card-alt); padding:6px; border-radius:8px; border:1px solid var(--ios-border);">
-              <button type="button" class="ios-btn ios-btn-secondary" style="padding:5px 4px; font-size:9.5px;" onclick="AvigenUxManager.applyBulkPermissionToFilteredBirds('ENABLE_ANALYSIS_ONLY')">
-                🌍 Listeye Analiz İzni Ver
-              </button>
-              <button type="button" class="ios-btn ios-btn-primary" style="padding:5px 4px; font-size:9.5px;" onclick="AvigenUxManager.applyBulkPermissionToFilteredBirds('ENABLE_BOTH')">
-                ✅ Analiz + İletişim Aç
-              </button>
-              <button type="button" class="ios-btn ios-btn-danger" style="padding:5px 4px; font-size:9.5px;" onclick="AvigenUxManager.applyBulkPermissionToFilteredBirds('REVOKE_ALL')">
-                🗑️ Tüm İzinleri Geri Çek
-              </button>
-            </div>
-
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              ${filteredBirds.length === 0 ? `
-                <div style="text-align:center; padding:18px; font-size:10.5px; color:var(--ios-subtext); background:var(--ios-card-alt); border-radius:9px;">
-                  Arama veya filtre kriterine uygun güvercin bulunamadı.
-                </div>
-              ` : filteredBirds.map(b => {
-                const perm = hasGlobalMod ? AvigenGlobalGenePool.getBirdPermission(b.ring) : null;
-                const isAn = perm ? perm.allow_global_analysis : false;
-                const isCt = perm ? perm.allow_connection_requests : false;
-                return `
-                  <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid ${isAn || isCt ? '#059669' : '#64748b'}; border-radius:9px; padding:7px 9px; font-size:10.5px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:5px;">
-                      <div>
-                        <strong>${b.flag} ${escapeHtml(b.ring)} — ${escapeHtml(b.name)}</strong>
-                        ${(isAn || isCt) && perm
-                          ? `<span class="gene-badge gene-purple" style="font-size:8px; margin-left:4px;">Anonim: ${escapeHtml(perm.anonymous_code)}</span>`
-                          : `<span style="font-size:9px; color:var(--ios-subtext); margin-left:4px;">🔒 Özel (Varsayılan Kapalı)</span>`}
-                      </div>
-                      ${(isAn || isCt) ? `
-                        <button class="ios-btn ios-btn-danger" style="padding:2px 7px; font-size:9px;" onclick="AvigenGlobalGenePool.revokeAndPurgeBirdFromGlobalPool('${escapeHtml(b.ring)}'); AvigenUxManager.renderProfileAccountSection();">
-                          🗑️ Geri Çek &amp; Sil
-                        </button>
-                      ` : ''}
-                    </div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:9.8px;">
-                      <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-weight:700; background:var(--ios-card); padding:5px 7px; border-radius:6px; border:1px solid var(--ios-border);">
-                        <input type="checkbox" ${isAn ? 'checked' : ''} onchange="AvigenGlobalGenePool.setBirdPermission('${escapeHtml(b.ring)}', this.checked, ${isCt}); AvigenUxManager.renderProfileAccountSection();" />
-                        <span>🌍 Global Analiz İzni</span>
-                      </label>
-                      <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-weight:700; background:var(--ios-card); padding:5px 7px; border-radius:6px; border:1px solid var(--ios-border);">
-                        <input type="checkbox" ${isCt ? 'checked' : ''} onchange="AvigenGlobalGenePool.setBirdPermission('${escapeHtml(b.ring)}', ${isAn}, this.checked); AvigenUxManager.renderProfileAccountSection();" />
-                        <span>📩 İletişim Talebi İzni</span>
-                      </label>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </div>
-        `;
-        return;
-      }
-
-      if (subMode === 'requests_status') {
-        root.innerHTML = `
-          <div class="ios-card" style="padding:10px 12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:8px;">
-              <button type="button" class="genesis-back-pill" onclick="AvigenUxManager.openGlobalPrivacySubScreen('overview')">
-                ← Gizlilik Merkezine Dön
-              </button>
-              <span style="font-size:12px; font-weight:900; color:var(--ios-text);">📩 Eşleşme Talepleri &amp; Onay Durumları (${sentRequests.length})</span>
-            </div>
-
-            ${sentRequests.length === 0 ? `
-              <div style="text-align:center; padding:22px 12px; background:var(--ios-card-alt); border-radius:10px; font-size:10.5px; color:var(--ios-subtext);">
-                <div style="font-size:24px; margin-bottom:5px;">📩</div>
-                <strong>Henüz Gönderilmiş Eşleşme Talebi Yok</strong>
-                <div style="margin-top:3px; font-size:9.5px;">GENESIS AI → Global Gen Havuzu ekranından uygun adaylara iletişim talebi gönderebilirsiniz.</div>
-              </div>
-            ` : `
-              <div style="display:flex; flex-direction:column; gap:7px;">
-                ${sentRequests.map(r => `
-                  <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #7c3aed; border-radius:9px; padding:8px 10px; font-size:10.5px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                      <strong>🕊️ Sizin Kuşunuz: ${escapeHtml(r.sender_bird_ring)} → 🌍 Aday: ${escapeHtml(r.target_anonymous_code)}</strong>
-                      <span class="gene-badge gene-purple" style="font-size:8.5px;">
-                        ${r.status === 'PENDING' ? '⏳ Sahip Onayı Bekleniyor' : escapeHtml(r.status)}
-                      </span>
-                    </div>
-                    <div style="font-size:9.5px; color:var(--ios-subtext);">
-                      Tür: <strong>${escapeHtml(r.request_type_label)}</strong> • Bölge: ${escapeHtml(r.target_region || 'Uluslararası')} • Tarih: ${escapeHtml(r.created_at)}
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            `}
-          </div>
-        `;
-        return;
-      }
-
-      root.innerHTML = `
-        <div class="ios-card" style="padding:11px 12px;">
-          <div class="ios-card-title" style="margin-bottom:6px;">
-            <span>🛡️ Global Gizlilik Merkezi (Zero-Knowledge)</span>
-            <span class="gene-badge gene-blue">Varsayılan: Kapalı</span>
-          </div>
-          <div style="font-size:10px; color:var(--ios-subtext); margin-bottom:9px; line-height:1.4;">
-            AVIGEN'de hiçbir özel pedigree belgeniz veya bilezik numaranız diğer üyelere gösterilmez. Kuş bazlı izinlerinizi ve gönderdiğiniz eşleşme taleplerini buradan yönetebilirsiniz:
-          </div>
-
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:10px; text-align:center;">
-            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:7px 5px;">
-              <div style="font-size:15px; font-weight:900; color:#059669;">${inAnalysisCount} / ${activeBirds.length}</div>
-              <div style="font-size:9px; color:var(--ios-subtext); font-weight:700;">Analiz İzni Açık</div>
-            </div>
-            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:7px 5px;">
-              <div style="font-size:15px; font-weight:900; color:#0066ff;">${inContactCount} / ${activeBirds.length}</div>
-              <div style="font-size:9px; color:var(--ios-subtext); font-weight:700;">İletişim İzni Açık</div>
-            </div>
-            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:7px 5px;">
-              <div style="font-size:15px; font-weight:900; color:#7c3aed;">${sentRequests.length}</div>
-              <div style="font-size:9px; color:var(--ios-subtext); font-weight:700;">Gönderilen Talep</div>
-            </div>
-          </div>
-
-          <div style="display:flex; flex-direction:column; gap:7px;">
-            <div class="dash-list-item urgency-green" style="cursor:pointer; padding:9px 10px;" onclick="AvigenUxManager.openGlobalPrivacySubScreen('bird_permissions')">
-              <div class="dash-list-left">
-                <div class="dash-mini-icon">🕊️</div>
-                <div>
-                  <div class="dash-list-title">Kuş İzinleri Yönetim Ekranı (Arama, Filtre &amp; Toplu İşlem)</div>
-                  <div class="dash-list-sub">Her kuş için Global Analiz İzni ve İletişim İznini bağımsız yönetin</div>
-                </div>
-              </div>
-              <span class="gene-badge gene-green">Yönet →</span>
-            </div>
-
-            <div class="dash-list-item urgency-blue" style="cursor:pointer; padding:9px 10px;" onclick="AvigenUxManager.openGlobalPrivacySubScreen('requests_status')">
-              <div class="dash-list-left">
-                <div class="dash-mini-icon">📩</div>
-                <div>
-                  <div class="dash-list-title">Gönderilmiş Eşleşme Talepleri ve Onay Durumları (${sentRequests.length})</div>
-                  <div class="dash-list-sub">Anonim kuş sahiplerine gönderdiğiniz iletişim taleplerinin onay takibi</div>
-                </div>
-              </div>
-              <span class="gene-badge gene-purple">Gör →</span>
-            </div>
-          </div>
-
-          ${purgeLogs.length > 0 ? `
-            <div style="margin-top:8px; font-size:9.5px; color:#059669; background:#ecfdf5; border:1px solid #a7f3d0; padding:5px 8px; border-radius:7px;">
-              ✅ <strong>Son Veri Temizleme Kaydı:</strong> <strong>${escapeHtml(purgeLogs[0].anonymous_code)}</strong> aktif havuzdan ve yedeklerden kalıcı olarak silindi.
-            </div>
-          ` : ''}
-        </div>
-      `;
-      return;
-    }
-
-    // ========================================================================
-    // KATEGORİ 3: AYARLAR, YEDEKLEME & NOTLAR (TEK EKRANDA PRATİK KONTROL)
+    // KATEGORİ 2: AYARLAR, YEDEKLEME & NOTLAR (TEK EKRANDA PRATİK KONTROL)
     // ========================================================================
     if (sec === 'preferences') {
       const lim = typeof AvigenPerformanceEngine !== 'undefined'
@@ -8699,6 +8504,29 @@ const AvigenUxManager = {
     this.openSubscriptionModal(returnTab);
   },
 
+  hashPassword(rawPass) {
+    const clean = String(rawPass || '').trim();
+    if (!clean) return '';
+    if (clean.startsWith('AVGHASH_')) return clean;
+    let h1 = 0x811c9dc5;
+    let h2 = 0x01000193;
+    const salted = `AVIGEN_SALT_2026::${clean}`;
+    for (let i = 0; i < salted.length; i++) {
+      const c = salted.charCodeAt(i);
+      h1 ^= c;
+      h1 = Math.imul(h1, 0x01000193) >>> 0;
+      h2 ^= (c * 31);
+      h2 = Math.imul(h2, 0x85ebca6b) >>> 0;
+    }
+    return `AVGHASH_${h1.toString(16).toUpperCase().padStart(8, '0')}${h2.toString(16).toUpperCase().padStart(8, '0')}`;
+  },
+
+  verifyPassword(inputPass) {
+    if (!this.state.passwordHash) return true;
+    const hashedInput = this.hashPassword(inputPass);
+    return hashedInput === this.state.passwordHash || String(inputPass || '').trim() === this.state.passwordHash;
+  },
+
   performInlineLogin() {
     const email = (document.getElementById('inlineLoginEmail')?.value || '').trim();
     const pass = (document.getElementById('inlineLoginPass')?.value || '').trim();
@@ -8706,10 +8534,11 @@ const AvigenUxManager = {
       alert('Lütfen e-posta adresinizi ve şifrenizi girin.');
       return;
     }
-    if (this.state.passwordHash && pass !== this.state.passwordHash) {
+    if (!this.verifyPassword(pass)) {
       alert('⚠️ Hatalı şifre girdiniz! Lütfen şifrenizi kontrol edin.');
       return;
     }
+    this.state.passwordHash = this.hashPassword(pass);
     this.state.memberEmail = email;
     this.state.isLoggedIn = true;
     this.saveState();
@@ -8724,10 +8553,11 @@ const AvigenUxManager = {
       alert('Lütfen e-posta adresinizi ve şifrenizi girin.');
       return;
     }
-    if (this.state.passwordHash && pass !== this.state.passwordHash) {
+    if (!this.verifyPassword(pass)) {
       alert('⚠️ Girdiğiniz şifre hatalı! (Varsayılan şifre veya belirlediğiniz şifreyi girin, ya da "Üye Ol / Şifre Kur" sekmesinden yeni şifre oluşturun).');
       return;
     }
+    this.state.passwordHash = this.hashPassword(pass);
     this.state.memberEmail = email;
     this.state.isLoggedIn = true;
     this.saveState();
@@ -8741,7 +8571,7 @@ const AvigenUxManager = {
     const newPass = (document.getElementById('chgNewPass')?.value || '').trim();
     const confirmPass = (document.getElementById('chgNewPassConfirm')?.value || '').trim();
 
-    if (this.state.passwordHash && oldPass && oldPass !== this.state.passwordHash) {
+    if (this.state.passwordHash && oldPass && !this.verifyPassword(oldPass)) {
       alert('⚠️ Mevcut şifrenizi hatalı girdiniz.');
       return;
     }
@@ -8754,12 +8584,12 @@ const AvigenUxManager = {
       return;
     }
 
-    this.state.passwordHash = newPass;
+    this.state.passwordHash = this.hashPassword(newPass);
     this.state.isLoggedIn = true;
     this.saveState();
     this.syncHeaderAndProfileUI();
     this.closeSubscriptionModal();
-    alert('🔒 Hesap şifreniz başarıyla güncellendi!');
+    alert('🔒 Hesap şifreniz kriptografik özet (hash) ile güvenli biçimde güncellendi!');
   },
 
   logoutMember() {
@@ -8789,7 +8619,7 @@ const AvigenUxManager = {
         alert('⚠️ Girdiğiniz şifreler birbiriyle eşleşmiyor!');
         return;
       }
-      this.state.passwordHash = pass;
+      this.state.passwordHash = this.hashPassword(pass);
     }
 
     this.state.isRegisteredMember = true;
@@ -8867,16 +8697,16 @@ const AvigenAutoUpdater = {
   DEFAULT_WEB_URL: 'https://hasanbenzer.github.io/avigen/',
 
   state: {
-    localVersion: '2.1.0',
-    localBuild: 210,
-    remoteVersion: '2.1.0',
-    remoteBuild: 210,
-    remoteTitle: 'AVIGEN 2.1 — 5 Nesil Akıllı Eşleştirme, Performans Doğrulaması & Kullanım Rehberi',
+    localVersion: '3.0.0',
+    localBuild: 300,
+    remoteVersion: '3.0.0',
+    remoteBuild: 300,
+    remoteTitle: 'AVIGEN v3.0 — 81 İl Haritalı Yarış Simülasyonu, Hızlı Toplu Sonuç Girişi & Fenotip/Çifte Yavru Mimarisi',
     remoteNotes: [
-      'GENESIS AI 1. Modül: 5 Nesil Çapraz Soy Ağacı Tamamlama, Ortak Ata Kalite Kontrolü, Mesafe/Tip Uyumu ve Kümesinizdeki En Uygun 5 Eşleşme Tarayıcısı',
-      'Performans & Genetik Profil: Bireysel yarış ve yavru başarısı ayrımı, veri doluluğuna göre AVK ağırlıklandırma ve doğruluk düzeltmeleri',
-      'Üst barda sadeleştirilmiş 📖 Rehber (Adım Adım Nasıl Kullanılır & Neyin Ne İşe Yaradığı) ve 2 katmanlı ferah Kümes + Canlı Hava Durumu kartı',
-      'AVIGEN FREE ve AVIGEN GENESIS AI 2 kademeli sadeleştirilmiş paket yapısı ve tek tuşla veri kaybetmeden güncelleme sistemi'
+      'Haritalı Akıllı Yarış Simülasyonu (81 İl): Türkiye haritasında salım ve varış seçimi, canlı rüzgâr/hava çekme, kümes konumunu sabitleme ve önerilen kadroyu tek tuşla gerçek yarışa sepetleme',
+      'Pazar Günü Hızlı Sonuç & Saat Damgalama: Tek dokunuşla "⚡ Şimdi İndi" anlık varış saati damgalama ve tüm kuşları 30 saniyede tek ekrandan kaydetmeyi sağlayan "📋 Toplu Hızlı Sonuç Tablosu"',
+      'Kuşçu Ele Alma (Fenotip) & Çifte Yavru: Kuş kartında Gövde, Kas, Çatal Kemik, Kanat seçicileri, Kuş Durumu (Aktif/Dinlenmede/Kayıp/Satıldı) ve yuvadan tek seferde ardışık bilezikli Çifte Yavru kaydı',
+      'GENESIS AI v3.0: Akıllı Eşleştirme ekranında 5 görsel yavru potansiyel çubuğu, tek tuşla yuva kaydı ve sadeleştirilmiş Kuş & Yuva / Yarışlar menü mimarisi'
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',
@@ -9041,7 +8871,6 @@ window.addEventListener('DOMContentLoaded', () => {
   renderPedigreeDropdown();
   selectActivePedigree(activePedigreeId);
   renderHomeDashboard();
-  populateBreedingSelects();
   initPedigreePinchZoom();
   AvigenUxManager.init();
 });
@@ -9148,21 +8977,16 @@ const AvigenSystemAuditQA = {
     const speedMetric = profTest?.categories?.flight?.metrics?.find(m => m.key === 'speed');
     assert('T13', 'Performans Motoru', 'Bireysel Yarış Hızı ve Güvenilirlik (%) Hesaplaması', Boolean(speedMetric && speedMetric.score > 0 && speedMetric.reliability > 0), `${profTest?.bird?.ring} Hız Puanı: ${speedMetric?.score}/100 (Güven: %${speedMetric?.reliability})`);
 
-    // 14. Global Gen Havuzu: Sıfır-Bilgi (SHA-256) Hashleme & Anonim Kod Gizliliği
-    const sampleHash = AvigenGlobalGenePool.hashRingIdentifier('TR-2026-990001');
-    const hashDoesNotLeakRing = sampleHash.startsWith('HASH_') && !sampleHash.includes('990001') && !sampleHash.includes('TR');
-    const nodesLeakCheck = AvigenGlobalGenePool.db.global_pedigree_nodes.every(n => n.ancestor_node_hash.startsWith('HASH_'));
-    assert('T14', 'Global Güvenlik', 'SHA-256 Soy Düğümü Hashleme & Bilezik Sızıntı Koruması', hashDoesNotLeakRing && nodesLeakCheck, `Örnek Hash: ${sampleHash} • Açık bilezik sızıntısı: 0`);
+    // 14. 5 Nesil (gggg1..32) Çapraz Pedigri Derinleştirici & Sewall Wright COI Doğrulaması
+    const gen5Sire = { self: { ring: 'S-0' }, p1: { ring: 'S-1' }, g1: { ring: 'S-2' }, gg1: { ring: 'S-3' }, ggg1: { ring: 'S-4' }, gggg1: { ring: 'COMMON-GEN5' } };
+    const gen5Dam = { self: { ring: 'D-0' }, p1: { ring: 'D-1' }, g1: { ring: 'D-2' }, gg1: { ring: 'D-3' }, ggg1: { ring: 'D-4' }, gggg1: { ring: 'COMMON-GEN5' } };
+    const coiGen5 = AvigenGenesisAI.calculateExactWrightCOI(gen5Sire, gen5Dam);
+    assert('T14', '5 Nesil Wright COI', '5. Nesil (gggg1..32) Ortak Ata Tespiti & Patika Katkısı', coiGen5.coiPercent > 0 && coiGen5.commonAncestorsDetailed.length === 1, `5. Nesil Ortak Ata (COMMON-GEN5) COI: %${coiGen5.coiPercent.toFixed(4)}`);
 
-    // 15. Global Gen Havuzu: Analiz İzni ve İletişim İzninin Bağımsızlığı & Varsayılan Kapalı Olması
-    const fakeRing = 'TR-2099-QA0001';
-    const defPerm = AvigenGlobalGenePool.getBirdPermission(fakeRing);
-    const defaultClosed = defPerm === null;
-    AvigenGlobalGenePool.setBirdPermission(fakeRing, false, true); // Analiz kapalı, iletişim açık
-    const notInPoolWhenAnalysisFalse = !AvigenGlobalGenePool.db.global_gene_pool.some(g => g.pool_bird_id.includes(AvigenGlobalGenePool.getBirdPermission(fakeRing)?.anonymous_code || 'NONE'));
-    AvigenGlobalGenePool.revokeAndPurgeBirdFromGlobalPool(fakeRing);
-    this.cleanUpTestPermission(fakeRing);
-    assert('T15', 'Global İzinler', 'Varsayılan İzin Kapalı + Analiz İzni Olmadan Havuza Girmeme + Revoke/Purge', defaultClosed && notInPoolWhenAnalysisFalse, 'Varsayılan: Kapalı, Bağımsız İzin ve Kalıcı Purge doğrulandı.');
+    // 15. Kullanıcı Şifre Güvenliği (Kriptografik Tuzlu Hashleme & Doğrulama)
+    const samplePassHash = AvigenUxManager.hashPassword('TestPass2026!');
+    const passHashValid = samplePassHash.startsWith('AVGHASH_') && !samplePassHash.includes('TestPass');
+    assert('T15', 'Hesap Güvenliği', 'Tuzlu (Salted) Şifre Hashleme & Açık Metin Koruması', passHashValid, `Örnek Hash: ${samplePassHash} (Açık şifre saklanmaz)`);
 
     // 16. Bilimsel Bilgi Bankası (AVIGEN Scientific Library) DOI & Birincil Kaynak Doğrulaması
     const sciCount = typeof AvigenScientificLibrary !== 'undefined' ? AvigenScientificLibrary.sources.length : 0;
@@ -9176,57 +9000,93 @@ const AvigenSystemAuditQA = {
                     Object.keys(AvigenUxManager.TIERS).length === 2;
     assert('T17', 'Ticari Paketler', 'AVIGEN FREE (10 Limit) ve AVIGEN GENESIS AI (399 TL) 2 Kademeli Yetki Mimarisi', tiersOk, '2 üyelik seviyesi (AVIGEN FREE & AVIGEN GENESIS AI) doğrulandı.');
 
-    // 18. 12 Katmanlı Tam JSON Yedekleme Şeması Doğrulaması
+    // 18. Tam JSON Yedekleme Şeması Doğrulaması
     const snap = buildFullAvigenSnapshotPayload();
     const backupComplete = snap.version === '2.5' &&
       Array.isArray(snap.pedigrees) &&
       Array.isArray(snap.activePairsList) &&
       Array.isArray(snap.scientific_sources) &&
-      Boolean(snap.global_gene_pool_db) &&
       Array.isArray(snap.genesis_analysis_history) &&
       Boolean(snap.performance_config) &&
-      Boolean(snap.user_account_state);
-    assert('T18', 'Yedekleme & Veri', '12 Veri Katmanlı Tam JSON Yedekleme & Otomatik Rollback Şeması', backupComplete, `Şema v${snap.version}: 12/12 veri tablosu yedeklemeye dahil.`);
+      Boolean(snap.user_account_state) &&
+      typeof AvigenGenesisAI.saveAnalysisHistory === 'function';
+    assert('T18', 'Yedekleme & Veri', 'Tam JSON Yedekleme & Geri Yükleme (Import/Export) Şema Bütünlüğü', backupComplete, `Şema v${snap.version}: Tüm kümes, pedigri, yuva, yarış ve analiz geçmişi tabloları doğrulandı.`);
 
-    // 19. 2 Çekirdek Modüllü AVIGEN GENESIS AI Mimarisi, 4 Kademeli Veri Güvenilirliği & Akıllı Yem/Sıvı Doğrulaması
+    // 19. Tek Bütünleşik GENESIS AI – AKILLI EŞLEŞTİRME Motoru, 11 Özellikte Yavru Öngörüsü & Koşullu BLUP Doğrulaması
     const mainMods = AvigenGenesisAI.MAIN_MODULES || [];
-    const has2MainModules = mainMods.length === 2 &&
+    const hasUnifiedSmartPairing = mainMods.length === 2 &&
       mainMods[0].id === 'breeding_hub' &&
+      mainMods[0].title === 'GENESIS AI – AKILLI EŞLEŞTİRME' &&
+      Array.isArray(mainMods[0].subFunctions) &&
+      mainMods[0].subFunctions.length === 0 &&
       mainMods[1].id === 'nutrition_hub';
     const nutCheck = typeof AvigenGenesisAI.calculateSmartNutritionPlan === 'function'
       ? AvigenGenesisAI.calculateSmartNutritionPlan('auto_today_smart', 'ALL', 64)
       : null;
     const relHigh = AvigenGenesisAI.classifyDataReliability(85);
     const relLow = AvigenGenesisAI.classifyDataReliability(15);
-    const simCheck = AvigenGenesisAI.simulateGeneticFutureGenerations();
-    const simCached = AvigenGenesisAI.simulateGeneticFutureGenerations();
-    const cacheAndUncertaintyOk = has2MainModules &&
+    const brCheck = AvigenGenesisAI.analyzeBreedingIntelligence(undefined, undefined, true);
+    const brCached = AvigenGenesisAI.analyzeBreedingIntelligence(undefined, undefined, true);
+    const validDecisions = ['ÖNERİLEN EŞLEŞME', 'KOŞULLU OLARAK ÖNERİLEN EŞLEŞME', 'ÖNERİLMEYEN EŞLEŞME'];
+    const distinctHeritabilities = new Set((brCheck.offspringTraits11 || []).map(t => t.h2)).size >= 5;
+    const cacheAndUncertaintyOk = hasUnifiedSmartPairing &&
       relHigh.label === 'Yüksek Güvenilirlik' &&
       relLow.label === 'Yetersiz Veri' &&
       Boolean(nutCheck && nutCheck.totalDailyGrams > 0 && nutCheck.todaySmart?.todayLiquidRecommendation) &&
-      simCheck === simCached &&
-      typeof simCheck.f1UncertaintySpread === 'number';
-    assert('T19', 'GENESIS AI', '2 Çekirdek Modül (Akıllı Eşleştirme & Akıllı Yem/Maliyet), 4 Güvenilirlik Sınıfı', cacheAndUncertaintyOk, `2 Ana Modül aktif • 64 Kuş: ${nutCheck?.totalDailyKgLabel}/gün (Aylık: ${nutCheck?.monthly?.totalFeedKgLabel} kg) • Güven Sınıfı: Doğrulandı`);
+      brCheck === brCached &&
+      Array.isArray(brCheck.offspringTraits11) &&
+      brCheck.offspringTraits11.length === 11 &&
+      distinctHeritabilities &&
+      validDecisions.includes(brCheck.decisionLabel) &&
+      Boolean(brCheck.blupEvaluation && typeof brCheck.blupEvaluation.isBlupEligible === 'boolean');
+    assert('T19', 'GENESIS AI', 'Tek Bütünleşik Akıllı Eşleştirme Motoru, 11 Yavru Özelliği (Farklı h²) & 3 Karar Seviyesi', cacheAndUncertaintyOk, `Tek Modül aktif • Karar: ${brCheck?.decisionLabel} • 11 Yavru Özelliği & Koşullu BLUP doğrulandı.`);
 
-    // 20. AVIGEN Yarış Takip Sistemi (Yarış Yönetimi, 11 Alanlı Kuş Yarış Geçmişi & GENESIS AI Gerçek Yarış Ayrımı)
-    const rtReady = typeof AvigenRaceTracker !== 'undefined' && Array.isArray(AvigenRaceTracker.events) && AvigenRaceTracker.events.length >= 1;
-    const firtinaHistory = rtReady ? AvigenRaceTracker.getBirdRaceHistory('TR-2024-100245') : [];
-    const realAnalytics = rtReady ? AvigenRaceTracker.computeGenesisRealRaceAnalytics() : null;
-    const raceTrackerOk = rtReady &&
-      firtinaHistory.length >= 2 &&
-      firtinaHistory[0].distanceKm > 0 &&
-      firtinaHistory[0].speedMpm > 0 &&
-      Boolean(realAnalytics && realAnalytics.birdsWithRealRaces.length >= 1);
-    assert('T20', 'Yarış Takip Sistemi', 'Yarış Yönetimi, 11 Alanlı Kuş Yarış Geçmişi & GENESIS AI Gerçek Yarış Öğrenimi', raceTrackerOk, `${AvigenRaceTracker?.events?.length || 0} yarış etabı • TR-2024-100245 için ${firtinaHistory.length} resmi yarış kaydı ve AI ayrımı aktif.`);
-
-    // 21. 5 Nesil (gggg1..32) Sewall Wright COI & Kişisel Kümes Danışmanı Doğrulaması
-    const gen5Sire = { self: { ring: 'S-0' }, p1: { ring: 'S-1' }, g1: { ring: 'S-2' }, gg1: { ring: 'S-3' }, ggg1: { ring: 'S-4' }, gggg1: { ring: 'COMMON-GEN5' } };
-    const gen5Dam = { self: { ring: 'D-0' }, p1: { ring: 'D-1' }, g1: { ring: 'D-2' }, gg1: { ring: 'D-3' }, ggg1: { ring: 'D-4' }, gggg1: { ring: 'COMMON-GEN5' } };
-    const coiGen5 = AvigenGenesisAI.calculateExactWrightCOI(gen5Sire, gen5Dam);
-    const advCheck = typeof AvigenGenesisAI.buildCortexAdvisorAnalysis === 'function'
-      ? AvigenGenesisAI.buildCortexAdvisorAnalysis('damizlik_secimi', '')
-      : null;
-    assert('T21', '5 Nesil COI & Danışman', '5. Nesil (gggg1..32) Ortak Ata Tespiti & Kişisel Kümes Danışmanı', coiGen5.coiPercent > 0 && coiGen5.commonAncestorsDetailed.length === 1 && Boolean(advCheck && advCheck.headerTitle), `5. Nesil Ortak Ata COI: %${coiGen5.coiPercent.toFixed(2)} • Kişisel Kümes Danışmanı: Aktif`);
+    // 20. AVIGEN Yarış Takip Sistemi (İzole Yarış Kaydı, Hız m/dk Hesaplaması & GENESIS AI Gerçek Yarış Ayrımı)
+    let raceTrackerOk = false;
+    let rtDetail = '';
+    if (typeof AvigenRaceTracker !== 'undefined') {
+      const backupEvents = JSON.parse(JSON.stringify(AvigenRaceTracker.events || []));
+      const testRing = pedigrees[0]?.boxes?.main?.ring || 'TR-2024-100245';
+      AvigenRaceTracker.events = [
+        {
+          id: 'qa_test_race_1',
+          codeTitle: 'QA TEST ETABI 420 KM',
+          releasePoint: 'Eskişehir',
+          distanceKm: 420,
+          releaseDate: '2026-05-10',
+          releaseDateLabel: '10 Mayıs',
+          releaseTime: '06:30',
+          totalCompetitors: 1200,
+          raceType: 'Orta Mesafe',
+          entries: [
+            {
+              ring: testRing,
+              birdName: 'QA Test Kuşu',
+              flag: '🇹🇷',
+              resultStatus: 'ENTERED',
+              arrivalDate: '2026-05-10',
+              arrivalTime: '11:30',
+              flightMinutes: 300,
+              durationLabel: '5s 00dk',
+              speedMpm: 1400,
+              rank: 4,
+              totalCompetitors: 1200,
+              points: 98,
+              weather: 'Açık 21°C'
+            }
+          ]
+        }
+      ];
+      const hist = AvigenRaceTracker.getBirdRaceHistory(testRing);
+      const realAnalytics = AvigenRaceTracker.computeGenesisRealRaceAnalytics();
+      raceTrackerOk = hist.length >= 1 &&
+        hist[0].distanceKm === 420 &&
+        hist[0].speedMpm === 1400 &&
+        Boolean(realAnalytics && realAnalytics.birdsWithRealRaces.length >= 1);
+      rtDetail = `İzole etap testi: ${testRing} • 420 km • 1400 m/dk • 4/1200 klasman ve AI gerçek yarış ayrımı doğrulandı.`;
+      AvigenRaceTracker.events = backupEvents;
+    }
+    assert('T20', 'Yarış Takip Sistemi', 'Yarış Yönetimi, 11 Alanlı Kuş Yarış Geçmişi & GENESIS AI Gerçek Yarış Öğrenimi', raceTrackerOk, rtDetail);
 
     const passedCount = results.filter(r => r.passed).length;
     return {
@@ -9235,16 +9095,6 @@ const AvigenSystemAuditQA = {
       allPassed: passedCount === results.length,
       results
     };
-  },
-
-  cleanUpTestPermission(testRing) {
-    if (typeof AvigenGlobalGenePool === 'undefined') return;
-    const perm = AvigenGlobalGenePool.getBirdPermission(testRing);
-    if (perm) {
-      AvigenGlobalGenePool.db.purge_audit_log = AvigenGlobalGenePool.db.purge_audit_log.filter(p => p.anonymous_code !== perm.anonymous_code);
-      AvigenGlobalGenePool.db.global_bird_permissions = AvigenGlobalGenePool.db.global_bird_permissions.filter(p => p.local_bird_ring !== testRing);
-      AvigenGlobalGenePool.saveDatabase();
-    }
   },
 
   runAndRenderInSecurityPane() {

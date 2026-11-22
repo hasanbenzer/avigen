@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avigen-pwa-v6';
+const CACHE_NAME = 'avigen-pwa-v15';
 const ASSETS = [
   './',
   './index.html',
@@ -6,7 +6,6 @@ const ASSETS = [
   './real-pedigrees-64.js',
   './app.js',
   './scientific-library.js',
-  './global-gene-pool.js',
   './genesis-ai.js',
   './performance-profile.js',
   './manifest.json',

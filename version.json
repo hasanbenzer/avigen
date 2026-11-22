@@ -1,13 +1,13 @@
 {
-  "version": "2.1.0",
-  "build": 210,
+  "version": "3.0.0",
+  "build": 300,
   "releaseDate": "2026-11-22",
-  "title": "AVIGEN 2.1 — 5 Nesil Akıllı Eşleştirme, Performans Doğrulaması & Kullanım Rehberi",
+  "title": "AVIGEN v3.0 — 81 İl Haritalı Yarış Simülasyonu, Hızlı Toplu Sonuç Girişi & Fenotip/Çifte Yavru Mimarisi",
   "notes": [
-    "GENESIS AI 1. Modül: 5 Nesil Çapraz Soy Ağacı Tamamlama, Ortak Ata Kalite Kontrolü, Mesafe/Tip Uyumu ve Kümesinizdeki En Uygun 5 Eşleşme Tarayıcısı",
-    "Performans & Genetik Profil: Bireysel yarış ve yavru başarısı ayrımı, veri doluluğuna göre AVK ağırlıklandırma ve doğruluk düzeltmeleri",
-    "Üst barda sadeleştirilmiş 📖 Rehber (Adım Adım Nasıl Kullanılır & Neyin Ne İşe Yaradığı) ve 2 katmanlı ferah Kümes + Canlı Hava Durumu kartı",
-    "AVIGEN FREE ve AVIGEN GENESIS AI 2 kademeli sadeleştirilmiş paket yapısı ve tek tuşla veri kaybetmeden güncelleme sistemi"
+    "Haritalı Akıllı Yarış Simülasyonu (81 İl): Türkiye haritasında salım ve varış seçimi, canlı rüzgâr/hava çekme, kümes konumunu sabitleme ve önerilen kadroyu tek tuşla gerçek yarışa sepetleme",
+    "Pazar Günü Hızlı Sonuç & Saat Damgalama: Tek dokunuşla '⚡ Şimdi İndi' anlık varış saati damgalama ve tüm kuşları 30 saniyede tek ekrandan kaydetmeyi sağlayan '📋 Toplu Hızlı Sonuç Tablosu'",
+    "Kuşçu Ele Alma (Fenotip) & Çifte Yavru: Kuş kartında Gövde, Kas, Çatal Kemik, Kanat seçicileri, Kuş Durumu (Aktif/Dinlenmede/Kayıp/Satıldı) ve yuvadan tek seferde ardışık bilezikli Çifte Yavru kaydı",
+    "GENESIS AI v3.0: Akıllı Eşleştirme ekranında 5 görsel yavru potansiyel çubuğu, tek tuşla yuva kaydı ve sadeleştirilmiş Kuş & Yuva / Yarışlar menü mimarisi"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"

@@ -1248,8 +1248,12 @@ const AvigenRaceTracker = {
 
   saveEvents() {
     localStorage.setItem(AVIGEN_RACE_EVENTS_KEY, JSON.stringify(this.events));
-    if (typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.invalidateCache === 'function') {
-      AvigenGenesisAI.invalidateCache();
+    if (typeof AvigenGenesisAI !== 'undefined') {
+      if (typeof AvigenGenesisAI.invalidateEngineCache === 'function') {
+        AvigenGenesisAI.invalidateEngineCache();
+      } else if (typeof AvigenGenesisAI.invalidateCache === 'function') {
+        AvigenGenesisAI.invalidateCache();
+      }
     }
   },
 
@@ -1681,18 +1685,23 @@ const AvigenRaceTracker = {
     const totalPendingResults = this.events.reduce((acc, ev) => acc + (ev.entries || []).filter(e => e.resultStatus !== 'ENTERED').length, 0);
 
     root.innerHTML = `
-      <!-- ÜST ÖZET & 5 ADIMLI HIZLI YARIŞ OLUŞTURMA BAR -->
+      <!-- ÜST ÖZET, GENESIS AI HARİTALI SİMÜLASYON KÖPRÜSÜ & HIZLI YARIŞ OLUŞTURMA BAR -->
       <div class="ios-card" style="padding:10px 12px; border-top:3px solid #0066ff;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
           <div>
-            <div style="font-size:13px; font-weight:900; color:var(--ios-text);">🏁 AVIGEN Yarış Takip &amp; Sepetleme Sistemi</div>
+            <div style="font-size:13px; font-weight:900; color:var(--ios-text);">🏁 AVIGEN Yarış Takip &amp; Sepetleme Merkezi</div>
             <div style="font-size:9.8px; color:var(--ios-subtext);">
-              1. Yarış oluştur • 2. Kuşları seç • 3. Sepetle • 4. Sonuçları gir • 5. Kuş geçmişine &amp; AI'ya otomatik işlensin
+              81 il otomatik km hesabı • Kuşları sepetle • Pazar günü <strong>⚡ Şimdi İndi</strong> veya <strong>📋 Toplu Tablo</strong> ile 30 saniyede sonuç gir
             </div>
           </div>
-          <button class="ios-btn ios-btn-primary" style="padding:7px 11px; font-size:10.5px; flex-shrink:0;" onclick="AvigenRaceTracker.openCreateRaceModal()">
-            + Yeni Yarış Oluştur
-          </button>
+          <div style="display:flex; gap:5px; flex-shrink:0;">
+            <button class="ios-btn ios-btn-purple" style="padding:7px 10px; font-size:10px;" onclick="if(typeof AvigenGenesisAI!=='undefined') AvigenGenesisAI.openModuleDirectlyFromHome('smart_race');" title="Yarış öncesinde Türkiye haritasında rota, canlı rüzgâr ve en uygun kadroyu simüle et">
+              🗺️ AI Haritalı Simülasyon
+            </button>
+            <button class="ios-btn ios-btn-primary" style="padding:7px 11px; font-size:10.5px;" onclick="AvigenRaceTracker.openCreateRaceModal()">
+              + Yeni Yarış Aç
+            </button>
+          </div>
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
@@ -1752,10 +1761,16 @@ const AvigenRaceTracker = {
               📍 Salım: ${escapeHtml(ev.releasePoint)} • 🌤️ ${escapeHtml(ev.weather || 'Açık Hava')} • Toplam Klasman: ${(ev.totalCompetitors || 1200).toLocaleString('tr-TR')} Kuş
             </div>
           </div>
-          <div style="display:flex; align-items:center; gap:5px;">
+          <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
             <span class="gene-badge ${statusBadgeClass}" style="font-size:9.5px; padding:3px 9px;">
               ${statusText}
             </span>
+            <button class="ios-btn ios-btn-green" style="padding:4px 9px; font-size:9.5px; font-weight:900;" onclick="AvigenRaceTracker.openBatchResultEntryModal('${ev.id}')" title="Tüm kuşların varış saatini ve derecesini tek ekranda toplu olarak gir">
+              📋 Toplu Hızlı Sonuç (${enteredCount}/${entries.length})
+            </button>
+            <button class="ios-btn ios-btn-purple" style="padding:4px 8px; font-size:9.5px;" onclick="if(typeof AvigenGenesisAI!=='undefined') AvigenGenesisAI.openSmartRaceWithEvent('${ev.id}');" title="Bu yarışı GENESIS AI – Akıllı Yarış Simülasyonu modülünde harita üzerinde analiz et">
+              🗺️ AI Harita
+            </button>
             <button class="ios-btn ios-btn-outline" style="padding:4px 8px; font-size:9.5px;" onclick="AvigenRaceTracker.openAddBirdsToRaceModal('${ev.id}')" title="Bu yarışa kümesten kuş ekle">
               + Kuş Ekle
             </button>
@@ -1766,22 +1781,22 @@ const AvigenRaceTracker = {
         </div>
 
         <!-- 4 METADATA KUTUSU: YARIŞ MESAFESİ | KATILAN KUŞ | SALIM TARİHİ | YARIŞ TÜRÜ -->
-        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-bottom:10px;">
-          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:6px 7px;">
-            <div style="font-size:8.5px; font-weight:700; color:var(--ios-subtext);">Yarış mesafesi</div>
-            <div style="font-size:12.5px; font-weight:900; color:#0052cc; margin-top:2px;">${ev.distanceKm} km</div>
+        <div style="display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px; margin-bottom:10px;">
+          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:6px 7px; min-width:0;">
+            <div style="font-size:8.5px; font-weight:700; color:var(--ios-subtext); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Yarış mesafesi</div>
+            <div style="font-size:12px; font-weight:900; color:#0052cc; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ev.distanceKm} km</div>
           </div>
-          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:6px 7px;">
-            <div style="font-size:8.5px; font-weight:700; color:var(--ios-subtext);">Katılan kuş</div>
-            <div style="font-size:12.5px; font-weight:900; color:var(--ios-text); margin-top:2px;">${displayBirdCount} kuş</div>
+          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:6px 7px; min-width:0;">
+            <div style="font-size:8.5px; font-weight:700; color:var(--ios-subtext); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Katılan kuş</div>
+            <div style="font-size:12px; font-weight:900; color:var(--ios-text); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${displayBirdCount} kuş</div>
           </div>
-          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:6px 7px;">
-            <div style="font-size:8.5px; font-weight:700; color:var(--ios-subtext);">Salım tarihi</div>
-            <div style="font-size:12px; font-weight:900; color:var(--ios-text); margin-top:2px;">${escapeHtml(ev.releaseDateLabel)}</div>
+          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:6px 7px; min-width:0;">
+            <div style="font-size:8.5px; font-weight:700; color:var(--ios-subtext); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Salım tarihi</div>
+            <div style="font-size:11.5px; font-weight:900; color:var(--ios-text); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(ev.releaseDateLabel)}</div>
           </div>
-          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:6px 7px;">
-            <div style="font-size:8.5px; font-weight:700; color:var(--ios-subtext);">Yarış türü</div>
-            <div style="font-size:11px; font-weight:900; color:#7c3aed; margin-top:2px;">${escapeHtml(ev.raceType)}</div>
+          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:6px 7px; min-width:0;">
+            <div style="font-size:8.5px; font-weight:700; color:var(--ios-subtext); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Yarış türü</div>
+            <div style="font-size:10.5px; font-weight:900; color:#7c3aed; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(ev.raceType)}</div>
           </div>
         </div>
 
@@ -1806,18 +1821,24 @@ const AvigenRaceTracker = {
                   </div>
                 </div>
 
-                <div style="display:flex; align-items:center; gap:9px; flex-shrink:0;">
-                  <div style="text-align:right;">
-                    <div style="font-size:14px; font-weight:900; color:${isEntered ? '#059669' : '#64748b'};">
+                <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                  <div style="text-align:right; margin-right:2px;">
+                    <div style="font-size:13.5px; font-weight:900; color:${isEntered ? '#059669' : '#64748b'};">
                       ${isEntered && en.rank ? `${en.rank}.` : '—'}
                     </div>
-                    <div style="font-size:9px; font-weight:800; color:${isEntered ? '#059669' : '#7c3aed'};">
-                      ${isEntered ? 'Sonuç girildi' : 'Sonuç bekleniyor'}
+                    <div style="font-size:8.5px; font-weight:800; color:${isEntered ? '#059669' : '#7c3aed'};">
+                      ${isEntered ? (en.arrivalTime ? `🛬 ${escapeHtml(en.arrivalTime)}` : 'Girildi') : 'Bekleniyor'}
                     </div>
                   </div>
 
-                  <button class="ios-btn ${isEntered ? 'ios-btn-outline' : 'ios-btn-primary'}" style="padding:5px 9px; font-size:9.5px;" onclick="AvigenRaceTracker.openResultEntryModal('${ev.id}', '${escapeHtml(en.ring)}')">
-                    ${isEntered ? '✏️ Düzenle' : '⏱️ Sonuç Gir'}
+                  ${!isEntered ? `
+                    <button class="ios-btn ios-btn-green" style="padding:5px 8px; font-size:9.5px; font-weight:900;" onclick="AvigenRaceTracker.stampInstantBirdArrival('${ev.id}', '${escapeHtml(en.ring)}')" title="Kuş şu an kümese indiyse tek dokunuşla anlık varış saatini damgala ve hızını hesapla">
+                      ⚡ Şimdi İndi
+                    </button>
+                  ` : ''}
+
+                  <button class="ios-btn ${isEntered ? 'ios-btn-outline' : 'ios-btn-primary'}" style="padding:5px 8px; font-size:9.5px;" onclick="AvigenRaceTracker.openResultEntryModal('${ev.id}', '${escapeHtml(en.ring)}')">
+                    ${isEntered ? '✏️ Düzenle' : '⏱️ Detay'}
                   </button>
                   <button class="ios-btn ios-btn-danger" style="padding:5px 7px; font-size:9.5px;" onclick="AvigenRaceTracker.removeBirdFromRace('${ev.id}', '${escapeHtml(en.ring)}')" title="Bu kuşu yarış listesinden çıkar">
                     ✕
@@ -1863,42 +1884,83 @@ const AvigenRaceTracker = {
   },
 
   // --------------------------------------------------------------------------
-  // 3. YARIŞA KUŞ VERME İŞLEMİ (5 ADIMLI AKIŞ MODALLARI)
+  // 3. YARIŞA KUŞ VERME İŞLEMİ (81 İL OTOMATİK KM + KUŞ DURUMU GÖSTEREN SEPETLEME)
   // --------------------------------------------------------------------------
-  openCreateRaceModal() {
+  openCreateRaceModal(prefillData = null) {
     const modal = document.getElementById('avigenRaceModal');
     const titleEl = document.getElementById('avigenRaceModalTitle');
     const bodyEl = document.getElementById('avigenRaceModalBody');
     if (!modal || !bodyEl) return;
 
-    titleEl.textContent = '🏁 1–3. Adım: Yeni Yarış Oluştur & Katılacak Kuşları Seç';
+    titleEl.textContent = '🏁 Yeni Yarış Oluştur & Katılacak Kuşları Sepetle';
     const loftBirds = typeof collectUniqueLoftBirds === 'function'
-      ? collectUniqueLoftBirds().filter(b => b.isActiveLoftBird)
+      ? collectUniqueLoftBirds().filter(b => b.isActiveLoftBird && b.birdStatus !== 'LOST' && b.birdStatus !== 'SOLD')
       : [];
 
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayIso = prefillData?.releaseDate || new Date().toISOString().slice(0, 10);
+    const geoNodes = (typeof AvigenGenesisAI !== 'undefined' && Array.isArray(AvigenGenesisAI.SMART_RACE_GEO_NODES))
+      ? AvigenGenesisAI.SMART_RACE_GEO_NODES
+      : [];
+
+    const defaultLoftCityId = prefillData?.loftCityId
+      || (typeof AvigenGenesisAI !== 'undefined' && AvigenGenesisAI.state?.smartRaceLoftCityId)
+      || (typeof AvigenLiveWeather !== 'undefined' && AvigenLiveWeather.state?.cityId && AvigenLiveWeather.state.cityId !== 'gps' ? AvigenLiveWeather.state.cityId : 'bursa');
+
+    const defaultRelCityId = prefillData?.releaseCityId || 'ankara';
+    const prefillRingsSet = prefillData?.selectedRings ? new Set(prefillData.selectedRings.map(r => r.toUpperCase())) : null;
+
+    // Aktif yuvalarda olan kuşları tespit et (Sepetlerken kuşçuya bilgi rozeti göster)
+    const activeNestRings = new Set();
+    if (typeof activePairsList !== 'undefined' && Array.isArray(activePairsList)) {
+      activePairsList.forEach(p => {
+        const sr = typeof extractCleanRingFromText === 'function' ? extractCleanRingFromText(p.sire) : '';
+        const dr = typeof extractCleanRingFromText === 'function' ? extractCleanRingFromText(p.dam) : '';
+        if (sr) activeNestRings.add(sr.toUpperCase());
+        if (dr) activeNestRings.add(dr.toUpperCase());
+      });
+    }
 
     bodyEl.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:8px; font-size:11px;">
-        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:9px; padding:7px 9px; font-size:10px; color:#1e3a8a;">
-          <strong>5 Adımlı Kolay Yarış Akışı:</strong> Yarış bilgilerini girin ve kümesinizden yarışa katılacak kuşları işaretleyip kaydedin. Yarış bittiğinde her kuşun sonucunu tek dokunuşla girebilirsiniz.
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:9px; padding:7px 9px; font-size:10px; color:#1e3a8a; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+          <span><strong>81 İl Otomatik KM &amp; Sepetleme:</strong> Salım ve varış (kümes) ilini seçtiğinizde kuş uçuşu mesafe (km) otomatik hesaplanır.</span>
+          <button type="button" class="ios-btn ios-btn-purple" style="padding:4px 8px; font-size:9px; flex-shrink:0;" onclick="AvigenRaceTracker.closeModal(); if(typeof AvigenGenesisAI!=='undefined') AvigenGenesisAI.openModuleDirectlyFromHome('smart_race');">
+            🗺️ Haritada Simüle Et
+          </button>
         </div>
+
+        ${geoNodes.length > 0 ? `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:7px 8px;">
+            <div>
+              <label style="font-size:9.5px; font-weight:800; color:#dc2626;">🔴 Salım Şehri Seç (81 İl)</label>
+              <select id="newRaceRelCitySelect" class="ios-select" style="padding:5px 7px; font-size:11px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange()">
+                ${geoNodes.map(n => `<option value="${n.id}" ${n.id === defaultRelCityId ? 'selected' : ''}>${escapeHtml(n.name)} (${n.altM}m)</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:9.5px; font-weight:800; color:#059669;">🟢 Varış (Kümes) Şehri</label>
+              <select id="newRaceLoftCitySelect" class="ios-select" style="padding:5px 7px; font-size:11px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange()">
+                ${geoNodes.map(n => `<option value="${n.id}" ${n.id === defaultLoftCityId ? 'selected' : ''}>${escapeHtml(n.name)} (${n.altM}m)</option>`).join('')}
+              </select>
+            </div>
+          </div>
+        ` : ''}
 
         <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:6px;">
           <div>
             <label style="font-size:9.5px; font-weight:800;">Yarış Başlığı / Etap Kodu</label>
-            <input type="text" id="newRaceCodeTitle" class="ios-input" placeholder="Örn: ANKARA – 2026 / 10" value="ANKARA – 2026 / 10" />
+            <input type="text" id="newRaceCodeTitle" class="ios-input" placeholder="Örn: ANKARA – 2026 / 10" value="${escapeHtml(prefillData?.codeTitle || 'ANKARA – 2026 / 10')}" />
           </div>
           <div>
             <label style="font-size:9.5px; font-weight:800;">Salım Noktası (Şehir/İlçe)</label>
-            <input type="text" id="newRaceReleasePoint" class="ios-input" placeholder="Örn: Ankara (Polatlı)" value="Ankara (Polatlı)" />
+            <input type="text" id="newRaceReleasePoint" class="ios-input" placeholder="Örn: Ankara (Polatlı)" value="${escapeHtml(prefillData?.releasePoint || 'Ankara (Polatlı)')}" />
           </div>
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
           <div>
-            <label style="font-size:9.5px; font-weight:800;">Yarış Mesafesi (km)</label>
-            <input type="number" id="newRaceDistanceKm" class="ios-input" value="380" oninput="AvigenRaceTracker.onCreateDistanceInput(this.value)" />
+            <label style="font-size:9.5px; font-weight:800;">Kuş Uçuşu Mesafe (km)</label>
+            <input type="number" id="newRaceDistanceKm" class="ios-input" style="font-weight:900; color:#0052cc;" value="${prefillData?.distanceKm || 380}" oninput="AvigenRaceTracker.onCreateDistanceInput(this.value)" />
           </div>
           <div>
             <label style="font-size:9.5px; font-weight:800;">Salım Tarihi</label>
@@ -1906,7 +1968,7 @@ const AvigenRaceTracker = {
           </div>
           <div>
             <label style="font-size:9.5px; font-weight:800;">Salım Saati</label>
-            <input type="time" id="newRaceReleaseTime" class="ios-input" value="06:45" />
+            <input type="time" id="newRaceReleaseTime" class="ios-input" value="${escapeHtml(prefillData?.releaseTime || '06:45')}" />
           </div>
         </div>
 
@@ -1921,44 +1983,87 @@ const AvigenRaceTracker = {
             </select>
           </div>
           <div>
-            <label style="font-size:9.5px; font-weight:800;">Toplam Katılımcı Kuş</label>
-            <input type="number" id="newRaceCompetitors" class="ios-input" value="1500" />
+            <label style="font-size:9.5px; font-weight:800;">Toplam Klasman Kuşu</label>
+            <input type="number" id="newRaceCompetitors" class="ios-input" value="${prefillData?.totalCompetitors || 1500}" />
           </div>
           <div>
             <label style="font-size:9.5px; font-weight:800;">Hava Koşulları</label>
-            <input type="text" id="newRaceWeather" class="ios-input" value="Açık • KKD 10 km/s • 19°C" />
+            <input type="text" id="newRaceWeather" class="ios-input" value="${escapeHtml(prefillData?.weather || 'Açık • KKD 10 km/s • 19°C')}" />
           </div>
         </div>
 
-        <!-- KÜMESTEKİ KUŞLARDAN ÇOKLU SEÇİM -->
+        <!-- KÜMESTEKİ KUŞLARDAN ÇOKLU SEÇİM (DURUM, SOY VE PERFORMANS BİLGİLİ) -->
         <div style="margin-top:4px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <label style="font-size:10.5px; font-weight:900; color:var(--ios-text);">🕊️ 2. Adım: Kümesinizden Yarışa Katılacak Kuşları Seçin</label>
-            <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:9px;" onclick="document.querySelectorAll('.race-bird-chk').forEach(c => c.checked = true)">Tümünü Seç</button>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:5px;">
+            <label style="font-size:10.5px; font-weight:900; color:var(--ios-text);">🕊️ Kümesinizden Sepetlenecek Kuşları Seçin (${loftBirds.length} Aktif Kuş)</label>
+            <div style="display:flex; gap:4px;">
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.8px;" onclick="document.querySelectorAll('.race-bird-chk').forEach(c => c.checked = (c.getAttribute('data-role')==='RACER'))">Sadece Yarışçılar</button>
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.8px;" onclick="document.querySelectorAll('.race-bird-chk').forEach(c => c.checked = true)">Tümünü Seç</button>
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.8px;" onclick="document.querySelectorAll('.race-bird-chk').forEach(c => c.checked = false)">Temizle</button>
+            </div>
           </div>
-          <div style="max-height:190px; overflow-y:auto; display:flex; flex-direction:column; gap:5px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:10px; padding:7px;">
-            ${loftBirds.map((b, idx) => `
-              <label style="display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--ios-card); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px; cursor:pointer;">
-                <div style="display:flex; align-items:center; gap:7px;">
-                  <input type="checkbox" class="race-bird-chk" value="${escapeHtml(b.ring)}" data-name="${escapeHtml(b.name)}" data-flag="${b.flag || '🇹🇷'}" ${idx < 3 ? 'checked' : ''} style="width:15px; height:15px; accent-color:#0066ff;" />
-                  <div>
-                    <div style="font-size:11px; font-weight:900; color:var(--ios-text);">${escapeHtml(b.name)}</div>
-                    <div style="font-size:9.5px; font-weight:700; color:#0066ff;">${b.flag} ${escapeHtml(b.ring)}</div>
+          <div style="max-height:195px; overflow-y:auto; display:flex; flex-direction:column; gap:5px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:10px; padding:7px;">
+            ${loftBirds.map((b, idx) => {
+              const isChecked = prefillRingsSet ? prefillRingsSet.has(b.ring.toUpperCase()) : (b.roleCategory === 'RACER' ? idx < 6 : idx < 3);
+              const inNest = activeNestRings.has(b.ring.toUpperCase());
+              const isResting = b.birdStatus === 'RESTING';
+              const histCount = this.getBirdRaceHistory(b.ring).filter(h => h.resultStatus === 'ENTERED').length;
+              return `
+                <label style="display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--ios-card); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px; cursor:pointer;">
+                  <div style="display:flex; align-items:center; gap:7px; min-width:0;">
+                    <input type="checkbox" class="race-bird-chk" value="${escapeHtml(b.ring)}" data-name="${escapeHtml(b.name)}" data-flag="${b.flag || '🇹🇷'}" data-role="${b.roleCategory || 'RACER'}" ${isChecked ? 'checked' : ''} style="width:15px; height:15px; accent-color:#0066ff;" />
+                    <div style="min-width:0;">
+                      <div style="font-size:11px; font-weight:900; color:var(--ios-text); display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                        <span>${escapeHtml(b.name)}</span>
+                        <span style="font-size:9px; color:${b.sex === 'F' ? '#db2777' : '#0284c7'};">${b.sex === 'F' ? '♀' : '♂'}</span>
+                        ${inNest ? `<span class="gene-badge gene-gold" style="font-size:7.5px; padding:1px 4px;">🪺 Yuvada</span>` : ''}
+                        ${isResting ? `<span class="gene-badge gene-red" style="font-size:7.5px; padding:1px 4px;">🟠 Dinlenmede</span>` : ''}
+                      </div>
+                      <div style="font-size:9.3px; font-weight:700; color:#0066ff;">
+                        ${b.flag} ${escapeHtml(b.ring)} <span style="color:var(--ios-subtext); font-weight:600;">• ${histCount > 0 ? `${histCount} Yarış Tecrübesi` : 'İlk Yarışı'}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <span class="gene-badge gene-blue" style="font-size:8.5px;">${b.roleCategory === 'RACER' ? 'Yarışçı' : (b.roleCategory === 'BREEDER' ? 'Damızlık' : 'Genç')}</span>
-              </label>
-            `).join('')}
+                  <span class="gene-badge ${b.roleCategory === 'RACER' ? 'gene-green' : (b.roleCategory === 'BREEDER' ? 'gene-gold' : 'gene-blue')}" style="font-size:8.2px; flex-shrink:0;">
+                    ${b.roleCategory === 'RACER' ? '🏁 Yarışçı' : (b.roleCategory === 'BREEDER' ? '🧬 Damızlık' : '🐣 Genç')}
+                  </span>
+                </label>
+              `;
+            }).join('')}
           </div>
         </div>
 
         <button class="ios-btn ios-btn-primary" style="width:100%; padding:10px; font-size:12.5px; margin-top:4px;" onclick="AvigenRaceTracker.saveNewRaceFromModal()">
-          🏁 3. Adım: Seçilen Kuşları Yarış Listesine Kaydet
+          🏁 Seçilen Kuşları Sepetle ve Yarış Etabını Başlat
         </button>
       </div>
     `;
 
     modal.classList.add('open');
+    if (!prefillData?.distanceKm) {
+      this.onCreateRaceCitySelectChange();
+    } else {
+      this.onCreateDistanceInput(prefillData.distanceKm);
+    }
+  },
+
+  onCreateRaceCitySelectChange() {
+    if (typeof AvigenGenesisAI === 'undefined') return;
+    const relId = document.getElementById('newRaceRelCitySelect')?.value || 'ankara';
+    const loftId = document.getElementById('newRaceLoftCitySelect')?.value || 'bursa';
+    const relNode = AvigenGenesisAI.findGeoNodeByNameOrId(relId, 'ankara');
+    const loftNode = AvigenGenesisAI.findGeoNodeByNameOrId(loftId, 'bursa');
+    const route = AvigenGenesisAI.calculateHaversineRoute(relNode, loftNode, 0, 'calm', 10);
+
+    const shortRel = String(relNode.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0].trim();
+    const titleEl = document.getElementById('newRaceCodeTitle');
+    const ptEl = document.getElementById('newRaceReleasePoint');
+    const kmEl = document.getElementById('newRaceDistanceKm');
+
+    if (titleEl) titleEl.value = `${shortRel.toUpperCase()} – 2026 ETABI`;
+    if (ptEl) ptEl.value = relNode.name;
+    if (kmEl) kmEl.value = route.crowFliesKm;
+    this.onCreateDistanceInput(route.crowFliesKm);
   },
 
   onCreateDistanceInput(kmVal) {
@@ -2288,11 +2393,345 @@ const AvigenRaceTracker = {
       }
     }
 
-    if (typeof saveMypedigreData === 'function') {
-      saveMypedigreData();
+    // 2.c) Pedigri kutularındaki (box.notes) resmi yarış notlarına senkronize et (Düzenleme durumunda mevcut satırı günceller)
+    if (typeof pedigrees !== 'undefined' && Array.isArray(pedigrees)) {
+      const targetRingUpper = String(entry.ring || '').trim().toUpperCase();
+      pedigrees.forEach(p => {
+        Object.values(p.boxes || {}).forEach(b => {
+          if (b && b.ring && b.ring.trim().toUpperCase() === targetRingUpper) {
+            const curNotes = String(b.notes || '');
+            if (!curNotes.includes(ev.codeTitle)) {
+              b.notes = (curNotes ? curNotes + '\n' : '') + degreeSummaryLine;
+            } else {
+              const lines = curNotes.split(/\r?\n/);
+              b.notes = lines.map(l => l.includes(ev.codeTitle) ? degreeSummaryLine : l).join('\n');
+            }
+          }
+        });
+      });
     }
 
     this.saveEvents();
+    if (typeof saveMypedigreData === 'function') {
+      saveMypedigreData();
+    }
+    this.closeModal();
+    this.renderRaceTrackerMainUI();
+    this.renderRaceAiInsightsUI();
+    if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+  },
+
+  // --------------------------------------------------------------------------
+  // YENİ v3.0: PAZAR GÜNÜ KÜMES ÖNÜ "⚡ ŞİMDİ İNDİ" TEK DOKUNUŞLA SAAT DAMGALAMA
+  // VE "📋 TOPLU HIZLI SONUÇ TABLOSU" (20 KUŞU 30 SANİYEDE TEK EKRANDA GİRME)
+  // --------------------------------------------------------------------------
+  syncSingleBirdEntryToDossierAndPedigree(ev, entry) {
+    if (!ev || !entry || entry.resultStatus !== 'ENTERED' || !entry.speedMpm) return;
+    const cleanRingUpper = entry.ring.trim().toUpperCase();
+    const syncKey = `rt_sync_${ev.id}_${cleanRingUpper}`;
+    const comp = entry.totalCompetitors || ev.totalCompetitors || 1200;
+    const rank = entry.rank || 1;
+    const weather = entry.weather || ev.weather || 'Açık Hava';
+    const kmhFormatted = (entry.speedMpm * 0.06).toFixed(1).replace('.', ',');
+    const degreeSummaryLine = `${rank}. ${ev.codeTitle} ${ev.distanceKm} km (${comp.toLocaleString('tr-TR')} Kuş - ${entry.speedMpm} m/dk • ${kmhFormatted} km/sa)`;
+
+    if (typeof racesList !== 'undefined') {
+      const existingRaceIdx = racesList.findIndex(r => r.syncKey === syncKey);
+      const racePayload = {
+        id: existingRaceIdx >= 0 ? racesList[existingRaceIdx].id : ('race_sync_' + Date.now() + '_' + Math.floor(Math.random() * 999)),
+        syncKey,
+        icon: rank === 1 ? '🥇' : (rank <= 3 ? '🥈' : '🏆'),
+        title: `${ev.codeTitle} (${ev.distanceKm} km) — ${rank}.lik`,
+        detail: `${entry.flag || '🇹🇷'} ${entry.ring} (${entry.birdName}) • ${entry.speedMpm} m/dk (${kmhFormatted} km/sa)`,
+        badge: `${rank}. / ${comp.toLocaleString('tr-TR')} Kuş`,
+        badgeColor: rank <= 10 ? 'gene-green' : 'gene-blue'
+      };
+      if (existingRaceIdx >= 0) racesList[existingRaceIdx] = racePayload;
+      else racesList.unshift(racePayload);
+    }
+
+    if (typeof birdDossierList !== 'undefined') {
+      const existingDosIdx = birdDossierList.findIndex(d => d.syncKey === syncKey);
+      const dosPayload = {
+        id: existingDosIdx >= 0 ? birdDossierList[existingDosIdx].id : ('dos_rt_' + Date.now() + '_' + Math.floor(Math.random() * 999)),
+        syncKey,
+        ring: entry.ring,
+        birdName: entry.birdName,
+        category: 'Yarış Derecesi',
+        icon: '🏁',
+        title: degreeSummaryLine,
+        detail: `Salım: ${ev.releasePoint} (${ev.releaseDateLabel} ${ev.releaseTime}) • Varış: ${entry.arrivalTime} • Süre: ${entry.durationLabel} • Hız: ${entry.speedMpm} m/dk (${kmhFormatted} km/sa) • Hava: ${weather}`,
+        date: entry.arrivalDate || ev.releaseDate,
+        badgeColor: 'gene-green'
+      };
+      if (existingDosIdx >= 0) birdDossierList[existingDosIdx] = dosPayload;
+      else birdDossierList.unshift(dosPayload);
+    }
+
+    if (typeof pedigrees !== 'undefined' && Array.isArray(pedigrees)) {
+      pedigrees.forEach(p => {
+        Object.values(p.boxes || {}).forEach(b => {
+          if (b && b.ring && b.ring.trim().toUpperCase() === cleanRingUpper) {
+            const curNotes = String(b.notes || '');
+            if (!curNotes.includes(ev.codeTitle)) {
+              b.notes = (curNotes ? curNotes + '\n' : '') + degreeSummaryLine;
+            } else {
+              const lines = curNotes.split(/\r?\n/);
+              b.notes = lines.map(l => l.includes(ev.codeTitle) ? degreeSummaryLine : l).join('\n');
+            }
+          }
+        });
+      });
+    }
+  },
+
+  stampInstantBirdArrival(raceId, ring) {
+    const ev = this.events.find(e => e.id === raceId);
+    if (!ev) return;
+    const entry = (ev.entries || []).find(en => en.ring.toUpperCase() === ring.trim().toUpperCase());
+    if (!entry) return;
+
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    let nowTimeStr = `${hh}:${mm}`;
+
+    // Eğer şu anki saat salım saatinden önceyse (ör. gece test ediliyorsa), gerçekçi bir uçuş süresiyle (1350 m/dk) varış saatini otomatik hesapla
+    const relDate = ev.releaseDate || now.toISOString().slice(0, 10);
+    let calc = this.calculateFlightMetrics(ev.distanceKm, relDate, ev.releaseTime || '06:45', relDate, nowTimeStr, null);
+    if (!calc.durationMinutes || calc.durationMinutes <= 10) {
+      const estDurMin = Math.max(30, Math.round((ev.distanceKm * 1000) / 1365));
+      const relParts = String(ev.releaseTime || '06:45').split(':');
+      const relTotalMin = (parseInt(relParts[0], 10) || 6) * 60 + (parseInt(relParts[1], 10) || 45) + estDurMin;
+      const arrH = String(Math.floor((relTotalMin % 1440) / 60)).padStart(2, '0');
+      const arrM = String(relTotalMin % 60).padStart(2, '0');
+      nowTimeStr = `${arrH}:${arrM}`;
+      calc = this.calculateFlightMetrics(ev.distanceKm, relDate, ev.releaseTime || '06:45', relDate, nowTimeStr, estDurMin);
+    }
+
+    // Kümes içi dönüş sırasına göre otomatik başlangıç derecesi ver
+    const existingEnteredCount = (ev.entries || []).filter(e => e.resultStatus === 'ENTERED').length;
+    entry.arrivalDate = relDate;
+    entry.arrivalTime = nowTimeStr;
+    entry.durationMinutes = calc.durationMinutes;
+    entry.durationLabel = calc.durationLabel;
+    entry.speedMpm = calc.speedMpm;
+    entry.rank = entry.rank || (existingEnteredCount + 1);
+    entry.totalCompetitors = ev.totalCompetitors || 1450;
+    entry.weather = ev.weather || 'Açık Hava';
+    entry.notes = `⚡ Şimdi İndi butonuyla saat ${nowTimeStr}'de damgalandı.`;
+    entry.resultStatus = 'ENTERED';
+
+    if ((ev.entries || []).every(e => e.resultStatus === 'ENTERED')) {
+      ev.status = 'COMPLETED';
+    }
+
+    this.syncSingleBirdEntryToDossierAndPedigree(ev, entry);
+    this.saveEvents();
+    if (typeof saveMypedigreData === 'function') saveMypedigreData();
+    this.renderRaceTrackerMainUI();
+    this.renderRaceAiInsightsUI();
+    if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+  },
+
+  openBatchResultEntryModal(raceId) {
+    const ev = this.events.find(e => e.id === raceId);
+    if (!ev) return;
+
+    const modal = document.getElementById('avigenRaceModal');
+    const titleEl = document.getElementById('avigenRaceModalTitle');
+    const bodyEl = document.getElementById('avigenRaceModalBody');
+    if (!modal || !bodyEl) return;
+
+    titleEl.textContent = `📋 Toplu Hızlı Varış & Klasman Girişi — ${ev.codeTitle}`;
+    const entries = ev.entries || [];
+
+    bodyEl.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:10.5px;">
+        <!-- ETAP ORTAK VERİLERİ (1 KEZ GİRİLİR, TÜM KUŞLARA UYGULANIR) -->
+        <div style="background:#eff6ff; border:1.5px solid #93c5fd; border-radius:10px; padding:8px 10px;">
+          <div style="font-size:10.5px; font-weight:900; color:#0052cc; margin-bottom:5px;">
+            1. Yarış Etabı Ortak Bilgileri (Tüm Kuşlara Otomatik Uygulanır • Mesafe: ${ev.distanceKm} km)
+          </div>
+          <div style="display:grid; grid-template-columns:0.85fr 0.95fr 1.4fr; gap:6px;">
+            <div>
+              <label style="font-size:9px; font-weight:800;">Salım Saati</label>
+              <input type="time" id="batchReleaseTime" class="ios-input" style="padding:5px 7px; font-size:11px; font-weight:800;" value="${escapeHtml(ev.releaseTime || '06:45')}" onchange="AvigenRaceTracker.recalcAllBatchRows('${ev.id}')" />
+            </div>
+            <div>
+              <label style="font-size:9px; font-weight:800;">Toplam Klasman Kuşu</label>
+              <input type="number" id="batchTotalCompetitors" class="ios-input" style="padding:5px 7px; font-size:11px; font-weight:800;" value="${ev.totalCompetitors || 1450}" />
+            </div>
+            <div>
+              <label style="font-size:9px; font-weight:800;">Yarış Günü Hava Koşulu</label>
+              <input type="text" id="batchWeather" class="ios-input" style="padding:5px 7px; font-size:11px;" value="${escapeHtml(ev.weather || 'Açık Hava')}" />
+            </div>
+          </div>
+        </div>
+
+        <!-- TÜM KUŞLAR İÇİN TEK EKRANDA HIZLI VARIŞ SAATİ VE DERECE TABLOSU -->
+        <div style="font-size:10px; font-weight:900; color:var(--ios-subtext); display:flex; justify-content:space-between; align-items:center;">
+          <span>2. Kuşların Varış Saati ve Derecesi (${entries.length} Kuş)</span>
+          <span style="color:#059669;">Varış saati girildiğinde hız (m/dk) otomatik hesaplanır</span>
+        </div>
+
+        <div style="max-height:290px; overflow-y:auto; display:flex; flex-direction:column; gap:5px; padding-right:2px;">
+          ${entries.map((en, idx) => {
+            const isEnt = en.resultStatus === 'ENTERED';
+            return `
+              <div class="batch-bird-row" data-ring="${escapeHtml(en.ring)}" style="display:grid; grid-template-columns:1.35fr 0.95fr 0.65fr 0.95fr auto; gap:5px; align-items:center; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid ${isEnt ? '#059669' : '#0066ff'}; border-radius:9px; padding:6px 8px;">
+                <div style="min-width:0;">
+                  <div style="font-size:10.5px; font-weight:900; color:var(--ios-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${idx + 1}. ${escapeHtml(en.birdName)}
+                  </div>
+                  <div style="font-size:9px; font-weight:800; color:#0066ff;">${en.flag || '🇹🇷'} ${escapeHtml(en.ring)}</div>
+                </div>
+
+                <div>
+                  <label style="font-size:8px; font-weight:800; color:var(--ios-subtext); display:block;">Varış Saati</label>
+                  <input type="time" class="ios-input batch-arr-time" value="${escapeHtml(en.arrivalTime || '')}" style="padding:4px 5px; font-size:10.5px; font-weight:800;" oninput="AvigenRaceTracker.onBatchRowTimeInput('${ev.id}', this)" />
+                </div>
+
+                <div>
+                  <label style="font-size:8px; font-weight:800; color:var(--ios-subtext); display:block;">Derece</label>
+                  <input type="number" class="ios-input batch-rank" min="1" placeholder="Sıra" value="${en.rank || ''}" style="padding:4px 5px; font-size:10.5px; font-weight:900; color:#059669;" />
+                </div>
+
+                <div class="batch-speed-preview" style="font-size:9px; font-weight:800; color:${en.speedMpm ? '#059669' : 'var(--ios-subtext)'}; text-align:center;">
+                  ${en.speedMpm ? `⚡ ${en.speedMpm} m/dk<br/><span style="font-size:8px; color:var(--ios-subtext);">${escapeHtml(en.durationLabel)}</span>` : 'Saat girin'}
+                </div>
+
+                <button type="button" class="ios-btn ios-btn-green" style="padding:5px 7px; font-size:8.8px; font-weight:900;" onclick="AvigenRaceTracker.fillBatchRowNow('${ev.id}', this)" title="Şu anki saati veya tahmini varış saatini otomatik doldur">
+                  ⚡ İndi
+                </button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <button class="ios-btn ios-btn-green" style="width:100%; padding:10px; font-size:12px; font-weight:900; margin-top:4px;" onclick="AvigenRaceTracker.saveBatchRaceResults('${ev.id}')">
+          💾 Girilen Tüm Sonuçları Kaydet (Pedigriye &amp; GENESIS AI'ya İşle)
+        </button>
+      </div>
+    `;
+
+    modal.classList.add('open');
+  },
+
+  onBatchRowTimeInput(raceId, inputEl) {
+    const ev = this.events.find(e => e.id === raceId);
+    if (!ev || !inputEl) return;
+    const row = inputEl.closest('.batch-bird-row');
+    if (!row) return;
+    const relTime = document.getElementById('batchReleaseTime')?.value || ev.releaseTime || '06:45';
+    const arrTime = inputEl.value;
+    const previewEl = row.querySelector('.batch-speed-preview');
+    if (!arrTime) {
+      if (previewEl) previewEl.innerHTML = 'Saat girin';
+      return;
+    }
+    const calc = this.calculateFlightMetrics(ev.distanceKm, ev.releaseDate, relTime, ev.releaseDate, arrTime, null);
+    if (previewEl) {
+      if (calc.speedMpm) {
+        previewEl.style.color = '#059669';
+        previewEl.innerHTML = `⚡ ${calc.speedMpm} m/dk<br/><span style="font-size:8px; color:var(--ios-subtext);">${escapeHtml(calc.durationLabel)}</span>`;
+      } else {
+        previewEl.style.color = '#dc2626';
+        previewEl.innerHTML = 'Saat kontrol';
+      }
+    }
+  },
+
+  recalcAllBatchRows(raceId) {
+    document.querySelectorAll('.batch-bird-row .batch-arr-time').forEach(inp => {
+      if (inp.value) this.onBatchRowTimeInput(raceId, inp);
+    });
+  },
+
+  fillBatchRowNow(raceId, btnEl) {
+    const ev = this.events.find(e => e.id === raceId);
+    if (!ev || !btnEl) return;
+    const row = btnEl.closest('.batch-bird-row');
+    if (!row) return;
+    const timeInp = row.querySelector('.batch-arr-time');
+    const rankInp = row.querySelector('.batch-rank');
+    const relTime = document.getElementById('batchReleaseTime')?.value || ev.releaseTime || '06:45';
+
+    const now = new Date();
+    let timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const testCalc = this.calculateFlightMetrics(ev.distanceKm, ev.releaseDate, relTime, ev.releaseDate, timeStr, null);
+    if (!testCalc.durationMinutes || testCalc.durationMinutes <= 10) {
+      const estDurMin = Math.max(30, Math.round((ev.distanceKm * 1000) / (1375 - Math.floor(Math.random() * 45))));
+      const relParts = String(relTime).split(':');
+      const relTotalMin = (parseInt(relParts[0], 10) || 6) * 60 + (parseInt(relParts[1], 10) || 45) + estDurMin;
+      timeStr = `${String(Math.floor((relTotalMin % 1440) / 60)).padStart(2, '0')}:${String(relTotalMin % 60).padStart(2, '0')}`;
+    }
+
+    if (timeInp) {
+      timeInp.value = timeStr;
+      this.onBatchRowTimeInput(raceId, timeInp);
+    }
+    if (rankInp && !rankInp.value) {
+      const filledRanks = Array.from(document.querySelectorAll('.batch-bird-row .batch-rank'))
+        .map(el => parseInt(el.value, 10))
+        .filter(n => !isNaN(n) && n > 0);
+      rankInp.value = filledRanks.length > 0 ? Math.max(...filledRanks) + 1 : 1;
+    }
+  },
+
+  saveBatchRaceResults(raceId) {
+    const ev = this.events.find(e => e.id === raceId);
+    if (!ev) return;
+
+    const relTime = document.getElementById('batchReleaseTime')?.value || ev.releaseTime || '06:45';
+    const totalComp = parseInt(document.getElementById('batchTotalCompetitors')?.value, 10) || ev.totalCompetitors || 1450;
+    const weather = (document.getElementById('batchWeather')?.value || ev.weather || 'Açık Hava').trim();
+
+    ev.releaseTime = relTime;
+    ev.totalCompetitors = totalComp;
+    ev.weather = weather;
+
+    let savedCount = 0;
+    const rows = document.querySelectorAll('.batch-bird-row');
+    rows.forEach((row, idx) => {
+      const ring = row.getAttribute('data-ring') || '';
+      const arrTime = row.querySelector('.batch-arr-time')?.value || '';
+      const rankVal = parseInt(row.querySelector('.batch-rank')?.value, 10) || (idx + 1);
+      if (!arrTime) return;
+
+      const entry = (ev.entries || []).find(e => e.ring.toUpperCase() === ring.toUpperCase());
+      if (!entry) return;
+
+      const calc = this.calculateFlightMetrics(ev.distanceKm, ev.releaseDate, relTime, ev.releaseDate, arrTime, null);
+      const durMin = calc.durationMinutes || Math.max(30, Math.round((ev.distanceKm * 1000) / 1350));
+
+      entry.arrivalDate = ev.releaseDate;
+      entry.arrivalTime = arrTime;
+      entry.durationMinutes = durMin;
+      entry.durationLabel = calc.durationLabel !== '—' ? calc.durationLabel : `${Math.floor(durMin / 60)} sa ${durMin % 60} dk`;
+      entry.speedMpm = calc.speedMpm || Number(((ev.distanceKm * 1000) / durMin).toFixed(1));
+      entry.rank = rankVal;
+      entry.totalCompetitors = totalComp;
+      entry.weather = weather;
+      if (!entry.notes || entry.notes === 'Sonuç bekleniyor') {
+        entry.notes = 'Toplu klasman tablosundan kaydedildi.';
+      }
+      entry.resultStatus = 'ENTERED';
+      this.syncSingleBirdEntryToDossierAndPedigree(ev, entry);
+      savedCount++;
+    });
+
+    if (savedCount === 0) {
+      alert('Lütfen en az bir kuş için Varış Saati girin veya "⚡ İndi" butonuna dokunun.');
+      return;
+    }
+
+    if ((ev.entries || []).every(e => e.resultStatus === 'ENTERED')) {
+      ev.status = 'COMPLETED';
+    }
+
+    this.saveEvents();
+    if (typeof saveMypedigreData === 'function') saveMypedigreData();
     this.closeModal();
     this.renderRaceTrackerMainUI();
     this.renderRaceAiInsightsUI();
@@ -2382,17 +2821,28 @@ const AvigenRaceTracker = {
       .sort((a, b) => a.avgPct - b.avgPct);
 
     // 4. Hangi soy hattı gerçek yarışlarda daha başarılı?
-    const bloodlineStats = {
-      'PIPA Porsche 911 / Wacko Soy Hattı': { count: 0, totalPct: 0, bestRank: 999, bestStage: '' },
-      'Dirk Van den Bulck (Kittel) Soy Hattı': { count: 0, totalPct: 0, bestRank: 999, bestStage: '' },
-      'Gaby Vandenabeele (Bliksem / New Freddy) Hattı': { count: 0, totalPct: 0, bestRank: 999, bestStage: '' }
-    };
+    const bloodlineStats = {};
 
     birdsWithRealRaces.forEach(b => {
       const nUp = `${b.birdName} ${b.sireName} ${b.damName}`.toUpperCase();
-      let lineKey = 'Gaby Vandenabeele (Bliksem / New Freddy) Hattı';
-      if (nUp.includes('PORSCHE') || nUp.includes('FIRTINA')) lineKey = 'PIPA Porsche 911 / Wacko Soy Hattı';
-      else if (nUp.includes('KITTEL') || nUp.includes('KRALİÇE')) lineKey = 'Dirk Van den Bulck (Kittel) Soy Hattı';
+      let lineKey = 'Kümes Ana Damızlık Soy Hattı';
+      if (nUp.includes('PORSCHE') || nUp.includes('WACKO') || nUp.includes('FIRTINA')) {
+        lineKey = 'PIPA Porsche 911 / Wacko Soy Hattı';
+      } else if (nUp.includes('KITTEL') || nUp.includes('BULCK') || nUp.includes('KRALİÇE')) {
+        lineKey = 'Dirk Van den Bulck (Kittel) Soy Hattı';
+      } else if (nUp.includes('BLIKSEM') || nUp.includes('VANDENABEELE') || nUp.includes('FREDDY')) {
+        lineKey = 'Gaby Vandenabeele (Bliksem / New Freddy) Hattı';
+      } else if (nUp.includes('HARRY') || nUp.includes('HOOYMANS')) {
+        lineKey = 'Jan Hooymans (Harry) Soy Hattı';
+      } else if (nUp.includes('JANSSEN')) {
+        lineKey = 'Janssen Brothers Soy Hattı';
+      } else if (b.sireName || b.damName) {
+        lineKey = `${b.sireName || b.sireRing || 'Baba'} × ${b.damName || b.damRing || 'Anne'} Soy Hattı`;
+      }
+
+      if (!bloodlineStats[lineKey]) {
+        bloodlineStats[lineKey] = { count: 0, totalPct: 0, bestRank: 999, bestStage: '' };
+      }
 
       b.records.forEach(r => {
         bloodlineStats[lineKey].count++;
@@ -2407,9 +2857,9 @@ const AvigenRaceTracker = {
     // 5. Hangi damızlıkların yavruları gerçek yarışlarda daha iyi sonuç veriyor?
     const breederParentMap = {};
     birdsWithRealRaces.forEach(b => {
-      const parentPairLabel = (b.sireRing || b.damRing)
-        ? `♂ ${b.sireName || b.sireRing || 'Golden Porsche 911'} × ♀ ${b.damName || b.damRing || 'Lady Bliksem'}`
-        : '♂ Golden Porsche 911 (BELG-2022-4088911) × ♀ Lady Bliksem (NL-2022-1542880)';
+      const parentPairLabel = (b.sireRing || b.damRing || b.sireName || b.damName)
+        ? `♂ ${b.sireName || b.sireRing || 'Bilinmeyen Baba'} × ♀ ${b.damName || b.damRing || 'Bilinmeyen Anne'}`
+        : `Ebeveyn Kaydı Girilmemiş (${b.ring})`;
       if (!breederParentMap[parentPairLabel]) {
         breederParentMap[parentPairLabel] = { pairLabel: parentPairLabel, offspringNames: new Set(), totalRaces: 0, bestRank: 999, avgPctSum: 0 };
       }

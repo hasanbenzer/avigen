@@ -126,13 +126,16 @@
              ================================================================= -->
         <div id="page-pedigrees" class="ios-tab-page">
 
-          <!-- Üst Görünüm Seçici: 🕊️ Kümes Kuş Listesi vs 📜 Pedigre Kağıdı Tasarımı -->
+          <!-- Üst Görünüm Seçici: 🕊️ Kümes Kuş Listesi | 📜 Pedigre Kağıdı | 💑 Yuva & Üreme -->
           <div class="sub-pills" style="flex-shrink:0;">
             <button class="sub-pill active" id="pillBirdsList" onclick="switchBirdsViewMode('list')">
-              🕊️ Kümesimdeki Kuşlar
+              🕊️ Kuşlarım
             </button>
             <button class="sub-pill" id="pillBirdsPedigree" onclick="switchBirdsViewMode('pedigree')">
-              📜 Pedigre Kağıdı &amp; Tasarım
+              📜 Pedigre Kağıdı
+            </button>
+            <button class="sub-pill" id="pillBirdsNests" onclick="switchBirdsViewMode('nests')">
+              💑 Yuva &amp; Üreme
             </button>
           </div>
 
@@ -188,19 +191,75 @@
               </div>
             </div>
 
-            <!-- Sadeleştirilmiş 1-Dokunuş İndirme & Paylaşma Çubuğu -->
+            <!-- Sadeleştirilmiş 1-Dokunuş Sadece Pedigri PDF İndirme & WhatsApp PDF Paylaşma Çubuğu -->
             <div class="ios-card" style="padding:9px 11px; flex-shrink:0;">
               <div class="btn-row">
-                <button class="ios-btn ios-btn-primary" style="flex:1.4; padding:10px;" onclick="downloadHighResPedigree()">
-                  🖼️ HD Pedigre İndir
+                <button class="ios-btn ios-btn-primary" style="flex:1.35; padding:10px;" onclick="downloadHighResPedigree()">
+                  📄 Pedigre PDF İndir
                 </button>
-                <button class="ios-btn ios-btn-gold" style="flex:1; padding:10px;" onclick="shareActivePedigree()">
-                  📲 Paylaş
+                <button class="ios-btn ios-btn-green" style="flex:1.35; padding:10px;" onclick="shareActivePedigree()">
+                  📲 WhatsApp PDF Paylaş
                 </button>
-                <button class="ios-btn ios-btn-outline" style="padding:10px 12px;" onclick="window.print()">
-                  🖨️ Yazdır
+                <button class="ios-btn ios-btn-outline" style="padding:10px 10px;" onclick="downloadHighResPedigreePng()" title="Sadece Pedigriyi Yüksek Çözünürlüklü Resim (PNG) Olarak İndir">
+                  🖼️ PNG
                 </button>
               </div>
+            </div>
+          </div>
+
+          <!-- GÖRÜNÜM C: YUVA, ÇİFTLER & KULUÇKA TAKİBİ (Yarışlardan ayrılarak Kuşlarım & Üreme altına taşındı) -->
+          <div id="birdsNestsViewPane" style="display:none; flex-direction:column; gap:8px; flex:1; overflow-y:auto;">
+            <!-- GENESIS AI AKILLI EŞLEŞTİRME TEK TUŞ KÖPRÜSÜ -->
+            <div class="ios-card" style="padding:9px 11px; background:linear-gradient(135deg,#1e1b4b,#312e81); border:1px solid #6366f1; color:#fff; flex-shrink:0;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <div>
+                  <div style="font-size:11.5px; font-weight:900; color:#e0e7ff;">🧬 GENESIS AI – Akıllı Eşleştirme Danışmanı</div>
+                  <div style="font-size:9.3px; color:#c7d2fe; margin-top:1px;">Eşleştirmeden önce 5 nesil akrabalık (COI), fenotip uyumu ve yavru tahminini görün.</div>
+                </div>
+                <button class="ios-btn ios-btn-gold" style="padding:6px 10px; font-size:10px; flex-shrink:0;" onclick="AvigenGenesisAI.openModuleDirectlyFromHome('breeding')">
+                  💞 AI Eşleştirme →
+                </button>
+              </div>
+            </div>
+
+            <div class="ios-card">
+              <div class="ios-card-title">
+                <span>💑 Aktif Damızlık Eşleşmeler &amp; Yuva Takibi</span>
+                <button class="ios-btn ios-btn-gold" style="padding:5px 10px; font-size:10.5px;" onclick="openHomeItemModal('', 'pairs')">+ Yeni Çift Eşleştir</button>
+              </div>
+              <div style="font-size:10.5px; color:var(--ios-subtext); margin-bottom:8px; line-height:1.35;">
+                Eşleştirilen çiftlerin yumurtlama (18 gün) ve <strong>7. gün bilezik takma</strong> zamanları otomatik takip edilir. <strong>🐣 Yavru Kaydet</strong> butonuyla tek seferde <strong>çifte yavruya (ardışık bilezik)</strong> künye takabilirsiniz.
+              </div>
+              <div id="breedingPlanPairsList" style="display:flex; flex-direction:column; gap:7px;"></div>
+            </div>
+
+            <!-- BİRLEŞTİRİLMİŞ OTOMATİK KULUÇKA, BONCUK TAKMA & AŞI TAKVİMİ HESAPLAYICI -->
+            <details class="ios-card" style="padding:9px 11px;">
+              <summary style="cursor:pointer; font-weight:900; font-size:11.5px; color:#0052cc; outline:none; display:flex; justify-content:space-between; align-items:center;">
+                <span>🥚 Eşleşme Tarihine Göre Kuluçka &amp; Boncuk Takma Günü Hesapla</span>
+                <span class="gene-badge gene-green" style="font-size:8.5px;">Tarih Hesaplayıcı ▾</span>
+              </summary>
+              <div style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                  <div>
+                    <label style="font-size:10px; font-weight:800;">Yuva / Çift Adı</label>
+                    <input type="text" id="hatchNestName" class="ios-input" style="padding:6px 8px; font-size:11.5px;" value="Damızlık Yuva #1" oninput="calculateIncubationTimeline()" />
+                  </div>
+                  <div>
+                    <label style="font-size:10px; font-weight:800;">Çiftleşme Tarihi</label>
+                    <input type="date" id="hatchPairDate" class="ios-input" style="padding:6px 8px; font-size:11.5px;" onchange="calculateIncubationTimeline()" />
+                  </div>
+                </div>
+                <div id="hatchTimelineResult"></div>
+              </div>
+            </details>
+
+            <div class="ios-card">
+              <div class="ios-card-title">
+                <span>🤖 Kümesiniz İçin Otomatik Önerilen En Uygun Eşleşmeler</span>
+                <button class="ios-btn ios-btn-outline" style="padding:3px 8px; font-size:10px;" onclick="AvigenGenesisAI.openModuleDirectlyFromHome('breeding')">Tüm Analizler →</button>
+              </div>
+              <div id="autoBestPairsList" style="display:flex; flex-direction:column; gap:6px;"></div>
             </div>
           </div>
 
@@ -254,20 +313,20 @@
         </div>
 
         <!-- =================================================================
-             4. SEKME: YARIŞLAR — AVIGEN YARIŞ TAKİP SİSTEMİ & GENESIS AI YARIŞ ANALİZİ
+             4. SEKME: YARIŞLAR — AVIGEN YARIŞ TAKİP SİSTEMİ & GENESIS AI YARIŞ SİMÜLASYONU
              ================================================================= -->
         <div id="page-flight" class="ios-tab-page">
 
-          <!-- Üst Alt-Sekme Seçici: 🏁 Yarış Yönetimi | 🧬 AI Yarış Analizi | 💑 Yuva & Kuluçka -->
+          <!-- Üst Alt-Sekme Seçici (v3.0 Sadeleştirilmiş): 🏁 Aktif Yarış & Klasman | 🗺️ GENESIS AI Haritalı Yarış Simülasyonu -->
           <div class="sub-pills" style="flex-shrink:0;">
             <button class="sub-pill active" id="pillRaceTracker" onclick="AvigenUxManager.switchBreedingPlanSub('racetracker')">
-              🏁 Yarış Yönetimi
+              🏁 Aktif Yarış &amp; Klasman
             </button>
-            <button class="sub-pill" id="pillRaceAiInsights" onclick="AvigenUxManager.switchBreedingPlanSub('raceai')">
-              🧬 AI Yarış Analizi
+            <button class="sub-pill" id="pillRaceAiInsights" onclick="AvigenGenesisAI.openModuleDirectlyFromHome('smart_race')">
+              🗺️ GENESIS AI Haritalı Simülasyon
             </button>
-            <button class="sub-pill" id="pillBreedPairs" onclick="AvigenUxManager.switchBreedingPlanSub('pairs')">
-              💑 Yuva, Çiftler &amp; Kuluçka
+            <button class="sub-pill" id="pillBreedPairs" style="display:none;" onclick="AvigenUxManager.switchBreedingPlanSub('pairs')">
+              💑 Yuva &amp; Kuluçka
             </button>
             <button class="sub-pill" id="pillBreedTimeline" style="display:none;" onclick="AvigenUxManager.switchBreedingPlanSub('timeline')">
               📅 Kuluçka
@@ -280,59 +339,17 @@
             </button>
           </div>
 
-          <!-- YENİ ANA EKRAN 1: AVIGEN YARIŞ TAKİP SİSTEMİ (YARIŞ KARTLARI, KUŞ SEPETLEME & SONUÇ GİRİŞİ) -->
+          <!-- ANA EKRAN 1: AVIGEN YARIŞ TAKİP SİSTEMİ (YARIŞ KARTLARI, KUŞ SEPETLEME & TOPLU HIZLI SONUÇ GİRİŞİ) -->
           <div id="raceTrackerMainPane" style="display:flex; flex-direction:column; gap:10px; flex:1; overflow-y:auto;">
             <div id="avigenRaceTrackerRoot" style="display:flex; flex-direction:column; gap:10px;"></div>
           </div>
 
-          <!-- YENİ ANA EKRAN 2: GENESIS AI GERÇEK YARIŞ & SOY ANALİZİ (GENETİK TAHMİNDEN AYRI ÖLÇÜLEN VERİ) -->
+          <!-- ANA EKRAN 2: GENESIS AI GERÇEK YARIŞ & SOY ANALİZİ -->
           <div id="raceAiInsightsPane" style="display:none; flex-direction:column; gap:10px; flex:1; overflow-y:auto;">
             <div id="avigenRaceAiInsightsRoot" style="display:flex; flex-direction:column; gap:10px;"></div>
           </div>
 
-          <!-- ALT EKRAN 3: AKTİF DAMIZLIK ÇİFTLER, YUMURTA/YAVRU TAKİBİ, KULUÇKA TAKVİMİ & TEK TUŞLA YAVRU KAYDI -->
-          <div id="breedPairsPane" style="display:none; flex-direction:column; gap:8px; flex:1; overflow-y:auto;">
-            <div class="ios-card">
-              <div class="ios-card-title">
-                <span>💑 Aktif Damızlık Eşleşmeler &amp; Yuva Takibi</span>
-                <button class="ios-btn ios-btn-gold" style="padding:5px 10px; font-size:10.5px;" onclick="openHomeItemModal('', 'pairs')">+ Yeni Çift Eşleştir</button>
-              </div>
-              <div style="font-size:10.5px; color:var(--ios-subtext); margin-bottom:8px; line-height:1.35;">
-                Eşleştirilen çiftlerin yumurtlama, kuluçka ve yavruya boncuk takma günleri otomatik hesaplanır. <strong>🐣 Yavru Kaydet</strong> butonuyla doğan yavruyu anne-babası bağlı olarak tek dokunuşla kümesinize ekleyebilirsiniz.
-              </div>
-              <div id="breedingPlanPairsList" style="display:flex; flex-direction:column; gap:7px;"></div>
-            </div>
-
-            <!-- BİRLEŞTİRİLMİŞ OTOMATİK KULUÇKA, BONCUK TAKMA & AŞI TAKVİMİ HESAPLAYICI -->
-            <details class="ios-card" style="padding:9px 11px;">
-              <summary style="cursor:pointer; font-weight:900; font-size:11.5px; color:#0052cc; outline:none; display:flex; justify-content:space-between; align-items:center;">
-                <span>🥚 Eşleşme Tarihine Göre Kuluçka &amp; Boncuk Takma Günü Hesapla</span>
-                <span class="gene-badge gene-green" style="font-size:8.5px;">Tarih Hesaplayıcı ▾</span>
-              </summary>
-              <div style="margin-top:8px; display:flex; flex-direction:column; gap:8px;">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-                  <div>
-                    <label style="font-size:10px; font-weight:800;">Yuva / Çift Adı</label>
-                    <input type="text" id="hatchNestName" class="ios-input" style="padding:6px 8px; font-size:11.5px;" value="Damızlık Yuva #1" oninput="calculateIncubationTimeline()" />
-                  </div>
-                  <div>
-                    <label style="font-size:10px; font-weight:800;">Çiftleşme Tarihi</label>
-                    <input type="date" id="hatchPairDate" class="ios-input" style="padding:6px 8px; font-size:11.5px;" onchange="calculateIncubationTimeline()" />
-                  </div>
-                </div>
-                <div id="hatchTimelineResult"></div>
-              </div>
-            </details>
-
-            <div class="ios-card">
-              <div class="ios-card-title">
-                <span>🤖 Kümesiniz İçin Otomatik Önerilen En Uygun Eşleşmeler</span>
-                <button class="ios-btn ios-btn-outline" style="padding:3px 8px; font-size:10px;" onclick="openIosTab('breeding', document.querySelectorAll('.ios-tab-btn')[2])">Tüm Analizler →</button>
-              </div>
-              <div id="autoBestPairsList" style="display:flex; flex-direction:column; gap:6px;"></div>
-            </div>
-          </div>
-
+          <div id="breedPairsPane" style="display:none;"></div>
           <div id="breedTimelinePane" style="display:none;"></div>
 
           <!-- ALT EKRAN A: BİLİMSEL UÇUŞ UYGUNLUĞU + BU HAVA İÇİN ÖNERİLEN YARIŞ KADROSU -->
@@ -516,7 +533,7 @@
         </button>
         <button class="ios-tab-btn" onclick="openIosTab('pedigrees', this)">
           <svg viewBox="0 0 24 24"><path d="M18.5 5c-1.7 0-3.1 1.1-3.7 2.5-1.5-.7-3.4-.9-5.2-.1-2.8 1.2-4.4 4.2-6.6 6.4 1.8 1.1 4.5 1.4 7 .6 1.1 2.2 3.4 3.6 6 3.6 3.6 0 6-2.9 6-6.5 0-1.5.7-3 1.5-4-1.7.1-3-2.5-5-2.5z"/></svg>
-          <span>Kuşlarım</span>
+          <span>Kuş &amp; Yuva</span>
         </button>
         <button class="ios-tab-btn genesis-tab-btn" onclick="openIosTab('breeding', this)">
           <div class="cyber-ai-tab-orb">
@@ -527,7 +544,7 @@
         </button>
         <button class="ios-tab-btn" onclick="openIosTab('flight', this)">
           <svg viewBox="0 0 24 24"><path d="M5 3h14a1 1 0 0 1 1 1v3a5 5 0 0 1-4 4.9V14a3 3 0 0 1-3 3h-2a3 3 0 0 1-3-3v-2.1A5 5 0 0 1 4 7V4a1 1 0 0 1 1-1zm1 2v2a3 3 0 0 0 2 2.83V5H6zm12 0h-2v4.83A3 3 0 0 0 18 7V5zM9 19h6v2H9v-2z"/></svg>
-          <span>Yarış &amp; Eşleşme</span>
+          <span>Yarışlar</span>
         </button>
         <button class="ios-tab-btn" onclick="openIosTab('notes', this)">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -578,10 +595,39 @@
             </div>
           </div>
 
-          <!-- 1-Dokunuş Cinsiyet & Kümes Statüsü Seçicileri -->
-          <div style="display:grid; grid-template-columns:1fr 1.15fr; gap:8px; margin-bottom:8px;">
+          <!-- ÇİFTE YAVRU (2. KARDEŞ YAVRU) ARDIŞIK BİLEZİK KAYDI (Sadece Aktif Yuvadan Yavru Kaydedilirken Görünür) -->
+          <div id="secondChickSiblingSection" style="display:none; background:#eff6ff; border:1.5px solid #93c5fd; border-radius:10px; padding:7px 9px; margin-bottom:8px;">
+            <label style="display:flex; align-items:center; gap:6px; font-size:10.5px; font-weight:900; color:#0052cc; cursor:pointer;">
+              <input type="checkbox" id="chkRegisterSecondChick" onchange="document.getElementById('secondChickFieldsRow').style.display=this.checked?'grid':'none'" style="width:15px; height:15px; accent-color:#0052cc;" />
+              <span>🐣🐣 Çifte Yavru: Aynı Yuvadaki 2. Kardeş Yavruya da Ardışık Bilezik Tak</span>
+            </label>
+            <div id="secondChickFieldsRow" style="display:none; grid-template-columns:1.15fr 1fr 0.75fr; gap:6px; margin-top:6px;">
+              <div>
+                <label style="font-size:9px; font-weight:800; color:#1e3a8a;">2. Kardeş Halka No (Ardışık)</label>
+                <input type="text" id="editSecondChickRing" class="ios-input" style="padding:5px 7px; font-size:11px; font-weight:800;" placeholder="TR-2026-100201" />
+              </div>
+              <div>
+                <label style="font-size:9px; font-weight:800; color:#1e3a8a;">2. Kardeş Adı</label>
+                <input type="text" id="editSecondChickName" class="ios-input" style="padding:5px 7px; font-size:11px;" placeholder="2. Kardeş Yavru" />
+              </div>
+              <div>
+                <label style="font-size:9px; font-weight:800; color:#1e3a8a;">Tüy Rengi</label>
+                <select id="editSecondChickColor" class="ios-select" style="padding:5px 6px; font-size:10.5px;">
+                  <option value="Mavi Çakmaklı • Yavru">Mavi Çakmaklı</option>
+                  <option value="Mavi (Gök) • Yavru">Mavi (Gök)</option>
+                  <option value="Koyu Çakmaklı • Yavru">Koyu Çakmaklı</option>
+                  <option value="Dumanlı Mavi • Yavru">Dumanlı Mavi</option>
+                  <option value="Kula • Yavru">Kula</option>
+                  <option value="Mavi Alaca • Yavru">Mavi Alaca</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 1-Dokunuş Cinsiyet, Kadro Rolü & Kümes Aktiflik Durumu -->
+          <div class="box-sex-role-status-grid" style="display:grid; grid-template-columns:1fr 1.1fr; gap:7px; margin-bottom:8px;">
             <div>
-              <label style="font-size:10.5px; font-weight:800; display:block; margin-bottom:3px;">Cinsiyet</label>
+              <label style="font-size:10px; font-weight:800; display:block; margin-bottom:3px;">Cinsiyet</label>
               <div class="seg-group" id="editBoxSexGroup">
                 <button type="button" class="seg-btn active" data-val="M" onclick="selectModalSegment('editBoxSexGroup', 'M', this)">♂ Erkek</button>
                 <button type="button" class="seg-btn sex-f-btn" data-val="F" onclick="selectModalSegment('editBoxSexGroup', 'F', this)">♀ Dişi</button>
@@ -589,11 +635,67 @@
               </div>
             </div>
             <div>
-              <label style="font-size:10.5px; font-weight:800; display:block; margin-bottom:3px;">Kümes Statüsü</label>
+              <label style="font-size:10px; font-weight:800; display:block; margin-bottom:3px;">Kadro Rolü</label>
               <div class="seg-group" id="editBoxRoleGroup">
                 <button type="button" class="seg-btn active" data-val="RACER" onclick="selectModalSegment('editBoxRoleGroup', 'RACER', this)">🏁 Yarışçı</button>
                 <button type="button" class="seg-btn role-gold-btn" data-val="BREEDER" onclick="selectModalSegment('editBoxRoleGroup', 'BREEDER', this)">🧬 Damızlık</button>
                 <button type="button" class="seg-btn" data-val="YOUNG" onclick="selectModalSegment('editBoxRoleGroup', 'YOUNG', this)">🐣 Yavru</button>
+              </div>
+            </div>
+            <div style="grid-column: span 2;">
+              <label style="font-size:10px; font-weight:800; display:block; margin-bottom:3px;">Kümes Durumu (Aktif / Kayıp / Satıldı / Arşiv)</label>
+              <select id="editBoxBirdStatus" class="ios-select" style="width:100%; padding:6px 8px; font-size:11px; font-weight:800;">
+                <option value="ACTIVE">🟢 Kümeste Aktif (Yarış &amp; Eşleştirmeye Dahil)</option>
+                <option value="RESTING">🟠 Dinlenmede / Tedavide</option>
+                <option value="LOST">🔴 Yarışta Kayıp / Atmaca (Pedigride Korunur)</option>
+                <option value="SOLD">💸 Satıldı / Hediye Edildi (Pedigride Korunur)</option>
+                <option value="ARCHIVE">📜 Sadece Soy Arşivi (Dış Ata / Dede / Nine)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- ✋ KUŞÇU ELE ALMA & FİZİKSEL ÖZELLİKLER (FENOTİP SEÇİCİLERİ — GENESIS AI AKILLI EŞLEŞTİRME İLE %100 ENTEGRE) -->
+          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #7c3aed; border-radius:10px; padding:7px 9px; margin-bottom:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+              <span style="font-size:10.3px; font-weight:900; color:#5b21b6;">✋ Ele Alma &amp; Fiziksel Özellikler (Fenotip)</span>
+              <span class="gene-badge gene-purple" style="font-size:8px; padding:1px 5px;">Akıllı Eşleştirme Verisi</span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+              <div>
+                <label style="font-size:8.8px; font-weight:800; color:var(--ios-subtext);">Gövde &amp; Omurga</label>
+                <select id="editBoxBodyBuild" class="ios-select" style="padding:5px 6px; font-size:10.5px;" onchange="syncPhysicalTraitsToBoxNotes()">
+                  <option value="">-- Seçiniz --</option>
+                  <option value="Elma Gövde (Dengeli/Kısa)">🍎 Elma Gövde</option>
+                  <option value="Armut / Orta Gövde">🍐 Armut / Orta</option>
+                  <option value="Aerodinamik Uzun Gövde">🦅 Uzun / Maraton</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:8.8px; font-weight:800; color:var(--ios-subtext);">Kas Yapısı</label>
+                <select id="editBoxMuscleType" class="ios-select" style="padding:5px 6px; font-size:10.5px;" onchange="syncPhysicalTraitsToBoxNotes()">
+                  <option value="">-- Seçiniz --</option>
+                  <option value="Esnek ve Yumuşak Kas">💪 Esnek &amp; Yumuşak</option>
+                  <option value="Sıkı ve Patlayıcı Kas">⚡ Sıkı &amp; Patlayıcı</option>
+                  <option value="Dolgun Göğüs Kası">🛡️ Dolgun / Güçlü</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:8.8px; font-weight:800; color:var(--ios-subtext);">Çatal Kemik (Pubis)</label>
+                <select id="editBoxPubicBone" class="ios-select" style="padding:5px 6px; font-size:10.5px;" onchange="syncPhysicalTraitsToBoxNotes()">
+                  <option value="">-- Seçiniz --</option>
+                  <option value="Kapalı ve Sıkı Çatal Kemik">🔒 Çok Sıkı / Kapalı</option>
+                  <option value="Standart Çatal Kemik">⚖️ Normal / Dengeli</option>
+                  <option value="Esnek / Açık Çatal Kemik">🔓 Açık / Esnek</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:8.8px; font-weight:800; color:var(--ios-subtext);">Kanat &amp; Son 3 Telek</label>
+                <select id="editBoxWingFeather" class="ios-select" style="padding:5px 6px; font-size:10.5px;" onchange="syncPhysicalTraitsToBoxNotes()">
+                  <option value="">-- Seçiniz --</option>
+                  <option value="Uzun Ventilasyonlu Telek ve İpeksi Tüy">🪶 Uzun Telek / İpeksi</option>
+                  <option value="Hızlı Çırpışlı Kısa Ön Kol Kanat">🚀 Hızlı Sprint Kanat</option>
+                  <option value="Dengeli Kanat ve Sıkı Tüy">✨ Dengeli Kanat</option>
+                </select>
               </div>
             </div>
           </div>
@@ -949,7 +1051,6 @@
   <script src="real-pedigrees-64.js"></script>
   <script src="app.js"></script>
   <script src="scientific-library.js"></script>
-  <script src="global-gene-pool.js"></script>
   <script src="genesis-ai.js"></script>
   <script src="performance-profile.js"></script>
   <script>
