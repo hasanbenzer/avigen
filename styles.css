@@ -3640,12 +3640,15 @@ body.cyber-ai-skin.cyber-light-skin .ios-tabbar {
   html,
   body {
     width: 100% !important;
+    height: 100vh !important;
     height: 100dvh !important;
+    max-height: 100vh !important;
     max-height: 100dvh !important;
     background: var(--ios-bg, #f8fafc) !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
+    overscroll-behavior-y: none !important;
   }
 
   .desktop-helper-bar,
@@ -3657,7 +3660,9 @@ body.cyber-ai-skin.cyber-light-skin .ios-tabbar {
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
+    height: 100vh !important;
     height: 100dvh !important;
+    max-height: 100vh !important;
     max-height: 100dvh !important;
   }
 
@@ -3665,22 +3670,39 @@ body.cyber-ai-skin.cyber-light-skin .ios-tabbar {
   body.wide-mode .iphone-frame {
     width: 100% !important;
     max-width: 100% !important;
+    height: 100vh !important;
     height: 100dvh !important;
     max-height: none !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
   }
+
+  .ios-tabbar {
+    padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  button,
+  .ios-btn,
+  .sub-pill,
+  .ios-tab-btn,
+  .bird-mini-btn,
+  .bird-popup-item {
+    touch-action: manipulation;
+  }
 }
 
 body.mobile-native-fullscreen {
   width: 100% !important;
+  height: 100vh !important;
   height: 100dvh !important;
+  max-height: 100vh !important;
   max-height: 100dvh !important;
   background: var(--ios-bg, #f8fafc) !important;
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
+  overscroll-behavior-y: none !important;
 }
 
 body.mobile-native-fullscreen .desktop-helper-bar,
@@ -3692,7 +3714,9 @@ body.mobile-native-fullscreen .device-stage {
   padding: 0 !important;
   margin: 0 !important;
   width: 100% !important;
+  height: 100vh !important;
   height: 100dvh !important;
+  max-height: 100vh !important;
   max-height: 100dvh !important;
 }
 
@@ -3700,6 +3724,7 @@ body.mobile-native-fullscreen .iphone-frame,
 body.mobile-native-fullscreen.wide-mode .iphone-frame {
   width: 100% !important;
   max-width: 100% !important;
+  height: 100vh !important;
   height: 100dvh !important;
   max-height: none !important;
   border: none !important;

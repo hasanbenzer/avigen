@@ -3019,7 +3019,22 @@ function toggleBirdActionPopup(ringVal, evt) {
   }
   document.querySelectorAll('.bird-action-popup-menu').forEach(el => {
     const r = (el.getAttribute('data-ring') || '').toUpperCase();
-    el.style.display = (openBirdActionMenuRing && r === openBirdActionMenuRing) ? 'flex' : 'none';
+    const isTarget = Boolean(openBirdActionMenuRing && r === openBirdActionMenuRing);
+    if (!isTarget) {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = 'flex';
+    // Android / Mobil ekranın alt kısmındaki kuş kartlarında menünün ekran dışına taşmasını önle (yukarı doğru aç)
+    const btnRect = evt?.currentTarget?.getBoundingClientRect ? evt.currentTarget.getBoundingClientRect() : null;
+    const winH = window.innerHeight || document.documentElement.clientHeight || 700;
+    if (btnRect && (winH - btnRect.bottom < 320)) {
+      el.style.top = 'auto';
+      el.style.bottom = '34px';
+    } else {
+      el.style.top = '34px';
+      el.style.bottom = 'auto';
+    }
   });
 }
 
@@ -4210,12 +4225,46 @@ function selectCountryFlag(flagEmoji, code) {
   renderFlagChips();
 }
 
+// Cep Telefonu Kamera Fotoğraflarını (8MB-15MB) localStorage (5MB) Kotasını Doldurmadan Yüksek Kaliteli Kompakt JPEG'e Küçültür
+function compressUploadedImageFile(file, maxDimension = 380, quality = 0.80, callback) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const rawDataUrl = e.target?.result;
+    if (!rawDataUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth || img.width || 300;
+        const h = img.naturalHeight || img.height || 300;
+        const scale = Math.min(1, maxDimension / Math.max(w, h));
+        const targetW = Math.max(1, Math.round(w * scale));
+        const targetH = Math.max(1, Math.round(h * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetW, targetH);
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+        const compressedUrl = canvas.toDataURL('image/jpeg', quality);
+        callback(compressedUrl);
+      } catch (err) {
+        callback(rawDataUrl);
+      }
+    };
+    img.onerror = () => callback(rawDataUrl);
+    img.src = rawDataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
 function onBoxPhotoUpload(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => { editingPhotoData = e.target.result; };
-  reader.readAsDataURL(file);
+  compressUploadedImageFile(file, 380, 0.80, (compressedDataUrl) => {
+    editingPhotoData = compressedDataUrl;
+  });
 }
 
 function appendStandardDegreeToBoxNotes() {
@@ -4571,9 +4620,9 @@ function closeLoftHeaderModal() {
 function onLoftLogoChange(event) {
   const file = event.target.files?.[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => { loftConfig.logo = e.target.result; };
-  reader.readAsDataURL(file);
+  compressUploadedImageFile(file, 320, 0.82, (compressedDataUrl) => {
+    loftConfig.logo = compressedDataUrl;
+  });
 }
 
 function saveLoftHeaderModal() {
@@ -4613,12 +4662,12 @@ function buildFullAvigenSnapshotPayload() {
 
 function exportFullAvigenBackup() {
   const payload = buildFullAvigenSnapshotPayload();
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
+  const jsonStr = JSON.stringify(payload, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
   const safeName = (loftConfig.title || 'AVIGEN').replace(/[^a-zA-Z0-9_-]/g, '_');
-  a.download = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
-  a.href = URL.createObjectURL(blob);
-  a.click();
+  const fileName = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
+  const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
+  triggerBlobFileDownload(blob, fileName, dataUrl);
 }
 
 // AVIGEN v4.0 — Tek Tuşla Kümes Yedeğini (.json) WhatsApp, Google Drive veya E-Posta İle Paylaşma
@@ -4642,13 +4691,23 @@ async function shareFullAvigenBackupViaWhatsApp() {
         });
         return;
       }
+      // Bazı Android WebView sürümlerinde .json dosya paylaşımı engellenirse metin yedeği olarak paylaş
+      const birdCnt = Array.isArray(payload.pedigrees) ? payload.pedigrees.length : 0;
+      const summaryTxt = `📦 *${loftConfig.title || 'AVIGEN'} Kümes Yedek Özeti (${new Date().toLocaleDateString('tr-TR')})*\n• Kayıtlı Kuş / Pedigri: ${birdCnt}\n• Aktif Yuva: ${(payload.activePairsList || []).length}\n• Yarış Kaydı: ${(payload.race_tracking_events || []).length}`;
+      await navigator.share({
+        title: `${loftConfig.title || 'AVIGEN'} Kümes Yedeği`,
+        text: summaryTxt
+      });
+      exportFullAvigenBackup();
+      return;
     } catch (err) {
       if (err && err.name === 'AbortError') return;
     }
   }
 
   exportFullAvigenBackup();
-  alert(`💾 "${fileName}" yedek dosyanız cihazınıza indirildi!\n\nWhatsApp'ta kendinize veya bir sohbete girip ataç (📎 Belge) simgesinden bu .json dosyasını göndererek bulutta saklayabilirsiniz.`);
+  await copyTextToClipboardSafe(jsonStr);
+  alert(`💾 "${fileName}" yedek dosyanız cihazınıza indirildi (ve yedek verisi panoya kopyalandı)!\n\nWhatsApp'ta kendinize veya bir sohbete girip ataç (📎 Belge) simgesinden bu .json dosyasını göndererek bulutta saklayabilirsiniz.`);
 }
 
 function importFullAvigenBackup(event) {
@@ -5943,18 +6002,87 @@ function convertPedigreeCanvasToPdfBlob(canvas) {
   return new Blob(chunks, { type: 'application/pdf' });
 }
 
-function triggerBlobFileDownload(blob, fileName) {
+function isCapacitorAndroidApk() {
+  return Boolean(
+    window.Capacitor &&
+    typeof window.Capacitor.isNativePlatform === 'function' &&
+    window.Capacitor.isNativePlatform()
+  );
+}
+
+// Android APK (WebView) ve tüm tarayıcılarda WhatsApp / dış bağlantıları güvenle açar
+function openExternalUrlSafe(url) {
+  if (!url) return;
+  const isSpecialScheme = /^(whatsapp:|mailto:|tel:|intent:)/i.test(url);
+  if (isCapacitorAndroidApk() || isSpecialScheme) {
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        if (a.parentNode) a.parentNode.removeChild(a);
+      }, 1500);
+      return;
+    } catch (e) {}
+  }
+  const win = window.open(url, '_blank');
+  if (!win) {
+    window.location.href = url;
+  }
+}
+
+// Android WebView (window.Capacitor) dahil tüm cihazlarda %100 çalışan Pano Kopyalama yardımcısı
+async function copyTextToClipboardSafe(text, successAlertMsg = '') {
+  const str = String(text || '');
+  let copied = false;
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    try {
+      await navigator.clipboard.writeText(str);
+      copied = true;
+    } catch (e) {}
+  }
+  if (!copied) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = str;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, str.length);
+      copied = document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e) {}
+  }
+  if (successAlertMsg) {
+    alert(successAlertMsg);
+  }
+  return copied;
+}
+
+function triggerBlobFileDownload(blob, fileName, dataUrlFallback = '') {
   try {
-    const url = URL.createObjectURL(blob);
+    const hrefUrl = (isCapacitorAndroidApk() && dataUrlFallback)
+      ? dataUrlFallback
+      : URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.style.display = 'none';
-    a.href = url;
+    a.href = hrefUrl;
     a.download = fileName;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
       if (a.parentNode) a.parentNode.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (!hrefUrl.startsWith('data:')) {
+        URL.revokeObjectURL(hrefUrl);
+      }
     }, 6000);
   } catch (e) {}
 }
@@ -6061,7 +6189,7 @@ async function shareExportedPedigreeFromAssistModal(formatType = 'pdf') {
   }
   // WebView dosya paylaşımını desteklemiyorsa WhatsApp'ı soyağacı künyesiyle aç
   const waMsg = encodeURIComponent(buildPedigreeWhatsAppSummaryText(st.ped));
-  window.open(`https://wa.me/?text=${waMsg}`, '_blank');
+  openExternalUrlSafe(`https://wa.me/?text=${waMsg}`);
 }
 
 function openPedigreeExportAssistModal(modeLabel = 'PDF İndir & WhatsApp Paylaş') {
@@ -6114,7 +6242,7 @@ function openPedigreeExportAssistModal(modeLabel = 'PDF İndir & WhatsApp Payla�
           <a href="${st.pngDataUrl}" download="${escapeHtml(st.pngFileName)}" class="ios-btn ios-btn-outline" style="padding:8px; font-size:10px; font-weight:800; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;">
             🖼️ HD Resim İndir (.PNG)
           </a>
-          <button type="button" class="ios-btn ios-btn-outline" style="padding:8px; font-size:10px; font-weight:800; color:#047857; border-color:#6ee7b7;" onclick="window.open('https://wa.me/?text=' + encodeURIComponent(buildPedigreeWhatsAppSummaryText(_lastExportedPedigreeState.ped)), '_blank')">
+          <button type="button" class="ios-btn ios-btn-outline" style="padding:8px; font-size:10px; font-weight:800; color:#047857; border-color:#6ee7b7;" onclick="openExternalUrlSafe('https://wa.me/?text=' + encodeURIComponent(buildPedigreeWhatsAppSummaryText(_lastExportedPedigreeState.ped)))">
             💬 WhatsApp'a Soyağacı Metni Gönder
           </button>
         </div>
@@ -6157,7 +6285,9 @@ function preparePedigreeExportAssetsSync(targetPedId) {
 // 1. SADECE PEDİGRİYİ .PDF OLARAK İNDİRİR (%100 Senkron, Android'de Donma Yapmaz!)
 async function downloadHighResPedigree(targetPedId) {
   const st = preparePedigreeExportAssetsSync(targetPedId);
-  triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
+  if (!isCapacitorAndroidApk()) {
+    triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
+  }
   if (isAndroidOrWebViewDevice()) {
     openPedigreeExportAssistModal('Pedigri PDF İndir & Kaydet');
   }
@@ -6166,7 +6296,7 @@ async function downloadHighResPedigree(targetPedId) {
 // 2. SADECE PEDİGRİYİ YÜKSEK ÇÖZÜNÜRLÜKLÜ RESİM (.PNG) OLARAK İNDİRİR (%100 Senkron)
 async function downloadHighResPedigreePng(targetPedId) {
   const st = preparePedigreeExportAssetsSync(targetPedId);
-  triggerBlobFileDownload(st.pngBlob, st.pngFileName);
+  triggerBlobFileDownload(st.pngBlob, st.pngFileName, st.pngDataUrl);
   if (isAndroidOrWebViewDevice()) {
     openPedigreeExportAssistModal('HD Pedigri Resmi (.PNG) İndir');
   }
@@ -6197,7 +6327,9 @@ async function shareActivePedigree(targetPedId) {
     }
   }
 
-  triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
+  if (!isCapacitorAndroidApk()) {
+    triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
+  }
   openPedigreeExportAssistModal('WhatsApp Paylaş & PDF İndir');
 }
 
@@ -8946,7 +9078,7 @@ const AvigenUxManager = {
                 <div style="font-size:13px; font-weight:900; color:#0052cc; letter-spacing:0.8px; margin-top:1px;">${escapeHtml(this.getOrCreateDeviceId())}</div>
                 <div style="font-size:8.3px; color:#475569; margin-top:1px;">Üretilen her lisans kodu yalnızca bu Cihaz Kodu ile eşleşen telefonda çalışır.</div>
               </div>
-              <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 8px; font-size:9px; font-weight:800; flex-shrink:0;" onclick="navigator.clipboard?.writeText('${escapeHtml(this.getOrCreateDeviceId())}'); alert('📱 Cihaz Kimlik Kodunuz Kopyalandı: ${escapeHtml(this.getOrCreateDeviceId())}')">
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 8px; font-size:9px; font-weight:800; flex-shrink:0;" onclick="copyTextToClipboardSafe('${escapeHtml(this.getOrCreateDeviceId())}', '📱 Cihaz Kimlik Kodunuz Kopyalandı: ${escapeHtml(this.getOrCreateDeviceId())}')">
                 📋 Kopyala
               </button>
             </div>
@@ -9372,14 +9504,14 @@ const AvigenUxManager = {
       const ghTitle = encodeURIComponent(`[${type}] ${finalSubject}`);
       const ghBody = encodeURIComponent(formattedReport);
       const ghIssueUrl = `https://github.com/hasanbenzer/avigen/issues/new?title=${ghTitle}&body=${ghBody}`;
-      window.open(ghIssueUrl, '_blank');
+      openExternalUrlSafe(ghIssueUrl);
     } else if (channel === 'whatsapp') {
       const waText = encodeURIComponent(formattedReport);
-      window.open(`https://wa.me/${this.LICENSE_WHATSAPP_NUMBER}?text=${waText}`, '_blank');
+      openExternalUrlSafe(`https://wa.me/${this.LICENSE_WHATSAPP_NUMBER}?text=${waText}`);
     } else if (channel === 'email') {
       const mailSubject = encodeURIComponent(`AVIGEN Bildirim: [${type}] ${finalSubject}`);
       const mailBody = encodeURIComponent(formattedReport);
-      window.location.href = `mailto:destek@avigen.app?subject=${mailSubject}&body=${mailBody}`;
+      openExternalUrlSafe(`mailto:destek@avigen.app?subject=${mailSubject}&body=${mailBody}`);
     }
 
     this.openFeedbackModal();
@@ -9650,7 +9782,7 @@ const AvigenUxManager = {
     const msg = encodeURIComponent(
       `Merhaba, ${tierObj.name} (${cycleText || 'Yıllık (365 Gün)'} - ${priceText || tierObj.yearlyPrice}) paketi için cihazıma özel Lisans Aktivasyon Kodu almak istiyorum.\n\n📱 Cihaz Kimlik Kodu (Cihaz ID): ${myDevId}\n🏠 Kümes Adı: ${loftTitle}\n✉️ İletişim: ${this.state.memberPhone || this.state.memberEmail || '-'}`
     );
-    window.open(`https://wa.me/${this.LICENSE_WHATSAPP_NUMBER}?text=${msg}`, '_blank');
+    openExternalUrlSafe(`https://wa.me/${this.LICENSE_WHATSAPP_NUMBER}?text=${msg}`);
   }
 };
 
@@ -9668,16 +9800,16 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.4.0',
-    localBuild: 540,
-    remoteVersion: '5.4.0',
-    remoteBuild: 540,
-    remoteTitle: "AVIGEN v5.4 — Android Pedigri PDF & WhatsApp Paylaşım Hızlandırması, GPS Koordinatlı Yarış Kurulumu & Birleşik Kümesüstü/Dernek Yarış Yönetimi",
+    localVersion: '5.5.0',
+    localBuild: 550,
+    remoteVersion: '5.5.0',
+    remoteBuild: 550,
+    remoteTitle: "AVIGEN v5.5 — Tam Android (APK & Chrome) Uyumluluk Paketi: Fiziksel Geri Tuşu, Kamera/GPS/Depolama İzinleri, Hızlı Fotoğraf Sıkıştırma & WhatsApp/PDF Köprüsü",
     remoteNotes: [
-      "Android Pedigri PDF & WhatsApp Paylaşım Motoru: Android telefonlarda ekranın donmasına ve paylaşımın takılmasına neden olan html2canvas gecikmesi kaldırıldı; %100 senkron (<15ms) HD sertifika üretici ve Android PDF/Resim paylaşım asistanı eklendi",
-      "Yarış Konumu GPS Koordinat Girişi: Hem Yarışlar bölümüne hem Haritalı Akıllı Yarış Simülasyonuna doğrudan Salım ve Varış (Kümes) GPS koordinat girişi (Ondalık veya Derece/Dakika/Saniye + 🛰️ Telefon GPS'ten Al) ve otomatik km hesabı eklendi",
-      "Birleşik Kümesüstü & Dernek Yarışları: Kümesüstü Yarışı ile Dernek Yarışı tek bir birleşik '🦅 Kümesüstü Yarışı (Dernek & Etap)' kategorisinde birleştirildi; Büyük Ödüllü Yarışlar (Derby / OLR) ayrı tutuldu",
-      "Sınırsız Ücretsiz Kümes (AVIGEN FREE), 0532 782 03 85 WhatsApp Lisans Hattı ve %100 Veri Korumalı Güncelleme"
+      "Android Fiziksel / Kaydırmalı Geri Tuşu Desteği: Android telefonlarda geri tuşuna basıldığında uygulamadan çıkmak yerine açık pencereyi kapatır veya bir önceki sekmeye döner",
+      "Android APK Kamera, GPS ve Depolama İzinleri: AndroidManifest.xml içine GPS konum, kamera, galeri ve ağ izinleri ile çift aşamalı (GPS + Ağ/Wi-Fi) konum yakalayıcı eklendi",
+      "Android WebView İndirme, Pano Kopyalama & WhatsApp Köprüsü: Cihaz kodu kopyalama, JSON yedek paylaşımı, WhatsApp bağlantıları ve Pedigri PDF/PNG kaydetme motoru tüm Android cihazlarla %100 uyumlu hale getirildi",
+      "Android Kamera Fotoğraf Sıkıştırma & Alt Menü Koruması: Yüksek çözünürlüklü telefon kamerası fotoğraflarını otomatik sıkıştırarak hafıza dolmasını önler; alt sıradaki kuşların 'İşlemler ▾' menüsünü otomatik yukarı doğru açar"
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',
@@ -9878,14 +10010,83 @@ const AvigenAutoUpdater = {
         exportFullAvigenBackup();
       }
     } catch (e) {}
-    setTimeout(() => {
-      const url = `${this.state.apkUrl}?t=${Date.now()}`;
-      window.open(url, '_blank');
-    }, 600);
+    const url = `${this.state.apkUrl}?t=${Date.now()}`;
+    openExternalUrlSafe(url);
   }
 };
 
+// ============================================================================
+// ANDROID FİZİKSEL / KAYDIRMALI GERİ TUŞU (HARDWARE BACK BUTTON) YÖNETİCİSİ
+// Android telefonlarda geri tuşuna basıldığında uygulamadan anında çıkmak yerine:
+// 1. Açık bir modal pencere varsa onu kapatır,
+// 2. Kuş işlem açılır menüsü açıksa onu kapatır,
+// 3. GENESIS AI alt aracı açıksa GENESIS AI ana menüsüne döner,
+// 4. Ana Sayfa dışındaki bir sekmedeyse Ana Sayfaya döner.
+// ============================================================================
+function handleAndroidBackNavigation() {
+  const openModals = Array.from(document.querySelectorAll('.ios-modal-overlay.open'));
+  if (openModals.length > 0) {
+    const topModal = openModals[openModals.length - 1];
+    topModal.classList.remove('open');
+    if (topModal.id === 'barcodeScannerModal' && typeof stopLiveCameraBarcodeScan === 'function') {
+      try { stopLiveCameraBarcodeScan(); } catch (e) {}
+    }
+    return true;
+  }
+
+  if (openBirdActionMenuRing) {
+    closeAllBirdActionPopups();
+    return true;
+  }
+
+  const quickRes = document.getElementById('homeQuickSearchResults');
+  if (quickRes && quickRes.classList.contains('open')) {
+    quickRes.classList.remove('open');
+    return true;
+  }
+
+  const breedingPage = document.getElementById('page-breeding');
+  if (breedingPage && breedingPage.classList.contains('active') && typeof AvigenGenesisAI !== 'undefined') {
+    if (AvigenGenesisAI.state.viewStage === 'tool') {
+      if (AvigenGenesisAI.state.activeMainModule === 'smart_race_hub' && AvigenGenesisAI.state.smartRaceStage !== 'setup') {
+        AvigenGenesisAI.setSmartRaceStage('setup');
+        return true;
+      }
+      AvigenGenesisAI.backToGenesisLauncher();
+      return true;
+    }
+  }
+
+  const homePage = document.getElementById('page-home');
+  if (homePage && !homePage.classList.contains('active')) {
+    openIosTab('home', document.querySelectorAll('.ios-tab-btn')[0]);
+    return true;
+  }
+
+  return false;
+}
+
+function initAndroidHardwareBackButtonSupport() {
+  try {
+    if (window.history && typeof window.history.pushState === 'function') {
+      window.history.pushState({ avigenGuard: true }, '');
+      window.addEventListener('popstate', () => {
+        const handled = handleAndroidBackNavigation();
+        if (handled) {
+          try { window.history.pushState({ avigenGuard: true }, ''); } catch (e) {}
+        }
+      });
+    }
+    document.addEventListener('backbutton', (ev) => {
+      if (handleAndroidBackNavigation()) {
+        if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+      }
+    }, false);
+  } catch (e) {}
+}
+
 window.addEventListener('DOMContentLoaded', () => {
+  initAndroidHardwareBackButtonSupport();
   // Mobil / Dokunmatik / PWA / Capacitor APK Algılama -> %100 Gerçek Tam Ekran Modu
   const isMobileOrNative = Boolean(
     window.Capacitor ||

@@ -3418,19 +3418,27 @@ const AvigenGenesisAI = {
       alert('⚠️ Cihazınızda GPS konum servisi bulunamadı. Koordinatı kutucuğa elle yazabilirsiniz.');
       return;
     }
+    const applyPos = (pos) => {
+      const lat = Number(pos.coords.latitude).toFixed(5);
+      const lon = Number(pos.coords.longitude).toFixed(5);
+      const inpId = targetType === 'arrival' ? 'srLoftCoordInput' : 'srReleaseCoordInput';
+      const el = document.getElementById(inpId);
+      if (el) el.value = `${lat}, ${lon}`;
+      this.applySmartRaceManualCoordinate(targetType);
+    };
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = Number(pos.coords.latitude).toFixed(5);
-        const lon = Number(pos.coords.longitude).toFixed(5);
-        const inpId = targetType === 'arrival' ? 'srLoftCoordInput' : 'srReleaseCoordInput';
-        const el = document.getElementById(inpId);
-        if (el) el.value = `${lat}, ${lon}`;
-        this.applySmartRaceManualCoordinate(targetType);
-      },
+      applyPos,
       () => {
-        alert('⚠️ GPS konum izni alınamadı. Koordinatı kutucuğa elle (Örn: 40.1885, 29.0610) yazıp "Uygula" butonuna basabilirsiniz.');
+        navigator.geolocation.getCurrentPosition(
+          applyPos,
+          () => {
+            alert('⚠️ GPS konum izni alınamadı veya telefonun Konum servisi kapalı. Koordinatı kutucuğa elle (Örn: 40.1885, 29.0610) yazıp "Uygula" butonuna basabilirsiniz.');
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 7000, maximumAge: 60000 }
     );
   },
 

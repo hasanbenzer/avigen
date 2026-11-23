@@ -1,13 +1,13 @@
 {
-  "version": "5.4.0",
-  "build": 540,
-  "releaseDate": "2026-11-23",
-  "title": "AVIGEN v5.4 — Android Pedigri PDF & WhatsApp Paylaşım Hızlandırması, GPS Koordinatlı Yarış Kurulumu & Birleşik Kümesüstü/Dernek Yarış Yönetimi",
+  "version": "5.5.0",
+  "build": 550,
+  "releaseDate": "2026-11-24",
+  "title": "AVIGEN v5.5 — Tam Android (APK & Chrome) Uyumluluk Paketi: Fiziksel Geri Tuşu, Kamera/GPS/Depolama İzinleri, Hızlı Fotoğraf Sıkıştırma & WhatsApp/PDF Köprüsü",
   "notes": [
-    "Android Pedigri PDF & WhatsApp Paylaşım Motoru: Android telefonlarda ekranın donmasına ve paylaşımın takılmasına neden olan html2canvas gecikmesi kaldırıldı; %100 senkron (<15ms) HD sertifika üretici ve Android PDF/Resim paylaşım asistanı eklendi",
-    "Yarış Konumu GPS Koordinat Girişi: Hem Yarışlar bölümüne hem Haritalı Akıllı Yarış Simülasyonuna doğrudan Salım ve Varış (Kümes) GPS koordinat girişi (Ondalık veya Derece/Dakika/Saniye + 🛰️ Telefon GPS'ten Al) ve otomatik km hesabı eklendi",
-    "Birleşik Kümesüstü & Dernek Yarışları: Kümesüstü Yarışı ile Dernek Yarışı tek bir birleşik '🦅 Kümesüstü Yarışı (Dernek & Etap)' kategorisinde birleştirildi; Büyük Ödüllü Yarışlar (Derby / OLR) ayrı tutuldu",
-    "Sınırsız Ücretsiz Kümes (AVIGEN FREE), 0532 782 03 85 WhatsApp Lisans Hattı ve %100 Veri Korumalı Güncelleme"
+    "Android Fiziksel / Kaydırmalı Geri Tuşu Desteği: Android telefonlarda geri tuşuna basıldığında uygulamadan çıkmak yerine açık pencereyi kapatır veya bir önceki sekmeye döner",
+    "Android APK Kamera, GPS ve Depolama İzinleri: AndroidManifest.xml içine GPS konum, kamera, galeri ve ağ izinleri ile çift aşamalı (GPS + Ağ/Wi-Fi) konum yakalayıcı eklendi",
+    "Android WebView İndirme, Pano Kopyalama & WhatsApp Köprüsü: Cihaz kodu kopyalama, JSON yedek paylaşımı, WhatsApp bağlantıları ve Pedigri PDF/PNG kaydetme motoru tüm Android cihazlarla %100 uyumlu hale getirildi",
+    "Android Kamera Fotoğraf Sıkıştırma & Alt Menü Koruması: Yüksek çözünürlüklü telefon kamerası fotoğraflarını otomatik sıkıştırarak hafıza dolmasını önler; alt sıradaki kuşların 'İşlemler ▾' menüsünü otomatik yukarı doğru açar"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"

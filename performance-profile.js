@@ -3013,30 +3013,39 @@ const AvigenRaceTracker = {
       alert('⚠️ Cihazınızda GPS konum servisi bulunamadı. Koordinatı elle (Örn: 40.1885, 29.0610) yazabilirsiniz.');
       return;
     }
+    const applyPos = (pos) => {
+      const lat = Number(pos.coords.latitude).toFixed(5);
+      const lon = Number(pos.coords.longitude).toFixed(5);
+      const coordText = `${lat}, ${lon}`;
+      const el = document.getElementById(inputId);
+      if (el) {
+        el.value = coordText;
+      }
+      if (inputId === 'newRaceLoftCoords') {
+        try {
+          localStorage.setItem('avigen_saved_loft_gps_coords_v1', coordText);
+          if (typeof loftConfig !== 'undefined') {
+            loftConfig.gpsCoords = coordText;
+            if (typeof saveMypedigreData === 'function') saveMypedigreData();
+          }
+        } catch (e) {}
+      }
+      this.onCreateRaceCoordinateInput();
+    };
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = Number(pos.coords.latitude).toFixed(5);
-        const lon = Number(pos.coords.longitude).toFixed(5);
-        const coordText = `${lat}, ${lon}`;
-        const el = document.getElementById(inputId);
-        if (el) {
-          el.value = coordText;
-        }
-        if (inputId === 'newRaceLoftCoords') {
-          try {
-            localStorage.setItem('avigen_saved_loft_gps_coords_v1', coordText);
-            if (typeof loftConfig !== 'undefined') {
-              loftConfig.gpsCoords = coordText;
-              if (typeof saveMypedigreData === 'function') saveMypedigreData();
-            }
-          } catch (e) {}
-        }
-        this.onCreateRaceCoordinateInput();
-      },
+      applyPos,
       () => {
-        alert('⚠️ GPS konum izni alınamadı. Koordinatı kutucuğa elle (Örn: 40.1885, 29.0610) girebilirsiniz.');
+        // Android'de ilk yüksek hassasiyetli (GPS uydusu) sorgu kapalı mekânda zaman aşımına uğrarsa ağ/Wi-Fi tabanlı konuma otomatik düş
+        navigator.geolocation.getCurrentPosition(
+          applyPos,
+          () => {
+            alert('⚠️ GPS konum izni alınamadı veya telefonun Konum servisi kapalı. Koordinatı kutucuğa elle (Örn: 40.1885, 29.0610) girebilirsiniz.');
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 7000, maximumAge: 60000 }
     );
   },
 
