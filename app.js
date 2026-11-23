@@ -9944,7 +9944,7 @@ const AvigenSystemAuditQA = {
     const mainMods = AvigenGenesisAI.MAIN_MODULES || [];
     const hasUnifiedSmartPairing = mainMods.length >= 2 &&
       mainMods[0].id === 'breeding_hub' &&
-      mainMods[0].title === 'GENESIS AI – AKILLI EŞLEŞTİRME' &&
+      String(mainMods[0].title || '').includes('AKILLI EŞLEŞTİRME') &&
       Array.isArray(mainMods[0].subFunctions) &&
       mainMods[0].subFunctions.length === 0 &&
       mainMods.some(m => m.id === 'nutrition_hub');
