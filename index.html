@@ -1065,7 +1065,7 @@
   <script>
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=5.3.0').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=5.4.0').then((reg) => {
           if (reg && typeof reg.update === 'function') {
             reg.update().catch(() => {});
           }

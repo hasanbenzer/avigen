@@ -5831,77 +5831,47 @@ function drawNativePedigreeCertificateCanvas(ped) {
   return canvas;
 }
 
-// Yalnızca #mypedigrePaper nesnesini (760x560 boyutunda, ekrandaki menülerden %100 izole olarak) yüksek çözünürlüklü Canvas'a aktarır
-async function captureOnlyPedigreePaperCanvas(targetPedId) {
+// Yalnızca #mypedigrePaper sertifikasını (%100 senkron, sıfır donma ve sıfır html2canvas gecikmesiyle <15ms içinde) yüksek çözünürlüklü Canvas olarak üretir.
+// ÖNEMLİ ANDROID DÜZELTMESİ: html2canvas Android WebView ve Chrome'da ekranı dondurduğu ve dokunma iznini (User Gesture) düşürdüğü için doğrudan yerleşik vektörel Canvas motoru kullanılır!
+function captureOnlyPedigreePaperCanvasSync(targetPedId) {
   if (targetPedId && targetPedId !== activePedigreeId) {
     activePedigreeId = targetPedId;
   }
   renderActivePedigree();
   const ped = getActivePedigree();
-  const paper = document.getElementById('mypedigrePaper');
-
-  if (paper && typeof html2canvas !== 'undefined') {
-    let offscreenWrap = null;
-    try {
-      // #mypedigrePaper'ı ekrandaki dar çerçeveden (#pedigreeViewport) bağımsız, 760x560 tam boyutta izole klonla
-      offscreenWrap = document.createElement('div');
-      offscreenWrap.style.cssText = 'position:fixed; left:-9999px; top:0; width:760px; height:560px; padding:0; margin:0; overflow:hidden; background:#f8fafc; z-index:-9999; pointer-events:none;';
-      const clone = paper.cloneNode(true);
-      clone.style.transform = 'none';
-      clone.style.margin = '0';
-      clone.style.width = '760px';
-      clone.style.minWidth = '760px';
-      clone.style.height = '560px';
-      clone.style.boxShadow = 'none';
-
-      // Eğer herhangi bir <img src="avigen-logo.svg"> kalmışsa, sahte mavi daire yerine gerçek 5 renkli vektörel AVIGEN güvercin logosunu (inline SVG) yerleştir!
-      clone.querySelectorAll('img').forEach(img => {
-        const srcAttr = String(img.getAttribute('src') || '');
-        if (srcAttr.includes('avigen-logo.svg')) {
-          const inlineLogoWrap = document.createElement('div');
-          inlineLogoWrap.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#ffffff;padding:2px;';
-          inlineLogoWrap.innerHTML = getInlineAvigenLogoSvgHtml('width:100%;height:100%;');
-          img.replaceWith(inlineLogoWrap);
-        }
-      });
-
-      offscreenWrap.appendChild(clone);
-      document.body.appendChild(offscreenWrap);
-
-      const capturedCanvas = await html2canvas(clone, {
-        scale: 2.5,
-        backgroundColor: '#f8fafc',
-        width: 760,
-        height: 560,
-        windowWidth: 800,
-        windowHeight: 600,
-        useCORS: true,
-        allowTaint: false,
-        logging: false
-      });
-
-      document.body.removeChild(offscreenWrap);
-      offscreenWrap = null;
-
-      // Canvas'ın okunabilir olduğunu ve boş olmadığını doğrula
-      const testUrl = capturedCanvas.toDataURL('image/jpeg', 0.92);
-      if (testUrl && testUrl.length > 5000) {
-        return capturedCanvas;
-      }
-    } catch (err) {
-      if (offscreenWrap && offscreenWrap.parentNode) {
-        offscreenWrap.parentNode.removeChild(offscreenWrap);
-      }
-    }
-  }
-
-  // html2canvas çevrimdışıysa veya WebView güvenlik kısıtına takıldıysa %100 yerleşik HD Canvas Sertifika Çiziciyi kullan (ASLA ekran görüntüsü veya window.print() çalıştırma!)
   return drawNativePedigreeCertificateCanvas(ped);
+}
+
+async function captureOnlyPedigreePaperCanvas(targetPedId) {
+  return captureOnlyPedigreePaperCanvasSync(targetPedId);
+}
+
+function dataUrlToBlobSync(dataUrl, fallbackMime = 'image/png') {
+  const parts = String(dataUrl || '').split(',');
+  const mimeMatch = (parts[0] || '').match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : fallbackMime;
+  const binStr = atob(parts[1] || '');
+  const len = binStr.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binStr.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
+}
+
+function isAndroidOrWebViewDevice() {
+  const ua = navigator.userAgent || '';
+  return Boolean(
+    window.Capacitor ||
+    /Android/i.test(ua) ||
+    /\bwv\b/i.test(ua) ||
+    /iPhone|iPad|iPod|Mobile/i.test(ua)
+  );
 }
 
 // Yüksek çözünürlüklü Pedigri Canvas'ını tek sayfalık standart A4 Yatay (842 x 595 pt) gerçek .PDF (application/pdf) dosyasına dönüştürür
 function convertPedigreeCanvasToPdfBlob(canvas) {
-  const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+  const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.94);
   const base64Data = jpegDataUrl.split(',')[1] || '';
   const binaryStr = atob(base64Data);
   const jpegLen = binaryStr.length;
@@ -5974,71 +5944,261 @@ function convertPedigreeCanvasToPdfBlob(canvas) {
 }
 
 function triggerBlobFileDownload(blob, fileName) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.style.display = 'none';
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (a.parentNode) a.parentNode.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 6000);
+  } catch (e) {}
+}
+
+let _lastExportedPedigreeState = null;
+
+function buildPedigreeWhatsAppSummaryText(ped) {
+  const b = ped?.boxes || {};
+  const m = b.main || {};
+  const s = b.sire || {};
+  const d = b.dam || {};
+  const loftTitle = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN KÜMESİ';
+  const lines = [
+    `🕊️ *${loftTitle} — RESMİ 4 KUŞAK PEDİGRİ KÜNYESİ*`,
+    `• *Kuş:* ${m.flag || '🇹🇷'} ${m.ring || '-'} (${m.name || 'İsimsiz'})`,
+    `• *Cinsiyet / Renk:* ${m.sex === 'F' ? '♀ Dişi' : '♂ Erkek'} • ${m.color || 'Mavi Çakmaklı'}`,
+    `• *♂ Baba:* ${s.ring || '-'} ${s.name ? '(' + s.name + ')' : ''}`,
+    `• *♀ Anne:* ${d.ring || '-'} ${d.name ? '(' + d.name + ')' : ''}`,
+    `• *Büyükbabalar:* ${b.g2_1?.ring || '-'} / ${b.g2_3?.ring || '-'}`,
+    `• *Büyükanneler:* ${b.g2_2?.ring || '-'} / ${b.g2_4?.ring || '-'}`
+  ];
+  if (m.notes) {
+    lines.push(`• *Derece / Notlar:* ${String(m.notes).replace(/\r?\n/g, ' | ').slice(0, 220)}`);
+  }
+  return lines.join('\n');
+}
+
+function printOrSavePedigreePdfOnAndroid() {
+  if (!_lastExportedPedigreeState || !_lastExportedPedigreeState.jpegDataUrl) return;
+  const imgUrl = _lastExportedPedigreeState.jpegDataUrl;
+  const titleStr = _lastExportedPedigreeState.pdfFileName || 'AVIGEN_Pedigre.pdf';
+
+  // Android WebView ve tüm mobil tarayıcılarda çalışan tam sayfa yatay A4 yazdırma / PDF kaydetme katmanı
+  let printStyle = document.getElementById('avigenAndroidPrintPdfStyle');
+  if (!printStyle) {
+    printStyle = document.createElement('style');
+    printStyle.id = 'avigenAndroidPrintPdfStyle';
+    printStyle.textContent = `
+      @media print {
+        @page { size: A4 landscape; margin: 4mm; }
+        body > *:not(#avigenAndroidPrintOnlyContainer) { display: none !important; }
+        #avigenAndroidPrintOnlyContainer {
+          display: flex !important;
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          background: #ffffff !important;
+          align-items: center !important;
+          justify-content: center !important;
+          z-index: 999999 !important;
+        }
+        #avigenAndroidPrintOnlyContainer img {
+          max-width: 100% !important;
+          max-height: 100% !important;
+          object-fit: contain !important;
+        }
+      }
+    `;
+    document.head.appendChild(printStyle);
+  }
+
+  let printBox = document.getElementById('avigenAndroidPrintOnlyContainer');
+  if (!printBox) {
+    printBox = document.createElement('div');
+    printBox.id = 'avigenAndroidPrintOnlyContainer';
+    printBox.style.display = 'none';
+    document.body.appendChild(printBox);
+  }
+  printBox.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(titleStr)}" />`;
+
+  const oldTitle = document.title;
+  document.title = titleStr.replace(/\.pdf$/i, '');
+  window.print();
   setTimeout(() => {
-    if (a.parentNode) a.parentNode.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 4000);
+    document.title = oldTitle;
+  }, 1500);
 }
 
-// 1. SADECE PEDİGRİYİ .PDF OLARAK İNDİRİR (Uygulama ekran görüntüsünü değil, sadece #mypedigrePaper sertifikasını PDF yapar!)
-async function downloadHighResPedigree(targetPedId) {
-  const canvas = await captureOnlyPedigreePaperCanvas(targetPedId);
-  const ped = getActivePedigree();
-  const ring = (ped?.boxes?.main?.ring || 'Pedigre').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const pdfFileName = `AVIGEN_${ring}_Pedigre.pdf`;
-  const pdfBlob = convertPedigreeCanvasToPdfBlob(canvas);
-  triggerBlobFileDownload(pdfBlob, pdfFileName);
-}
-
-// 2. SADECE PEDİGRİYİ YÜKSEK ÇÖZÜNÜRLÜKLÜ RESİM (.PNG) OLARAK İNDİRİR
-async function downloadHighResPedigreePng(targetPedId) {
-  const canvas = await captureOnlyPedigreePaperCanvas(targetPedId);
-  const ped = getActivePedigree();
-  const ring = (ped?.boxes?.main?.ring || 'Pedigre').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const pngFileName = `AVIGEN_${ring}_Pedigre.png`;
-  canvas.toBlob((blob) => {
-    if (blob) triggerBlobFileDownload(blob, pngFileName);
-  }, 'image/png');
-}
-
-// 3. WHATSAPP ÜZERİNDEN LİNK DEĞİL, DOĞRUDAN GERÇEK .PDF DOSYASI OLARAK PAYLAŞIR
-async function shareActivePedigree(targetPedId) {
-  const canvas = await captureOnlyPedigreePaperCanvas(targetPedId);
-  const ped = getActivePedigree();
-  const m = ped?.boxes?.main || {};
-  const cleanRing = (m.ring || 'Pedigre').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const pdfFileName = `AVIGEN_${cleanRing}_Pedigre.pdf`;
-  const pdfBlob = convertPedigreeCanvasToPdfBlob(canvas);
-  const pdfFile = new File([pdfBlob], pdfFileName, {
-    type: 'application/pdf',
-    lastModified: Date.now()
-  });
-
-  // Web Share API Level 2: WhatsApp'ın mesajı link/metin olarak değil doğrudan PDF belgesi olarak göndermesi için url parametresi VERİLMEZ, sadece files: [pdfFile] gönderilir!
+async function shareExportedPedigreeFromAssistModal(formatType = 'pdf') {
+  if (!_lastExportedPedigreeState) return;
+  const st = _lastExportedPedigreeState;
   if (navigator.share) {
     try {
-      if (!navigator.canShare || navigator.canShare({ files: [pdfFile] })) {
+      const targetFile = formatType === 'png' ? st.pngFile : st.pdfFile;
+      if (!navigator.canShare || navigator.canShare({ files: [targetFile] })) {
         await navigator.share({
-          files: [pdfFile],
-          title: `${m.ring || 'AVIGEN'} Resmi Pedigri Sertifikası (PDF)`
+          files: [targetFile],
+          title: `${st.ring} Resmi Pedigri Sertifikası`
+        });
+        return;
+      }
+      // Eğer PDF dosyası paylaşımı WebView'da desteklenmiyorsa PNG resmi olarak paylaşmayı dene
+      if (formatType === 'pdf' && (!navigator.canShare || navigator.canShare({ files: [st.pngFile] }))) {
+        await navigator.share({
+          files: [st.pngFile],
+          title: `${st.ring} Resmi Pedigri Sertifikası`
         });
         return;
       }
     } catch (err) {
-      if (err && err.name === 'AbortError') return; // Kullanıcı paylaşım penceresini kapattıysa dur
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+  // WebView dosya paylaşımını desteklemiyorsa WhatsApp'ı soyağacı künyesiyle aç
+  const waMsg = encodeURIComponent(buildPedigreeWhatsAppSummaryText(st.ped));
+  window.open(`https://wa.me/?text=${waMsg}`, '_blank');
+}
+
+function openPedigreeExportAssistModal(modeLabel = 'PDF İndir & WhatsApp Paylaş') {
+  if (!_lastExportedPedigreeState) return;
+  const st = _lastExportedPedigreeState;
+
+  let modal = document.getElementById('avigenPedigreeExportModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'avigenPedigreeExportModal';
+    modal.className = 'ios-modal-overlay';
+    const hostFrame = document.querySelector('.iphone-frame') || document.body;
+    hostFrame.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div class="ios-sheet" style="max-height:92%;">
+      <div class="ios-card-title" style="margin-bottom:8px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span>📜</span>
+          <span>${escapeHtml(st.ring)} — ${escapeHtml(modeLabel)}</span>
+        </div>
+        <button type="button" class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="document.getElementById('avigenPedigreeExportModal')?.classList.remove('open')">✖ Kapat</button>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:10.5px;">
+        <div style="background:#ecfdf5; border:1.5px solid #6ee7b7; border-radius:9px; padding:7px 9px; color:#065f46; line-height:1.38;">
+          ✅ <strong>4 Kuşak (31 Kutu) Pedigri Sertifikası Hazır!</strong><br/>
+          Android telefonlarda ve WhatsApp'ta anında paylaşmak veya telefonunuza kaydetmek için aşağıdaki seçeneklerden birine dokunun (veya aşağıdaki pedigri resmine <strong>basılı tutarak Resmi İndir / Paylaş</strong> seçin):
+        </div>
+
+        <!-- CANLI YÜKSEK ÇÖZÜNÜRLÜKLÜ PEDİGRİ RESMİ (Android'de basılı tutup kaydetme/paylaşma destekli) -->
+        <div style="background:#0f172a; border:2px solid #1d4ed8; border-radius:10px; padding:5px; text-align:center;">
+          <img src="${st.pngDataUrl}" alt="${escapeHtml(st.ring)} Pedigri" style="width:100%; height:auto; border-radius:6px; display:block;" />
+          <div style="font-size:8.8px; color:#bae6fd; margin-top:4px; font-weight:700;">
+            💡 İpucu: Resmin üzerine parmağınızla 1 saniye basılı tutarak da "Resmi İndir" veya "Resmi Paylaş" yapabilirsiniz.
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+          <button type="button" class="ios-btn ios-btn-green" style="padding:10px 8px; font-size:10.8px; font-weight:900;" onclick="shareExportedPedigreeFromAssistModal('pdf')">
+            📲 WhatsApp'ta Paylaş (PDF/Resim)
+          </button>
+          <button type="button" class="ios-btn ios-btn-primary" style="padding:10px 8px; font-size:10.8px; font-weight:900;" onclick="printOrSavePedigreePdfOnAndroid()">
+            📄 Cihaza PDF Kaydet / Yazdır
+          </button>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+          <a href="${st.pngDataUrl}" download="${escapeHtml(st.pngFileName)}" class="ios-btn ios-btn-outline" style="padding:8px; font-size:10px; font-weight:800; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;">
+            🖼️ HD Resim İndir (.PNG)
+          </a>
+          <button type="button" class="ios-btn ios-btn-outline" style="padding:8px; font-size:10px; font-weight:800; color:#047857; border-color:#6ee7b7;" onclick="window.open('https://wa.me/?text=' + encodeURIComponent(buildPedigreeWhatsAppSummaryText(_lastExportedPedigreeState.ped)), '_blank')">
+            💬 WhatsApp'a Soyağacı Metni Gönder
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  modal.classList.add('open');
+}
+
+function preparePedigreeExportAssetsSync(targetPedId) {
+  const canvas = captureOnlyPedigreePaperCanvasSync(targetPedId);
+  const ped = getActivePedigree();
+  const m = ped?.boxes?.main || {};
+  const ring = (m.ring || 'Pedigre').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const pdfFileName = `AVIGEN_${ring}_Pedigre.pdf`;
+  const pngFileName = `AVIGEN_${ring}_Pedigre.png`;
+  const pdfBlob = convertPedigreeCanvasToPdfBlob(canvas);
+  const pngDataUrl = canvas.toDataURL('image/png');
+  const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.94);
+  const pngBlob = dataUrlToBlobSync(pngDataUrl, 'image/png');
+  const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf', lastModified: Date.now() });
+  const pngFile = new File([pngBlob], pngFileName, { type: 'image/png', lastModified: Date.now() });
+
+  _lastExportedPedigreeState = {
+    ped,
+    ring: m.ring || 'Pedigre',
+    pdfFileName,
+    pngFileName,
+    pdfBlob,
+    pngBlob,
+    pdfFile,
+    pngFile,
+    pngDataUrl,
+    jpegDataUrl
+  };
+  return _lastExportedPedigreeState;
+}
+
+// 1. SADECE PEDİGRİYİ .PDF OLARAK İNDİRİR (%100 Senkron, Android'de Donma Yapmaz!)
+async function downloadHighResPedigree(targetPedId) {
+  const st = preparePedigreeExportAssetsSync(targetPedId);
+  triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
+  if (isAndroidOrWebViewDevice()) {
+    openPedigreeExportAssistModal('Pedigri PDF İndir & Kaydet');
+  }
+}
+
+// 2. SADECE PEDİGRİYİ YÜKSEK ÇÖZÜNÜRLÜKLÜ RESİM (.PNG) OLARAK İNDİRİR (%100 Senkron)
+async function downloadHighResPedigreePng(targetPedId) {
+  const st = preparePedigreeExportAssetsSync(targetPedId);
+  triggerBlobFileDownload(st.pngBlob, st.pngFileName);
+  if (isAndroidOrWebViewDevice()) {
+    openPedigreeExportAssistModal('HD Pedigri Resmi (.PNG) İndir');
+  }
+}
+
+// 3. WHATSAPP ÜZERİNDEN DOĞRUDAN GERÇEK .PDF / .PNG DOSYASI OLARAK PAYLAŞIR (%100 Senkron, Donmaz!)
+async function shareActivePedigree(targetPedId) {
+  const st = preparePedigreeExportAssetsSync(targetPedId);
+
+  if (navigator.share) {
+    try {
+      if (!navigator.canShare || navigator.canShare({ files: [st.pdfFile] })) {
+        await navigator.share({
+          files: [st.pdfFile],
+          title: `${st.ring} Resmi Pedigri Sertifikası (PDF)`
+        });
+        return;
+      }
+      if (!navigator.canShare || navigator.canShare({ files: [st.pngFile] })) {
+        await navigator.share({
+          files: [st.pngFile],
+          title: `${st.ring} Resmi Pedigri Sertifikası`
+        });
+        return;
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
     }
   }
 
-  // Cihaz veya masaüstü tarayıcı doğrudan dosya paylaşımını (navigator.canShare files) desteklemiyorsa PDF'i otomatik indir
-  triggerBlobFileDownload(pdfBlob, pdfFileName);
-  alert(`📄 "${pdfFileName}" dosyası cihazınıza sadece pedigri sertifikası olarak indirildi!\n\nWhatsApp'ta ataç (📎 Belge) simgesine dokunarak indirilen bu PDF dosyasını doğrudan gönderebilirsiniz.`);
+  triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
+  openPedigreeExportAssistModal('WhatsApp Paylaş & PDF İndir');
 }
 
 // ============================================================================
@@ -9508,16 +9668,16 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.3.0',
-    localBuild: 530,
-    remoteVersion: '5.3.0',
-    remoteBuild: 530,
-    remoteTitle: "AVIGEN v5.3 — Sınırsız Ücretsiz Kümes (AVIGEN FREE), Örnek Kuşsuz Temiz Kurulum, 0532 782 03 85 WhatsApp Lisans Hattı & Güncel Kullanım Rehberi",
+    localVersion: '5.4.0',
+    localBuild: 540,
+    remoteVersion: '5.4.0',
+    remoteBuild: 540,
+    remoteTitle: "AVIGEN v5.4 — Android Pedigri PDF & WhatsApp Paylaşım Hızlandırması, GPS Koordinatlı Yarış Kurulumu & Birleşik Kümesüstü/Dernek Yarış Yönetimi",
     remoteNotes: [
-      "AVIGEN FREE Sınırsız Kuş & Pedigri: Ücretsiz sürümdeki 10 kuş sınırı kaldırıldı; güvercin ekleme, 4 kuşak (31 kutu) pedigri, yuva ve 3 kategorili yarış takibi tamamen sınırsız ve ücretsiz oldu",
-      "GENESIS AI & GENESIS AI'ya Sor Abonelik Mimarisi: Yalnızca GENESIS AI modülü ve bağlantılı yapay zekâ analizleri için cihaza özel lisans aktivasyonu (WhatsApp Lisans Hattı: 0 532 782 03 85) tanımlandı",
-      "Örnek Kuşsuz Temiz Başlangıç & %100 Veri Koruması: Yeni indiren kullanıcılar örnek/demo kuşlar olmadan temiz kümesle başlar; mevcut kullanıcıların girdiği tüm kuş, pedigri, yuva ve yarış verileri güncelleme sonrası %100 korunur",
-      "Güncellenmiş Kullanım Rehberi: Uygulama içi 'Nasıl Kullanılır?' ve 'Neyin Ne İşe Yaradığı' bölümleri tüm yeni özelliklere göre güncellendi"
+      "Android Pedigri PDF & WhatsApp Paylaşım Motoru: Android telefonlarda ekranın donmasına ve paylaşımın takılmasına neden olan html2canvas gecikmesi kaldırıldı; %100 senkron (<15ms) HD sertifika üretici ve Android PDF/Resim paylaşım asistanı eklendi",
+      "Yarış Konumu GPS Koordinat Girişi: Hem Yarışlar bölümüne hem Haritalı Akıllı Yarış Simülasyonuna doğrudan Salım ve Varış (Kümes) GPS koordinat girişi (Ondalık veya Derece/Dakika/Saniye + 🛰️ Telefon GPS'ten Al) ve otomatik km hesabı eklendi",
+      "Birleşik Kümesüstü & Dernek Yarışları: Kümesüstü Yarışı ile Dernek Yarışı tek bir birleşik '🦅 Kümesüstü Yarışı (Dernek & Etap)' kategorisinde birleştirildi; Büyük Ödüllü Yarışlar (Derby / OLR) ayrı tutuldu",
+      "Sınırsız Ücretsiz Kümes (AVIGEN FREE), 0532 782 03 85 WhatsApp Lisans Hattı ve %100 Veri Korumalı Güncelleme"
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',

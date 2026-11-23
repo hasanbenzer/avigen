@@ -1271,31 +1271,31 @@ const AvigenRaceTracker = {
       id: 'LOFT_ENDURANCE',
       code: 'LOFT_ENDURANCE',
       title: 'Kümesüstü Yarışı',
-      fullTitle: 'A. Kümesüstü Yarışları',
+      fullTitle: 'A. Kümesüstü Yarışı (Dernek, Kulüp & Kümes Etapları)',
       icon: '🦅',
       badgeClass: 'gene-blue',
       accentColor: '#0066ff',
       bgLight: '#eff6ff',
       borderLight: '#93c5fd',
-      description: 'Kendi kümesinizdeki kuşlarla yaptığınız uçuş, antrenman ve dayanıklılık yarışları (günlük, haftalık ve sezonluk takip).'
+      description: 'Kendi kümesinize dönülen dernek, kulüp, federasyon etapları ve kümesüstü uçuş yarışları (İl/İlçe veya GPS koordinatlı salım/kümes mesafesi, resmi derece, hız ve sezon sıralaması).'
     },
     CLUB_RACE: {
       id: 'CLUB_RACE',
       code: 'CLUB_RACE',
-      title: 'Dernek Yarışı',
-      fullTitle: 'B. Dernek Yarışları',
-      icon: '🏛️',
-      badgeClass: 'gene-green',
-      accentColor: '#059669',
-      bgLight: '#ecfdf5',
-      borderLight: '#6ee7b7',
-      description: 'Dernek ve federasyon organizasyonları, sezonluk etaplar, resmi klasman dereceleri, puanlama ve genel sezon sıralaması.'
+      title: 'Kümesüstü Yarışı',
+      fullTitle: 'A. Kümesüstü Yarışı (Dernek, Kulüp & Kümes Etapları)',
+      icon: '🦅',
+      badgeClass: 'gene-blue',
+      accentColor: '#0066ff',
+      bgLight: '#eff6ff',
+      borderLight: '#93c5fd',
+      description: 'Kendi kümesinize dönülen dernek, kulüp, federasyon etapları ve kümesüstü uçuş yarışları (İl/İlçe veya GPS koordinatlı salım/kümes mesafesi, resmi derece, hız ve sezon sıralaması).'
     },
     GRAND_PRIZE: {
       id: 'GRAND_PRIZE',
       code: 'GRAND_PRIZE',
       title: 'Büyük Ödüllü Yarış',
-      fullTitle: 'C. Büyük Ödüllü Yarışlar',
+      fullTitle: 'B. Büyük Ödüllü Yarışlar (Derby / One Loft Race)',
       icon: '🏆',
       badgeClass: 'gene-gold',
       accentColor: '#d97706',
@@ -1881,27 +1881,19 @@ const AvigenRaceTracker = {
           </div>
         </div>
 
-        <!-- 2. 3 YARIŞ KATEGORİSİNİN BİRBİRİNE KARIŞTIRILMADAN AYRI AYRI İSTATİSTİKLERİ -->
-        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; margin-bottom:8px;">
-          <!-- A. KÜMESÜSTÜ -->
-          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-top:3px solid #0066ff; border-radius:9px; padding:6px 7px; font-size:9px;">
-            <div style="font-weight:900; color:#0052cc; margin-bottom:3px;">🦅 Kümesüstü (${cLoft.totalParticipations})</div>
-            <div>• Dönüş: <strong>${cLoft.returnedCount}/${cLoft.totalParticipations}</strong></div>
-            <div>• Top. Süre: <strong>${cLoft.totalFlightMinutes !== null ? `${cLoft.totalFlightMinutes} dk` : 'Veri Yok'}</strong></div>
-            <div>• Ort. Hız: <strong>${cLoft.avgSpeedMpm !== null ? `${cLoft.avgSpeedMpm} m/dk` : 'Veri Yok'}</strong></div>
+        <!-- 2. BİRLEŞİK KÜMESÜSTÜ (DERNEK/ETAP) VE BÜYÜK ÖDÜLLÜ (DERBY/OLR) İSTATİSTİKLERİ -->
+        <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; margin-bottom:8px;">
+          <!-- A. KÜMESÜSTÜ & DERNEK YARIŞLARI (BİRLEŞİK) -->
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-top:3px solid #0066ff; border-radius:9px; padding:7px 8px; font-size:9.2px;">
+            <div style="font-weight:900; color:#0052cc; margin-bottom:3px;">🦅 Kümesüstü &amp; Dernek (${cLoft.totalParticipations + cClub.totalParticipations})</div>
+            <div>• Dönüş: <strong>${cLoft.returnedCount + cClub.returnedCount}/${cLoft.totalParticipations + cClub.totalParticipations}</strong></div>
+            <div>• En İyi Sıra: <strong>${(cClub.bestRank !== null && cLoft.bestRank !== null) ? `${Math.min(cClub.bestRank, cLoft.bestRank)}. Sıra` : (cClub.bestRank !== null ? `${cClub.bestRank}. Sıra` : (cLoft.bestRank !== null ? `${cLoft.bestRank}. Sıra` : 'Veri Yok'))}</strong></div>
+            <div>• Ort. Hız / Puan: <strong>${(cClub.avgSpeedMpm || cLoft.avgSpeedMpm) ? `${cClub.avgSpeedMpm || cLoft.avgSpeedMpm} m/dk` : 'Veri Yok'}${cClub.totalPoints ? ` • ${cClub.totalPoints} Puan` : ''}</strong></div>
           </div>
 
-          <!-- B. DERNEK YARIŞLARI -->
-          <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-top:3px solid #059669; border-radius:9px; padding:6px 7px; font-size:9px;">
-            <div style="font-weight:900; color:#047857; margin-bottom:3px;">🏛️ Dernek Yarışı (${cClub.totalParticipations})</div>
-            <div>• Dönüş: <strong>${cClub.returnedCount}/${cClub.totalParticipations}</strong> (${cClub.returnRatePct !== null ? `%${cClub.returnRatePct}` : '—'})</div>
-            <div>• En İyi Sıra: <strong>${cClub.bestRank !== null ? `${cClub.bestRank}. Sıra` : 'Veri Yok'}</strong></div>
-            <div>• Top. Puan: <strong>${cClub.totalPoints !== null ? `${cClub.totalPoints} Puan` : 'Veri Yok'}</strong></div>
-          </div>
-
-          <!-- C. BÜYÜK ÖDÜLLÜ YARIŞLAR -->
-          <div style="background:#fffbeb; border:1px solid #fde68a; border-top:3px solid #d97706; border-radius:9px; padding:6px 7px; font-size:9px;">
-            <div style="font-weight:900; color:#b45309; margin-bottom:3px;">🏆 Büyük Ödüllü (${cGrand.totalParticipations})</div>
+          <!-- B. BÜYÜK ÖDÜLLÜ YARIŞLAR -->
+          <div style="background:#fffbeb; border:1px solid #fde68a; border-top:3px solid #d97706; border-radius:9px; padding:7px 8px; font-size:9.2px;">
+            <div style="font-weight:900; color:#b45309; margin-bottom:3px;">🏆 Büyük Ödüllü / Derby (${cGrand.totalParticipations})</div>
             <div>• Dönüş: <strong>${cGrand.returnedCount}/${cGrand.totalParticipations}</strong></div>
             <div>• En İyi Derece: <strong>${cGrand.bestRank !== null ? `${cGrand.bestRank}. Sıra` : 'Veri Yok'}</strong></div>
             <div>• Ödül: <strong>${cGrand.totalPrizeTl > 0 ? `${cGrand.totalPrizeTl.toLocaleString('tr-TR')} TL` : (cGrand.awardsCount > 0 ? `${cGrand.awardsCount} Ödül` : 'Veri Yok')}</strong></div>
@@ -2014,8 +2006,15 @@ const AvigenRaceTracker = {
     const root = document.getElementById('avigenRaceTrackerRoot');
     if (!root) return;
 
+    const isLoftOrClubCategory = (cat) => cat === 'LOFT_ENDURANCE' || cat === 'CLUB_RACE';
     const filteredEvents = this.events.filter(ev => {
-      if (this.filterCategory !== 'ALL' && ev.category !== this.filterCategory) return false;
+      if (this.filterCategory !== 'ALL') {
+        if (isLoftOrClubCategory(this.filterCategory)) {
+          if (!isLoftOrClubCategory(ev.category)) return false;
+        } else if (ev.category !== this.filterCategory) {
+          return false;
+        }
+      }
       if (this.filterStatus === 'COMPLETED') return ev.status === 'COMPLETED';
       if (this.filterStatus === 'PENDING_RESULTS') return ev.status !== 'COMPLETED';
       return true;
@@ -2024,12 +2023,13 @@ const AvigenRaceTracker = {
     const cntAll = this.events.length;
     const cntLoft = this.events.filter(e => e.category === 'LOFT_ENDURANCE').length;
     const cntClub = this.events.filter(e => e.category === 'CLUB_RACE').length;
+    const cntUnifiedLoft = cntLoft + cntClub;
     const cntGrand = this.events.filter(e => e.category === 'GRAND_PRIZE').length;
 
     const totalReturned = this.events.reduce((acc, ev) => acc + (ev.entries || []).filter(e => e.birdStatus === 'RETURNED' || e.resultStatus === 'ENTERED').length, 0);
     const totalAwaiting = this.events.reduce((acc, ev) => acc + (ev.entries || []).filter(e => ['PREPARING', 'BASKETED', 'RELEASED', 'AWAITING'].includes(e.birdStatus) && e.resultStatus !== 'ENTERED').length, 0);
 
-    // Dernek yarışları için genel sezon sıralaması özeti + Çoklu Büyük Ödüllü Yarış (Derby / OLR) Organizasyon Özeti
+    // Kümesüstü & Dernek yarışları için genel sezon sıralaması özeti + Çoklu Büyük Ödüllü Yarış (Derby / OLR) Organizasyon Özeti
     const clubSeasonStandings = this.computeClubSeasonStandings();
     const grandPrizeOrgsSummary = this.computeGrandPrizeOrganizationsSummary();
 
@@ -2050,49 +2050,37 @@ const AvigenRaceTracker = {
           </button>
         </div>
 
-        <!-- 3 ANA YARIŞ KATEGORİSİ HIZLI BAŞLATMA BUTONLARI (KOMPAKT & PARMAK DOSTU) -->
-        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:5px; margin-bottom:7px;">
-          <div onclick="AvigenRaceTracker.openCreateRaceModal({ category: 'LOFT_ENDURANCE' })" style="cursor:pointer; background:#eff6ff; border:1.5px solid #93c5fd; border-radius:9px; padding:6px 7px; display:flex; flex-direction:column; gap:2px;">
+        <!-- 2 ANA YARIŞ KATEGORİSİ HIZLI BAŞLATMA BUTONLARI (KÜMESÜSTÜ & DERNEK BİRLEŞİK + BÜYÜK ÖDÜLLÜ DERBY) -->
+        <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px; margin-bottom:7px;">
+          <div onclick="AvigenRaceTracker.openCreateRaceModal({ category: 'CLUB_RACE' })" style="cursor:pointer; background:#eff6ff; border:1.5px solid #93c5fd; border-radius:9px; padding:7px 9px; display:flex; flex-direction:column; gap:2px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:13px;">🦅</span>
-              <span style="font-size:8px; font-weight:800; color:#1d4ed8;">+ Ekle</span>
+              <span style="font-size:14px;">🦅</span>
+              <span style="font-size:8.5px; font-weight:800; color:#1d4ed8;">+ Yeni Etap Ekle</span>
             </div>
-            <div style="font-size:10px; font-weight:900; color:#0052cc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Kümesüstü</div>
-            <div style="font-size:7.8px; color:#1e3a8a;">Antrenman &amp; Uçuş</div>
+            <div style="font-size:10.8px; font-weight:900; color:#0052cc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Kümesüstü Yarışı</div>
+            <div style="font-size:8px; color:#1e3a8a;">Dernek, Etap, Koordinat &amp; Klasman</div>
           </div>
 
-          <div onclick="AvigenRaceTracker.openCreateRaceModal({ category: 'CLUB_RACE' })" style="cursor:pointer; background:#ecfdf5; border:1.5px solid #6ee7b7; border-radius:9px; padding:6px 7px; display:flex; flex-direction:column; gap:2px;">
+          <div onclick="AvigenRaceTracker.openCreateRaceModal({ category: 'GRAND_PRIZE' })" style="cursor:pointer; background:#fffbeb; border:1.5px solid #fcd34d; border-radius:9px; padding:7px 9px; display:flex; flex-direction:column; gap:2px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:13px;">🏛️</span>
-              <span style="font-size:8px; font-weight:800; color:#047857;">+ Ekle</span>
+              <span style="font-size:14px;">🏆</span>
+              <span style="font-size:8.5px; font-weight:800; color:#b45309;">+ Derby / OLR Ekle</span>
             </div>
-            <div style="font-size:10px; font-weight:900; color:#047857; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Dernek Yarışı</div>
-            <div style="font-size:7.8px; color:#065f46;">Etap &amp; Klasman</div>
-          </div>
-
-          <div onclick="AvigenRaceTracker.openCreateRaceModal({ category: 'GRAND_PRIZE' })" style="cursor:pointer; background:#fffbeb; border:1.5px solid #fcd34d; border-radius:9px; padding:6px 7px; display:flex; flex-direction:column; gap:2px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:13px;">🏆</span>
-              <span style="font-size:8px; font-weight:800; color:#b45309;">+ Ekle</span>
-            </div>
-            <div style="font-size:10px; font-weight:900; color:#b45309; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Büyük Ödüllü</div>
-            <div style="font-size:7.8px; color:#78350f;">OLR &amp; Derby</div>
+            <div style="font-size:10.8px; font-weight:900; color:#b45309; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Büyük Ödüllü Yarış</div>
+            <div style="font-size:8px; color:#78350f;">One Loft Race (OLR) &amp; Derby</div>
           </div>
         </div>
 
         <!-- KATEGORİ FİLTRE ÇİPLERİ + DURUM FİLTRESİ (BİRLEŞİK KOMPAKT ŞERİT) -->
-        <div class="sub-pills" style="padding:2.5px; gap:2.5px; margin-bottom:5px; flex-wrap:wrap;">
-          <button type="button" class="sub-pill ${this.filterCategory === 'ALL' ? 'active' : ''}" style="font-size:9px; padding:4px 5px;" onclick="AvigenRaceTracker.setCategoryFilter('ALL')">
+        <div class="sub-pills" style="padding:2.5px; gap:3px; margin-bottom:5px; flex-wrap:wrap;">
+          <button type="button" class="sub-pill ${this.filterCategory === 'ALL' ? 'active' : ''}" style="font-size:9px; padding:4px 7px;" onclick="AvigenRaceTracker.setCategoryFilter('ALL')">
             🏁 Tümü (${cntAll})
           </button>
-          <button type="button" class="sub-pill ${this.filterCategory === 'LOFT_ENDURANCE' ? 'active' : ''}" style="font-size:9px; padding:4px 5px;" onclick="AvigenRaceTracker.setCategoryFilter('LOFT_ENDURANCE')">
-            🦅 Kümes (${cntLoft})
+          <button type="button" class="sub-pill ${isLoftOrClubCategory(this.filterCategory) ? 'active' : ''}" style="font-size:9px; padding:4px 7px;" onclick="AvigenRaceTracker.setCategoryFilter('CLUB_RACE')">
+            🦅 Kümesüstü &amp; Dernek (${cntUnifiedLoft})
           </button>
-          <button type="button" class="sub-pill ${this.filterCategory === 'CLUB_RACE' ? 'active' : ''}" style="font-size:9px; padding:4px 5px;" onclick="AvigenRaceTracker.setCategoryFilter('CLUB_RACE')">
-            🏛️ Dernek (${cntClub})
-          </button>
-          <button type="button" class="sub-pill ${this.filterCategory === 'GRAND_PRIZE' ? 'active' : ''}" style="font-size:9px; padding:4px 5px;" onclick="AvigenRaceTracker.setCategoryFilter('GRAND_PRIZE')">
-            🏆 Derby (${cntGrand})
+          <button type="button" class="sub-pill ${this.filterCategory === 'GRAND_PRIZE' ? 'active' : ''}" style="font-size:9px; padding:4px 7px;" onclick="AvigenRaceTracker.setCategoryFilter('GRAND_PRIZE')">
+            🏆 Büyük Ödüllü / Derby (${cntGrand})
           </button>
         </div>
 
@@ -2112,12 +2100,12 @@ const AvigenRaceTracker = {
         </div>
       </div>
 
-      <!-- DERNEK YARIŞLARI GENEL SEZON SIRALAMASI ÖZETİ (En Az 1 Dernek Sonucu Varsa Gösterilir) -->
-      ${clubSeasonStandings.length > 0 && (this.filterCategory === 'ALL' || this.filterCategory === 'CLUB_RACE') ? `
-        <div class="ios-card" style="padding:9px 11px; border-left:4px solid #059669;">
+      <!-- KÜMESÜSTÜ & DERNEK YARIŞLARI GENEL SEZON SIRALAMASI ÖZETİ -->
+      ${clubSeasonStandings.length > 0 && (this.filterCategory === 'ALL' || isLoftOrClubCategory(this.filterCategory)) ? `
+        <div class="ios-card" style="padding:9px 11px; border-left:4px solid #0066ff;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-            <span style="font-size:11px; font-weight:900; color:#047857;">🏛️ Dernek Yarışları Genel Sezon Puan Sıralaması (Top 5)</span>
-            <span class="gene-badge gene-green" style="font-size:8px;">Sezon Klasmanı</span>
+            <span style="font-size:11px; font-weight:900; color:#0052cc;">🦅 Kümesüstü &amp; Dernek Yarışları Genel Sezon Puan Sıralaması (Top 5)</span>
+            <span class="gene-badge gene-blue" style="font-size:8px;">Sezon Klasmanı</span>
           </div>
           <div style="display:flex; flex-direction:column; gap:4px;">
             ${clubSeasonStandings.slice(0, 5).map((st, idx) => `
@@ -2186,7 +2174,7 @@ const AvigenRaceTracker = {
 
   computeClubSeasonStandings() {
     const map = new Map();
-    this.events.filter(ev => ev.category === 'CLUB_RACE').forEach(ev => {
+    this.events.filter(ev => ev.category === 'CLUB_RACE' || ev.category === 'LOFT_ENDURANCE').forEach(ev => {
       (ev.entries || []).forEach(en => {
         if ((en.birdStatus === 'RETURNED' || en.resultStatus === 'ENTERED') && en.rank) {
           const rKey = en.ring.trim().toUpperCase();
@@ -2564,34 +2552,25 @@ const AvigenRaceTracker = {
             Oluşturmak istediğiniz yarış kategorisini seçin. Seçiminize göre yalnızca o yarış türüne özel sade veri giriş ekranı açılacaktır:
           </div>
 
-          <!-- KART 1: KÜMESÜSTÜ YARIŞI -->
-          <div onclick="AvigenRaceTracker.selectCreateModalCategory('LOFT_ENDURANCE')" style="cursor:pointer; background:#eff6ff; border:2px solid #60a5fa; border-radius:12px; padding:12px 13px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <!-- KART 1: BİRLEŞİK KÜMESÜSTÜ & DERNEK YARIŞI -->
+          <div onclick="AvigenRaceTracker.selectCreateModalCategory('CLUB_RACE')" style="cursor:pointer; background:#eff6ff; border:2px solid #60a5fa; border-radius:12px; padding:12px 13px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
             <div>
-              <div style="font-size:13.5px; font-weight:900; color:#0052cc;">🦅 1. Kümesüstü Yarışı</div>
-              <div style="font-size:10px; color:#1e3a8a; margin-top:3px; line-height:1.35;">
-                Kendi kümesinizdeki kuşlarla yaptığınız uçuş, antrenman ve dayanıklılık yarışları (Günlük, Haftalık ve Sezonluk performans kaydı).
+              <div style="font-size:13.5px; font-weight:900; color:#0052cc;">🦅 1. Kümesüstü Yarışı (Dernek &amp; Etap)</div>
+              <div style="font-size:10px; color:#1e3a8a; margin-top:3px; line-height:1.38;">
+                Kendi kümesinize dönülen tüm dernek, kulüp, federasyon etapları ve kümesüstü uçuş yarışları (İl/İlçe veya GPS koordinat girişi, otomatik km, resmi derece, puanlama ve sezon sıralaması).
               </div>
             </div>
             <span class="ios-btn ios-btn-primary" style="padding:6px 10px; font-size:10px; flex-shrink:0;">Seç →</span>
           </div>
+          <!-- Geriye dönük test uyumluluğu için LOFT_ENDURANCE hızlı kısayolu -->
+          <button type="button" style="display:none;" onclick="AvigenRaceTracker.selectCreateModalCategory('LOFT_ENDURANCE')">Kümesüstü</button>
 
-          <!-- KART 2: DERNEK YARIŞI -->
-          <div onclick="AvigenRaceTracker.selectCreateModalCategory('CLUB_RACE')" style="cursor:pointer; background:#ecfdf5; border:2px solid #34d399; border-radius:12px; padding:12px 13px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
-            <div>
-              <div style="font-size:13.5px; font-weight:900; color:#047857;">🏛️ 2. Dernek Yarışı</div>
-              <div style="font-size:10px; color:#065f46; margin-top:3px; line-height:1.35;">
-                Dernek ve kulüp organizasyonları, yarış sezonu, etap numarası, salım koordinatları, resmi derece, puanlama ve genel sezon sıralaması.
-              </div>
-            </div>
-            <span class="ios-btn ios-btn-green" style="padding:6px 10px; font-size:10px; flex-shrink:0;">Seç →</span>
-          </div>
-
-          <!-- KART 3: BÜYÜK ÖDÜLLÜ YARIŞ -->
+          <!-- KART 2: BÜYÜK ÖDÜLLÜ YARIŞ (DERBY / OLR) -->
           <div onclick="AvigenRaceTracker.selectCreateModalCategory('GRAND_PRIZE')" style="cursor:pointer; background:#fffbeb; border:2px solid #fbbf24; border-radius:12px; padding:12px 13px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
             <div>
-              <div style="font-size:13.5px; font-weight:900; color:#b45309;">🏆 3. Büyük Ödüllü Yarış</div>
-              <div style="font-size:10px; color:#78350f; margin-top:3px; line-height:1.35;">
-                One Loft Race (OLR), Derby ve Büyük Ödüllü turnuvalar; katılım numarası, katılım ücreti, ödül havuzu, eleme / yarı final / final etapları.
+              <div style="font-size:13.5px; font-weight:900; color:#b45309;">🏆 2. Büyük Ödüllü Yarış (Derby / OLR)</div>
+              <div style="font-size:10px; color:#78350f; margin-top:3px; line-height:1.38;">
+                Ortak kümese teslim edilen One Loft Race (OLR), Derby ve Büyük Ödüllü turnuvalar; katılım numarası, katılım ücreti, ödül havuzu, eleme / yarı final / final etapları.
               </div>
             </div>
             <span class="ios-btn ios-btn-gold" style="padding:6px 10px; font-size:10px; flex-shrink:0;">Seç →</span>
@@ -2673,57 +2652,26 @@ const AvigenRaceTracker = {
       });
     }
 
-    // KATEGORİYE ÖZEL VERİ GİRİŞ ALANLARI (Gereksiz alanlar gizlenir!)
+    // KATEGORİYE ÖZEL VERİ GİRİŞ ALANLARI (Kümesüstü & Dernek Yarışı Birleşik + Büyük Ödüllü Yarış)
+    const savedLoftGps = (typeof loftConfig !== 'undefined' && loftConfig.gpsCoords)
+      ? loftConfig.gpsCoords
+      : (localStorage.getItem('avigen_saved_loft_gps_coords_v1') || '40.1885, 29.0610');
     let categorySpecificFieldsHtml = '';
 
-    if (categoryCode === 'LOFT_ENDURANCE') {
+    if (categoryCode === 'LOFT_ENDURANCE' || categoryCode === 'CLUB_RACE') {
+      const nextStageNum = this.events.filter(e => e.category === 'CLUB_RACE' || e.category === 'LOFT_ENDURANCE').length + 1;
       categorySpecificFieldsHtml = `
-        <div style="display:grid; grid-template-columns:1.25fr 0.9fr 0.85fr; gap:6px;">
-          <div>
-            <label style="font-size:9.5px; font-weight:800;">Kümesüstü Yarış / Uçuş Adı</label>
-            <input type="text" id="newRaceCodeTitle" class="ios-input" value="${escapeHtml(prefillData?.codeTitle || 'KÜMESÜSTÜ DAYANIKLILIK – 2026')}" />
-          </div>
-          <div>
-            <label style="font-size:9.5px; font-weight:800;">Performans Periyodu</label>
-            <select id="newRaceStageType" class="ios-select">
-              <option value="Günlük Performans">Günlük Performans</option>
-              <option value="Haftalık Performans" selected>Haftalık Performans</option>
-              <option value="Sezonluk Performans">Sezonluk Performans</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:9.5px; font-weight:800;">Salım Konumu</label>
-            <input type="text" id="newRaceReleasePoint" class="ios-input" value="${escapeHtml(prefillData?.releasePoint || 'Kümes Çatısı / Antrenman Hattı')}" />
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1.1fr; gap:6px;">
-          <div>
-            <label style="font-size:9.5px; font-weight:800;">Yarış Tarihi</label>
-            <input type="date" id="newRaceReleaseDate" class="ios-input" value="${todayIso}" />
-          </div>
-          <div>
-            <label style="font-size:9.5px; font-weight:800;">Salım Saati</label>
-            <input type="time" id="newRaceReleaseTime" class="ios-input" value="${escapeHtml(prefillData?.releaseTime || '07:00')}" />
-          </div>
-          <div>
-            <label style="font-size:9.5px; font-weight:800;">Uçuş Mesafesi (km)</label>
-            <input type="number" id="newRaceDistanceKm" class="ios-input" value="${prefillData?.distanceKm || 60}" />
-          </div>
-          <div>
-            <label style="font-size:9.5px; font-weight:800;">Hava Koşulu</label>
-            <input type="text" id="newRaceWeather" class="ios-input" value="${escapeHtml(prefillData?.weather || 'Açık • Sakin 18°C')}" />
-          </div>
-        </div>
-      `;
-    } else if (categoryCode === 'CLUB_RACE') {
-      const nextStageNum = this.events.filter(e => e.category === 'CLUB_RACE').length + 1;
-      categorySpecificFieldsHtml = `
-        ${geoNodes.length > 0 ? `
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:7px 8px;">
-            <div>
-              <label style="font-size:9px; font-weight:800; color:#dc2626;">🔴 Salım İli ve İlçesi (81 İl)</label>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:2px;">
+        <div style="background:var(--ios-card-alt); border:1.5px solid #93c5fd; border-radius:10px; padding:8px 9px; display:flex; flex-direction:column; gap:7px;">
+          <!-- 1. SALIM KONUMU: İL/İLÇE SEÇİMİ VEYA SALIM GPS KOORDİNATI -->
+          <div style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.25); border-radius:8px; padding:6px 8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <label style="font-size:9.3px; font-weight:900; color:#dc2626;">🔴 1. Salım Konumu (İl/İlçe Seçin veya Koordinat Girin)</label>
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.2px; color:#dc2626; border-color:#fca5a5;" onclick="AvigenRaceTracker.captureMyGpsForRaceField('newRaceReleaseCoords')">
+                🛰️ GPS'ten Al
+              </button>
+            </div>
+            ${geoNodes.length > 0 ? `
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:5px;">
                 <select id="newRaceRelCitySelect" class="ios-select" style="padding:5px 6px; font-size:10px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange('rel_city')">
                   ${geoNodes.map(n => `<option value="${n.id}" ${n.id === defaultRelCityId ? 'selected' : ''}>${escapeHtml(n.name.split(' (')[0])}</option>`).join('')}
                 </select>
@@ -2731,10 +2679,29 @@ const AvigenRaceTracker = {
                   ${(typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.getDistrictsForProvince === 'function' ? AvigenGenesisAI.getDistrictsForProvince(defaultRelCityId) : []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
                 </select>
               </div>
+            ` : ''}
+            <div style="display:grid; grid-template-columns:0.95fr 1.05fr; gap:5px;">
+              <div>
+                <label style="font-size:8.4px; font-weight:800; color:var(--ios-subtext);">Salım Noktası Adı</label>
+                <input type="text" id="newRaceReleasePoint" class="ios-input" style="padding:5px 7px; font-size:10.3px;" value="${escapeHtml(prefillData?.releasePoint || 'Ankara (Polatlı)')}" />
+              </div>
+              <div>
+                <label style="font-size:8.4px; font-weight:800; color:#dc2626;">📍 Salım Koordinatı (Enlem, Boylam)</label>
+                <input type="text" id="newRaceReleaseCoords" class="ios-input" style="padding:5px 7px; font-size:10.3px; font-weight:800;" placeholder="Örn: 39.5842, 32.1472" value="${escapeHtml(prefillData?.releaseCoords || '39.9334, 32.8597')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+              </div>
             </div>
-            <div>
-              <label style="font-size:9px; font-weight:800; color:#059669;">🟢 Varış (Kümes) İli ve İlçesi</label>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:2px;">
+          </div>
+
+          <!-- 2. VARIŞ (KÜMES) KONUMU: İL/İLÇE SEÇİMİ VEYA KÜMES GPS KOORDİNATI -->
+          <div style="background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.28); border-radius:8px; padding:6px 8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <label style="font-size:9.3px; font-weight:900; color:#059669;">🟢 2. Varış / Kümes Konumu (İl/İlçe veya Kümes Koordinatı)</label>
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.2px; color:#059669; border-color:#6ee7b7;" onclick="AvigenRaceTracker.captureMyGpsForRaceField('newRaceLoftCoords')">
+                🛰️ Kümes GPS'imi Al
+              </button>
+            </div>
+            ${geoNodes.length > 0 ? `
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:5px;">
                 <select id="newRaceLoftCitySelect" class="ios-select" style="padding:5px 6px; font-size:10px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange('loft_city')">
                   ${geoNodes.map(n => `<option value="${n.id}" ${n.id === defaultLoftCityId ? 'selected' : ''}>${escapeHtml(n.name.split(' (')[0])}</option>`).join('')}
                 </select>
@@ -2742,18 +2709,22 @@ const AvigenRaceTracker = {
                   ${(typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.getDistrictsForProvince === 'function' ? AvigenGenesisAI.getDistrictsForProvince(defaultLoftCityId) : []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
                 </select>
               </div>
+            ` : ''}
+            <div>
+              <label style="font-size:8.4px; font-weight:800; color:#059669;">📍 Kümes / Varış Koordinatı (Enlem, Boylam — Otomatik Mesafe Hesaplar)</label>
+              <input type="text" id="newRaceLoftCoords" class="ios-input" style="padding:5px 7px; font-size:10.3px; font-weight:800;" placeholder="Örn: 40.1885, 29.0610 veya 40°11'18&quot;N 29°03'39&quot;E" value="${escapeHtml(prefillData?.loftCoords || savedLoftGps)}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
             </div>
           </div>
-        ` : ''}
+        </div>
 
-        <div style="display:grid; grid-template-columns:1.3fr 0.8fr 0.7fr; gap:6px;">
+        <div style="display:grid; grid-template-columns:1.25fr 1.1fr 0.65fr; gap:6px;">
           <div>
-            <label style="font-size:9.5px; font-weight:800;">Dernek Adı &amp; Organizasyon</label>
-            <input type="text" id="newRaceOrgName" class="ios-input" placeholder="Örn: Marmara Posta Güvercini Derneği" value="${escapeHtml(prefillData?.organizationName || 'TGYB / İl Posta Güvercini Derneği')}" />
+            <label style="font-size:9.5px; font-weight:800;">Yarış / Etap Adı</label>
+            <input type="text" id="newRaceCodeTitle" class="ios-input" value="${escapeHtml(prefillData?.codeTitle || `ANKARA – 2026 / ${nextStageNum}. ETAP`)}" />
           </div>
           <div>
-            <label style="font-size:9.5px; font-weight:800;">Yarış Sezonu</label>
-            <input type="text" id="newRaceSeasonYear" class="ios-input" value="${escapeHtml(prefillData?.seasonYear || '2026 Sezonu')}" />
+            <label style="font-size:9.5px; font-weight:800;">Dernek / Kümes Organizasyonu</label>
+            <input type="text" id="newRaceOrgName" class="ios-input" placeholder="Örn: İl Posta Güvercini Derneği / Kümesim" value="${escapeHtml(prefillData?.organizationName || 'Kümesüstü & Dernek Yarışı')}" />
           </div>
           <div>
             <label style="font-size:9.5px; font-weight:800;">Etap No</label>
@@ -2761,25 +2732,10 @@ const AvigenRaceTracker = {
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:1.1fr 1fr 0.9fr; gap:6px;">
-          <div>
-            <label style="font-size:9.5px; font-weight:800;">Yarış Etabı Adı</label>
-            <input type="text" id="newRaceCodeTitle" class="ios-input" value="${escapeHtml(prefillData?.codeTitle || `ANKARA – 2026 / ${nextStageNum}. ETAP`)}" />
-          </div>
-          <div>
-            <label style="font-size:9.5px; font-weight:800;">Salım Noktası</label>
-            <input type="text" id="newRaceReleasePoint" class="ios-input" value="${escapeHtml(prefillData?.releasePoint || 'Ankara (Polatlı)')}" />
-          </div>
-          <div>
-            <label style="font-size:9.5px; font-weight:800;">Salım Koordinatları</label>
-            <input type="text" id="newRaceReleaseCoords" class="ios-input" placeholder="39.9334, 32.8597" value="${escapeHtml(prefillData?.releaseCoords || '39.9334, 32.8597')}" />
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns:0.8fr 0.9fr 0.8fr 0.9fr 1fr; gap:5px;">
+        <div style="display:grid; grid-template-columns:0.85fr 0.95fr 0.8fr 0.85fr 1fr; gap:5px;">
           <div>
             <label style="font-size:9px; font-weight:800;">Mesafe (km)</label>
-            <input type="number" id="newRaceDistanceKm" class="ios-input" style="font-weight:900; color:#0052cc;" value="${prefillData?.distanceKm || 380}" oninput="AvigenRaceTracker.onCreateDistanceInput(this.value)" />
+            <input type="number" step="0.1" id="newRaceDistanceKm" class="ios-input" style="font-weight:900; color:#0052cc;" value="${prefillData?.distanceKm || 380}" oninput="AvigenRaceTracker.onCreateDistanceInput(this.value)" />
           </div>
           <div>
             <label style="font-size:9px; font-weight:800;">Salım Tarihi</label>
@@ -2794,19 +2750,21 @@ const AvigenRaceTracker = {
             <input type="number" id="newRaceCompetitors" class="ios-input" value="${prefillData?.totalCompetitors || 1500}" />
           </div>
           <div>
-            <label style="font-size:9px; font-weight:800;">Puanlama Sistemi</label>
+            <label style="font-size:9px; font-weight:800;">Puanlama / Tür</label>
             <select id="newRaceScoringSystem" class="ios-select">
               <option value="FCI / %25 Klasman Puanı" selected>FCI / %25 Klasman</option>
               <option value="Dernek 100 Tam Puan">Dernek 100 Puan</option>
+              <option value="Kümesüstü Antrenman / Etap">Kümesüstü Uçuş</option>
               <option value="As Kuş Katsayılı">As Kuş Katsayılı</option>
             </select>
           </div>
         </div>
+        <input type="hidden" id="newRaceSeasonYear" value="${escapeHtml(prefillData?.seasonYear || '2026 Sezonu')}" />
         <input type="hidden" id="newRaceType" value="${escapeHtml(this.detectRaceTypeByKm(prefillData?.distanceKm || 380))}" />
         <input type="hidden" id="newRaceWeather" value="${escapeHtml(prefillData?.weather || 'Açık • KKD 12 km/s • 19°C')}" />
       `;
     } else {
-      // C. BÜYÜK ÖDÜLLÜ YARIŞLAR ('GRAND_PRIZE')
+      // B. BÜYÜK ÖDÜLLÜ YARIŞLAR ('GRAND_PRIZE')
       categorySpecificFieldsHtml = `
         <div style="display:grid; grid-template-columns:1.1fr 1.1fr 0.9fr; gap:6px;">
           <div>
@@ -2859,14 +2817,26 @@ const AvigenRaceTracker = {
           </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 0.75fr 0.85fr 0.85fr 0.75fr 0.85fr; gap:5px;">
+        <!-- SALIM NOKTASI VE KOORDİNAT GİRİŞİ -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px;">
           <div>
-            <label style="font-size:9px; font-weight:800;">Salım Noktası</label>
+            <label style="font-size:8.6px; font-weight:800;">Salım Noktası Adı</label>
             <input type="text" id="newRaceReleasePoint" class="ios-input" value="${escapeHtml(prefillData?.releasePoint || 'Sivas (505 km Final)')}" />
           </div>
           <div>
+            <label style="font-size:8.6px; font-weight:800; color:#dc2626;">📍 Salım Koordinatı (İsteğe Bağlı)</label>
+            <input type="text" id="newRaceReleaseCoords" class="ios-input" placeholder="39.7477, 37.0179" value="${escapeHtml(prefillData?.releaseCoords || '')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+          </div>
+          <div>
+            <label style="font-size:8.6px; font-weight:800; color:#059669;">📍 Derby Kümes Koordinatı</label>
+            <input type="text" id="newRaceLoftCoords" class="ios-input" placeholder="41.0082, 28.9784" value="${escapeHtml(prefillData?.loftCoords || '')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:0.85fr 0.9fr 0.9fr 0.8fr 0.9fr; gap:5px;">
+          <div>
             <label style="font-size:9px; font-weight:800;">Mesafe (km)</label>
-            <input type="number" id="newRaceDistanceKm" class="ios-input" style="font-weight:900; color:#b45309;" value="${prefillData?.distanceKm || 505}" />
+            <input type="number" step="0.1" id="newRaceDistanceKm" class="ios-input" style="font-weight:900; color:#b45309;" value="${prefillData?.distanceKm || 505}" />
           </div>
           <div>
             <label style="font-size:9px; font-weight:800;">Kayıt Tarihi</label>
@@ -2978,6 +2948,98 @@ const AvigenRaceTracker = {
     }
   },
 
+  // Hem ondalık ("39.9334, 32.8597") hem derece-dakika-saniye ("39°56'00\"N 32°51'35\"E") GPS koordinat formatlarını çözümler
+  parseGpsCoordinateString(rawStr) {
+    const s = String(rawStr || '').trim();
+    if (!s) return null;
+
+    // 1. DMS (Derece° Dakika' Saniye" N/E) formatı kontrolü
+    const dmsRegex = /(\d{1,3})\s*[°dD:\s]\s*(\d{1,2})\s*['′mM:\s]\s*(\d{1,2}(?:\.\d+)?)\s*["″sS]?\s*([NSKGDnskgd])?/g;
+    const dmsMatches = Array.from(s.matchAll(dmsRegex));
+    if (dmsMatches.length >= 2) {
+      const toDec = (m) => {
+        let val = Number(m[1]) + (Number(m[2]) / 60) + (Number(m[3]) / 3600);
+        const dir = String(m[4] || '').toUpperCase();
+        if (dir === 'S' || dir === 'G' || dir === 'W' || dir === 'B') val = -val;
+        return Number(val.toFixed(5));
+      };
+      const lat = toDec(dmsMatches[0]);
+      const lon = toDec(dmsMatches[1]);
+      if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+        return { lat, lon };
+      }
+    }
+
+    // 2. Ondalık (Decimal "39.9334, 32.8597" veya "39.9334 32.8597") formatı kontrolü
+    const numMatches = s.replace(/;/g, ',').match(/[-+]?\d{1,3}(?:\.\d+)/g);
+    if (numMatches && numMatches.length >= 2) {
+      const lat = parseFloat(numMatches[0]);
+      const lon = parseFloat(numMatches[1]);
+      if (!isNaN(lat) && !isNaN(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+        return { lat: Number(lat.toFixed(5)), lon: Number(lon.toFixed(5)) };
+      }
+    }
+    return null;
+  },
+
+  calculateHaversineKmFromCoords(lat1, lon1, lat2, lon2) {
+    const R = 6371.0;
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Number((R * c).toFixed(1));
+  },
+
+  onCreateRaceCoordinateInput() {
+    const relStr = document.getElementById('newRaceReleaseCoords')?.value || '';
+    const loftStr = document.getElementById('newRaceLoftCoords')?.value || '';
+    const relCoord = this.parseGpsCoordinateString(relStr);
+    const loftCoord = this.parseGpsCoordinateString(loftStr);
+    if (relCoord && loftCoord) {
+      const distKm = Math.max(1, Math.round(this.calculateHaversineKmFromCoords(relCoord.lat, relCoord.lon, loftCoord.lat, loftCoord.lon)));
+      const kmEl = document.getElementById('newRaceDistanceKm');
+      if (kmEl) kmEl.value = distKm;
+      this.onCreateDistanceInput(distKm);
+    }
+  },
+
+  captureMyGpsForRaceField(inputId) {
+    if (!navigator.geolocation) {
+      alert('⚠️ Cihazınızda GPS konum servisi bulunamadı. Koordinatı elle (Örn: 40.1885, 29.0610) yazabilirsiniz.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude).toFixed(5);
+        const lon = Number(pos.coords.longitude).toFixed(5);
+        const coordText = `${lat}, ${lon}`;
+        const el = document.getElementById(inputId);
+        if (el) {
+          el.value = coordText;
+        }
+        if (inputId === 'newRaceLoftCoords') {
+          try {
+            localStorage.setItem('avigen_saved_loft_gps_coords_v1', coordText);
+            if (typeof loftConfig !== 'undefined') {
+              loftConfig.gpsCoords = coordText;
+              if (typeof saveMypedigreData === 'function') saveMypedigreData();
+            }
+          } catch (e) {}
+        }
+        this.onCreateRaceCoordinateInput();
+      },
+      () => {
+        alert('⚠️ GPS konum izni alınamadı. Koordinatı kutucuğa elle (Örn: 40.1885, 29.0610) girebilirsiniz.');
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  },
+
   onCreateRaceCitySelectChange(changedField = '') {
     if (typeof AvigenGenesisAI === 'undefined') return;
     const relId = document.getElementById('newRaceRelCitySelect')?.value || 'ankara';
@@ -3009,11 +3071,21 @@ const AvigenRaceTracker = {
     const titleEl = document.getElementById('newRaceCodeTitle');
     const ptEl = document.getElementById('newRaceReleasePoint');
     const coordEl = document.getElementById('newRaceReleaseCoords');
+    const loftCoordEl = document.getElementById('newRaceLoftCoords');
     const kmEl = document.getElementById('newRaceDistanceKm');
 
-    if (titleEl) titleEl.value = `${shortRel.toUpperCase()} – 2026 / ${stageNum}. ETAP`;
-    if (ptEl) ptEl.value = relNode.name;
-    if (coordEl && relNode.lat && relNode.lon) coordEl.value = `${Number(relNode.lat).toFixed(4)}, ${Number(relNode.lon).toFixed(4)}`;
+    if (titleEl && (changedField === '' || changedField.startsWith('rel_'))) {
+      titleEl.value = `${shortRel.toUpperCase()} – 2026 / ${stageNum}. ETAP`;
+    }
+    if (ptEl && (changedField === '' || changedField.startsWith('rel_'))) {
+      ptEl.value = relNode.name;
+    }
+    if (coordEl && relNode.lat && relNode.lon && (changedField === '' || changedField.startsWith('rel_'))) {
+      coordEl.value = `${Number(relNode.lat).toFixed(4)}, ${Number(relNode.lon).toFixed(4)}`;
+    }
+    if (loftCoordEl && loftNode.lat && loftNode.lon && (changedField === '' || changedField.startsWith('loft_'))) {
+      loftCoordEl.value = `${Number(loftNode.lat).toFixed(4)}, ${Number(loftNode.lon).toFixed(4)}`;
+    }
     if (kmEl) kmEl.value = route.crowFliesKm;
     this.onCreateDistanceInput(route.crowFliesKm);
   },
@@ -3028,7 +3100,17 @@ const AvigenRaceTracker = {
     const codeTitle = (document.getElementById('newRaceCodeTitle')?.value || 'YENİ YARIŞ – 2026').trim();
     const releasePoint = (document.getElementById('newRaceReleasePoint')?.value || 'Salım Noktası').trim();
     const releaseCoords = (document.getElementById('newRaceReleaseCoords')?.value || '').trim();
-    const distanceKm = parseInt(document.getElementById('newRaceDistanceKm')?.value, 10) || (category === 'LOFT_ENDURANCE' ? 50 : 350);
+    const loftCoords = (document.getElementById('newRaceLoftCoords')?.value || '').trim();
+    if (loftCoords) {
+      try {
+        localStorage.setItem('avigen_saved_loft_gps_coords_v1', loftCoords);
+        if (typeof loftConfig !== 'undefined') {
+          loftConfig.gpsCoords = loftCoords;
+          if (typeof saveMypedigreData === 'function') saveMypedigreData();
+        }
+      } catch (e) {}
+    }
+    const distanceKm = parseFloat(document.getElementById('newRaceDistanceKm')?.value) || (category === 'LOFT_ENDURANCE' ? 50 : 350);
     const releaseDate = document.getElementById('newRaceReleaseDate')?.value || new Date().toISOString().slice(0, 10);
     const releaseTime = document.getElementById('newRaceReleaseTime')?.value || '06:45';
     const raceType = document.getElementById('newRaceType')?.value || this.detectRaceTypeByKm(distanceKm);
@@ -3123,6 +3205,7 @@ const AvigenRaceTracker = {
       codeTitle,
       releasePoint,
       releaseCoords,
+      loftCoords,
       distanceKm,
       participantBirdsCount: entries.length,
       releaseDate,

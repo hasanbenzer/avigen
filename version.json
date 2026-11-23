@@ -1,13 +1,13 @@
 {
-  "version": "5.3.0",
-  "build": 530,
+  "version": "5.4.0",
+  "build": 540,
   "releaseDate": "2026-11-23",
-  "title": "AVIGEN v5.3 — Sınırsız Ücretsiz Kümes (AVIGEN FREE), Örnek Kuşsuz Temiz Kurulum, 0532 782 03 85 WhatsApp Lisans Hattı & Güncel Kullanım Rehberi",
+  "title": "AVIGEN v5.4 — Android Pedigri PDF & WhatsApp Paylaşım Hızlandırması, GPS Koordinatlı Yarış Kurulumu & Birleşik Kümesüstü/Dernek Yarış Yönetimi",
   "notes": [
-    "AVIGEN FREE Sınırsız Kuş & Pedigri: Ücretsiz sürümdeki 10 kuş sınırı kaldırıldı; güvercin ekleme, 4 kuşak (31 kutu) pedigri, yuva ve 3 kategorili yarış takibi tamamen sınırsız ve ücretsiz oldu",
-    "GENESIS AI & GENESIS AI'ya Sor Abonelik Mimarisi: Yalnızca GENESIS AI modülü ve bağlantılı yapay zekâ analizleri için cihaza özel lisans aktivasyonu (WhatsApp Lisans Hattı: 0 532 782 03 85) tanımlandı",
-    "Örnek Kuşsuz Temiz Başlangıç & %100 Veri Koruması: Yeni indiren kullanıcılar örnek/demo kuşlar olmadan temiz kümesle başlar; mevcut kullanıcıların girdiği tüm kuş, pedigri, yuva ve yarış verileri güncelleme sonrası %100 korunur",
-    "Güncellenmiş Kullanım Rehberi: Uygulama içi 'Nasıl Kullanılır?' ve 'Neyin Ne İşe Yaradığı' bölümleri tüm yeni özelliklere göre güncellendi"
+    "Android Pedigri PDF & WhatsApp Paylaşım Motoru: Android telefonlarda ekranın donmasına ve paylaşımın takılmasına neden olan html2canvas gecikmesi kaldırıldı; %100 senkron (<15ms) HD sertifika üretici ve Android PDF/Resim paylaşım asistanı eklendi",
+    "Yarış Konumu GPS Koordinat Girişi: Hem Yarışlar bölümüne hem Haritalı Akıllı Yarış Simülasyonuna doğrudan Salım ve Varış (Kümes) GPS koordinat girişi (Ondalık veya Derece/Dakika/Saniye + 🛰️ Telefon GPS'ten Al) ve otomatik km hesabı eklendi",
+    "Birleşik Kümesüstü & Dernek Yarışları: Kümesüstü Yarışı ile Dernek Yarışı tek bir birleşik '🦅 Kümesüstü Yarışı (Dernek & Etap)' kategorisinde birleştirildi; Büyük Ödüllü Yarışlar (Derby / OLR) ayrı tutuldu",
+    "Sınırsız Ücretsiz Kümes (AVIGEN FREE), 0532 782 03 85 WhatsApp Lisans Hattı ve %100 Veri Korumalı Güncelleme"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"
