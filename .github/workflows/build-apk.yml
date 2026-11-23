@@ -136,6 +136,30 @@ jobs:
             g = g.replace(/versionName\s+"[^"]+"/, "versionName \"" + verName + "\"");
             fs.writeFileSync(gradlePath, g, "utf8");
             console.log("Updated Android build.gradle -> versionCode:", verCode, "versionName:", verName);
+
+            // AndroidManifest.xml içine Kamera, GPS Konum, Depolama ve Açık Bağlantı izinlerini ekle
+            const manifestPath = "/tmp/avigen_cap/android/app/src/main/AndroidManifest.xml";
+            if (fs.existsSync(manifestPath)) {
+              let mf = fs.readFileSync(manifestPath, "utf8");
+              const extraPerms = [
+                `<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />`,
+                `<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />`,
+                `<uses-permission android:name="android.permission.CAMERA" />`,
+                `<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />`,
+                `<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />`,
+                `<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />`,
+                `<uses-feature android:name="android.hardware.camera" android:required="false" />`,
+                `<uses-feature android:name="android.hardware.location.gps" android:required="false" />`
+              ].join("\n    ");
+              if (!mf.includes("ACCESS_FINE_LOCATION")) {
+                mf = mf.replace(/<uses-permission[^>]*INTERNET[^>]*\/>/, (m) => m + "\n    " + extraPerms);
+              }
+              if (!mf.includes("android:usesCleartextTraffic")) {
+                mf = mf.replace("<application", `<application android:usesCleartextTraffic="true"`);
+              }
+              fs.writeFileSync(manifestPath, mf, "utf8");
+              console.log("Injected Android GPS, Camera and Storage permissions into AndroidManifest.xml");
+            }
           '
 
           # 2. Sabit Android İmza Anahtarı (avigen-release.keystore): Depoda varsa onu kullan, yoksa ilk kez oluşturup depoya kaydet!
