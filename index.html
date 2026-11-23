@@ -16,6 +16,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@500;700;800&family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
 </head>
@@ -57,9 +59,6 @@
           </div>
         </div>
         <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
-          <button class="ios-btn ios-btn-outline" style="padding:4px 7px; font-size:9.5px; font-weight:800; color:#0052cc; border-color:#93c5fd; white-space:nowrap;" onclick="AvigenUxManager.openUserGuideModal()" title="Nasıl Kullanılır? Kuşçu Kullanım Rehberi">
-            📖 Rehber
-          </button>
           <button class="ios-btn ios-btn-purple" id="navMembershipBtn" style="padding:4px 8px; font-size:9.5px; white-space:nowrap;" onclick="AvigenUxManager.openSubscriptionModal()" title="AVIGEN FREE & AVIGEN GENESIS AI">
             🧬 GENESIS AI
           </button>
@@ -93,11 +92,11 @@
             <div class="home-quick-results" id="homeQuickSearchResults"></div>
           </div>
 
-          <!-- 3.5. AVIGEN v4.0 — KÜMES SABAH ÖZETİ & BUGÜN YAPILACAKLAR KOKPİTİ -->
-          <div id="homeMorningBriefingCard"></div>
-
           <!-- 4. AVIGEN GENESIS AI — KOMPAKT VİTRİN & HIZLI GEÇİŞ KARTI -->
           <div id="homeGenesisTeaserCard"></div>
+
+          <!-- 4A. KÜMES SABAH ÖZETİ KALDIRILDI (TEK EKRANA SIĞAN KOMPAKT ANA EKRAN) -->
+          <div id="homeMorningBriefingCard" style="display:none;"></div>
 
           <!-- 4B. ANA SAYFA 2x3 ANALİZ MODÜL KARTLARI -->
           <div id="homeCyber3x2Grid"></div>
@@ -158,6 +157,7 @@
                 <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('BREEDER', this)">Damızlık</button>
                 <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('RACER', this)">Yarışçı</button>
                 <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('YOUNG', this)">Yavru</button>
+                <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('GRAND_PRIZE', this)" title="Büyük Ödüllü Yarışlara (OLR / Derby) teslim edilen kuşlar">🏆 Büyük Yarış</button>
                 <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('RESTING', this)">🟠 Dinlenmede</button>
                 <button class="sub-pill" style="font-size:9.8px; padding:6px 4px;" onclick="setLoftBirdFilter('LOST_SOLD', this)">🔴 Kayıp/Satıldı</button>
                 <button class="sub-pill" style="font-size:9.8px; padding:6px 5px;" onclick="setLoftBirdFilter('ARCHIVE', this)" title="Pedigre kağıtlarında adı geçen anne, baba, dede ve soyağacı ataları">📜 Soy Arşivi</button>
@@ -322,25 +322,16 @@
              ================================================================= -->
         <div id="page-flight" class="ios-tab-page">
 
-          <!-- Üst Alt-Sekme Seçici (v3.0 Sadeleştirilmiş): 🏁 Aktif Yarış & Klasman | 🗺️ GENESIS AI Haritalı Yarış Simülasyonu -->
-          <div class="sub-pills" style="flex-shrink:0;">
-            <button class="sub-pill active" id="pillRaceTracker" onclick="AvigenUxManager.switchBreedingPlanSub('racetracker')">
-              🏁 Aktif Yarış &amp; Klasman
+          <!-- Üst Alt-Sekme Seçici: 🏁 Yarış Yönetimi & Takip | 🧬 AI Performans | 🗺️ Haritalı Rota -->
+          <div class="sub-pills" style="flex-shrink:0; gap:3px; padding:3px;">
+            <button class="sub-pill active" id="pillRaceTracker" style="font-size:10px; padding:6px 4px; white-space:nowrap;" onclick="AvigenUxManager.switchBreedingPlanSub('racetracker')">
+              🏁 Yarış Takip
             </button>
-            <button class="sub-pill" id="pillRaceAiInsights" onclick="AvigenGenesisAI.openModuleDirectlyFromHome('smart_race')">
-              🗺️ GENESIS AI Haritalı Simülasyon
+            <button class="sub-pill" id="pillRaceAiInsights" style="font-size:10px; padding:6px 4px; white-space:nowrap;" onclick="AvigenUxManager.switchBreedingPlanSub('raceai')">
+              🧬 AI Performans
             </button>
-            <button class="sub-pill" id="pillBreedPairs" style="display:none;" onclick="AvigenUxManager.switchBreedingPlanSub('pairs')">
-              💑 Yuva &amp; Kuluçka
-            </button>
-            <button class="sub-pill" id="pillBreedTimeline" style="display:none;" onclick="AvigenUxManager.switchBreedingPlanSub('timeline')">
-              📅 Kuluçka
-            </button>
-            <button class="sub-pill" id="pillRaceResults" style="display:none;" onclick="AvigenUxManager.switchBreedingPlanSub('results')">
-              🏆 Hızlı Derece
-            </button>
-            <button class="sub-pill" id="pillRaceWeather" style="display:none;" onclick="AvigenUxManager.switchBreedingPlanSub('weather')">
-              🌤️ Uçuş Havası
+            <button class="sub-pill" id="pillRaceMapSim" style="font-size:10px; padding:6px 4px; white-space:nowrap;" onclick="AvigenGenesisAI.openModuleDirectlyFromHome('smart_race')">
+              🗺️ Haritalı Rota
             </button>
           </div>
 
@@ -353,9 +344,6 @@
           <div id="raceAiInsightsPane" style="display:none; flex-direction:column; gap:10px; flex:1; overflow-y:auto;">
             <div id="avigenRaceAiInsightsRoot" style="display:flex; flex-direction:column; gap:10px;"></div>
           </div>
-
-          <div id="breedPairsPane" style="display:none;"></div>
-          <div id="breedTimelinePane" style="display:none;"></div>
 
           <!-- ALT EKRAN A: BİLİMSEL UÇUŞ UYGUNLUĞU + BU HAVA İÇİN ÖNERİLEN YARIŞ KADROSU -->
           <div id="raceWeatherPane" style="display:none; flex-direction:column; gap:8px; flex:1; overflow-y:auto;">
@@ -532,26 +520,26 @@
            iOS ALT SEKME ÇUBUĞU (5 ANA BÖLÜM: ANA SAYFA, KUŞLARIM, AKILLI ANALİZ, DAMIZLIK PLANI, PROFİL VE AYARLAR)
            =================================================================== -->
       <div class="ios-tabbar">
-        <button class="ios-tab-btn active" onclick="openIosTab('home', this)">
+        <button class="ios-tab-btn active" onclick="openIosTab('home', this, true)">
           <svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1v-10.5z"/></svg>
           <span>Ana Sayfa</span>
         </button>
-        <button class="ios-tab-btn" onclick="openIosTab('pedigrees', this)">
+        <button class="ios-tab-btn" onclick="openIosTab('pedigrees', this, true)">
           <svg viewBox="0 0 24 24"><path d="M18.5 5c-1.7 0-3.1 1.1-3.7 2.5-1.5-.7-3.4-.9-5.2-.1-2.8 1.2-4.4 4.2-6.6 6.4 1.8 1.1 4.5 1.4 7 .6 1.1 2.2 3.4 3.6 6 3.6 3.6 0 6-2.9 6-6.5 0-1.5.7-3 1.5-4-1.7.1-3-2.5-5-2.5z"/></svg>
           <span>Kuş &amp; Yuva</span>
         </button>
-        <button class="ios-tab-btn genesis-tab-btn" onclick="openIosTab('breeding', this)">
+        <button class="ios-tab-btn genesis-tab-btn" onclick="openIosTab('breeding', this, true)">
           <div class="cyber-ai-tab-orb">
             <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>
             <span class="ai-chip-txt">AI</span>
           </div>
           <span>GENESIS AI</span>
         </button>
-        <button class="ios-tab-btn" onclick="openIosTab('flight', this)">
+        <button class="ios-tab-btn" onclick="openIosTab('flight', this, true)">
           <svg viewBox="0 0 24 24"><path d="M5 3h14a1 1 0 0 1 1 1v3a5 5 0 0 1-4 4.9V14a3 3 0 0 1-3 3h-2a3 3 0 0 1-3-3v-2.1A5 5 0 0 1 4 7V4a1 1 0 0 1 1-1zm1 2v2a3 3 0 0 0 2 2.83V5H6zm12 0h-2v4.83A3 3 0 0 0 18 7V5zM9 19h6v2H9v-2z"/></svg>
           <span>Yarışlar</span>
         </button>
-        <button class="ios-tab-btn" onclick="openIosTab('notes', this)">
+        <button class="ios-tab-btn" onclick="openIosTab('notes', this, true)">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           <span>Profil &amp; Ayarlar</span>
         </button>
@@ -1050,6 +1038,22 @@
         </div>
       </div>
 
+      <!-- ===================================================================
+           AVIGEN HATA BİLDİRİMİ, ÖNERİ & ÖZELLİK İSTEĞİ MODALI
+           =================================================================== -->
+      <div class="ios-modal-overlay" id="avigenFeedbackModal">
+        <div class="ios-sheet" style="max-height:93%;">
+          <div class="ios-card-title" style="margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <span>💬</span>
+              <span>AVIGEN Hata Bildirimi &amp; Öneri Merkezi</span>
+            </div>
+            <button class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="AvigenUxManager.closeFeedbackModal()">✖ Kapat</button>
+          </div>
+          <div id="avigenFeedbackModalBody"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1061,7 +1065,11 @@
   <script>
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        navigator.serviceWorker.register('./sw.js?v=5.2.0').then((reg) => {
+          if (reg && typeof reg.update === 'function') {
+            reg.update().catch(() => {});
+          }
+        }).catch(() => {});
       });
     }
   </script>

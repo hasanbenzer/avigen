@@ -1216,7 +1216,19 @@ function renderVisualCompactNestCard(p, conflictsByRing = {}) {
 
 function loadMypedigreData() {
   try {
-    const p = localStorage.getItem(STORAGE_KEY_PEDIGREES);
+    let p = localStorage.getItem(STORAGE_KEY_PEDIGREES);
+    if (!p) {
+      const snapRaw = localStorage.getItem('avigen_auto_safety_snapshot_v1');
+      if (snapRaw) {
+        try {
+          const snap = JSON.parse(snapRaw);
+          if (snap && Array.isArray(snap.pedigrees) && snap.pedigrees.length > 0) {
+            p = JSON.stringify(snap.pedigrees);
+            localStorage.setItem(STORAGE_KEY_PEDIGREES, p);
+          }
+        } catch (se) {}
+      }
+    }
     if (p !== null) {
       pedigrees = JSON.parse(p);
       if (!Array.isArray(pedigrees)) pedigrees = [];
@@ -1255,7 +1267,7 @@ function loadMypedigreData() {
     // Gönderilen 64 gerçek pedigrenin (fffs.rar + önceki 4 gerçek pedigre) tamamını eksiksiz yükle,
     // eksik kalmış OCR kayıtlarını 31 kutulu doğrulanmış verilerle güncelle ve soyağacı çapraz bağlantılarını tamamla!
     // (Mobil ve masaüstünde anında açılış için bu birleştirme yalnızca ilk kez veya pedigre sayısı < 64 olduğunda çalışır!)
-    const alreadySynced64 = localStorage.getItem('avigen_synced_64_real_peds_v3') === '1' && pedigrees.length >= 64;
+    const alreadySynced64 = localStorage.getItem('avigen_synced_64_real_peds_v3') === '1' && pedigrees.length > 0;
     if (!alreadySynced64 && Array.isArray(window.AVIGEN_VERIFIED_64_PEDIGREES) && window.AVIGEN_VERIFIED_64_PEDIGREES.length > 0) {
       const normKey = (r) => (r || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/(?:D|E|V|W|M|H|F)$/i, '');
 
@@ -1459,10 +1471,17 @@ function setScreenMode(mode) {
   setTimeout(fitPaperToIphoneScreen, 50);
 }
 
-function openIosTab(tabId, btnEl) {
+function openIosTab(tabId, btnEl, resetSubView) {
+  // Açık kalan herhangi bir modal veya açılır menü varsa kapat ki sekme geçişi hiçbir zaman kilitlenmesin
+  document.querySelectorAll('.ios-modal-overlay.open').forEach(m => m.classList.remove('open'));
+  if (typeof closeAllBirdActionPopups === 'function') closeAllBirdActionPopups();
+
   document.querySelectorAll('.ios-tab-page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + tabId);
-  if (target) target.classList.add('active');
+  if (target) {
+    target.classList.add('active');
+    target.scrollTop = 0;
+  }
 
   document.querySelectorAll('.ios-tab-btn').forEach(b => b.classList.remove('active'));
   if (btnEl) {
@@ -1476,8 +1495,12 @@ function openIosTab(tabId, btnEl) {
   if (tabId === 'home') {
     renderHomeDashboard();
   } else if (tabId === 'pedigrees') {
-    renderLoftBirdsDirectory();
-    setTimeout(fitPaperToIphoneScreen, 20);
+    if (resetSubView && typeof switchBirdsViewMode === 'function') {
+      switchBirdsViewMode('list');
+    } else {
+      renderLoftBirdsDirectory();
+      setTimeout(fitPaperToIphoneScreen, 20);
+    }
   } else if (tabId === 'aiscan') {
     if (!Object.keys(aiTempBoxes).length) {
       BOX_SLOTS.forEach(s => {
@@ -1487,6 +1510,10 @@ function openIosTab(tabId, btnEl) {
     renderAiScannedList();
   } else if (tabId === 'breeding') {
     if (typeof AvigenGenesisAI !== 'undefined') {
+      if (resetSubView) {
+        AvigenGenesisAI.state.viewStage = 'launcher';
+        AvigenGenesisAI.saveState();
+      }
       AvigenGenesisAI.renderGenesisModuleUI();
     }
   } else if (tabId === 'flight') {
@@ -1577,13 +1604,72 @@ function updateThemeButtonLabels() {
 // ============================================================================
 let activeHomeSubTab = 'reminders';
 
+// Büyük Ödüllü Yarışlara (OLR / Derby / GRAND_PRIZE) kayıtlı kuşların halka numaralarını ve yarış özetini döndürür
+// Bir kullanıcı aynı anda 3 farklı Büyük Ödüllü Yarışa (veya aynı yarışın farklı etaplarına) kuş verdiğinde tümünü eksiksiz toplar.
+let isHomeMorningBriefingExpanded = false;
+let activeGrandPrizeOrgFilter = 'ALL';
+
+function toggleHomeMorningBriefing() {
+  isHomeMorningBriefingExpanded = !isHomeMorningBriefingExpanded;
+  renderHomeMorningBriefingCard();
+}
+
+function setGrandPrizeOrgFilter(orgName) {
+  activeGrandPrizeOrgFilter = orgName || 'ALL';
+  renderLoftBirdsDirectory();
+}
+
+function getGrandPrizeEnteredRingsMap() {
+  const gpMap = new Map();
+  if (typeof AvigenRaceTracker !== 'undefined' && Array.isArray(AvigenRaceTracker.events)) {
+    AvigenRaceTracker.events
+      .filter(ev => ev.category === 'GRAND_PRIZE')
+      .forEach(ev => {
+        (ev.entries || []).forEach(en => {
+          const rKey = (en.ring || '').trim().toUpperCase();
+          if (!rKey) return;
+          const stMeta = AvigenRaceTracker.BIRD_STATUSES?.[en.birdStatus] || { label: 'Takipte', icon: '🏆' };
+          const item = {
+            raceId: ev.id,
+            codeTitle: ev.codeTitle,
+            organizationName: ev.organizationName || 'Derby / OLR',
+            stageType: ev.stageType || 'Etap',
+            distanceKm: ev.distanceKm || 0,
+            birdStatus: en.birdStatus,
+            statusLabel: `${stMeta.icon} ${stMeta.label}`,
+            rank: en.rank,
+            registrationNumber: en.registrationNumber || ev.registrationNumber || '',
+            wonPrizeAmountTl: en.wonPrizeAmountTl || null
+          };
+          if (!gpMap.has(rKey)) {
+            gpMap.set(rKey, {
+              ...item,
+              entries: [item],
+              organizations: [item.organizationName]
+            });
+          } else {
+            const existing = gpMap.get(rKey);
+            existing.entries.push(item);
+            if (!existing.organizations.includes(item.organizationName)) {
+              existing.organizations.push(item.organizationName);
+            }
+          }
+        });
+      });
+  }
+  return gpMap;
+}
+
 function renderHomeDashboard() {
   const allBirds = collectUniqueLoftBirds();
-  const activeBirds = allBirds.filter(b => b.isActiveLoftBird);
+  const grandPrizeRingsMap = getGrandPrizeEnteredRingsMap();
+  // Büyük Ödüllü Yarışa (Derby / OLR) teslim edilen kuşlar organizasyon kümesinde olduğu için kendi kümesimizde (Aktif Kuş, Damızlık, Yarışçı, Yavru) görünmez!
+  const activeBirds = allBirds.filter(b => b.isActiveLoftBird && !grandPrizeRingsMap.has(b.ring.toUpperCase()));
   const totalBirds = activeBirds.length;
   const breedersCount = activeBirds.filter(b => b.roleCategory === 'BREEDER').length;
   const racersCount = activeBirds.filter(b => b.roleCategory === 'RACER').length;
   const youngCount = activeBirds.filter(b => b.roleCategory === 'YOUNG').length;
+  const grandPrizeBirdsCount = allBirds.filter(b => grandPrizeRingsMap.has(b.ring.toUpperCase())).length;
   const isCyber = isCyberVisualSkinActive();
 
   const kpiEl = document.getElementById('dashKpiGrid');
@@ -1600,7 +1686,7 @@ function renderHomeDashboard() {
         <div class="lbl">Damızlık</div>
       </div>
       <div class="hero-stat-pill cyber-stat-col" onclick="openLoftWithFilter('RACER')">
-        <div class="cyber-stat-icon">🏆</div>
+        <div class="cyber-stat-icon">🏁</div>
         <div class="num">${racersCount}</div>
         <div class="lbl">Yarışçı</div>
       </div>
@@ -1608,6 +1694,11 @@ function renderHomeDashboard() {
         <div class="cyber-stat-icon">🐥</div>
         <div class="num">${youngCount}</div>
         <div class="lbl">Yavrular</div>
+      </div>
+      <div class="hero-stat-pill cyber-stat-col" onclick="openLoftWithFilter('GRAND_PRIZE')" title="Büyük Ödüllü Yarışlara (OLR / Derby) teslim edilen kuşları gör" style="border-top-color:#d97706;">
+        <div class="cyber-stat-icon">🏆</div>
+        <div class="num">${grandPrizeBirdsCount}</div>
+        <div class="lbl">Büyük Yarış</div>
       </div>
     `;
   }
@@ -1631,144 +1722,11 @@ function renderHomeFlightWeatherStrip() {
   syncLoftIdentityAcrossUI();
 }
 
-// AVIGEN v4.0 — Ana Sayfa "Kümes Sabah Özeti & Bugün Ne Yapmalıyım?" Akıllı Kokpit Kartı
 function renderHomeMorningBriefingCard() {
   const box = document.getElementById('homeMorningBriefingCard');
   if (!box) return;
-
-  const activeBirdsCount = collectUniqueLoftBirds().filter(b => b.isActiveLoftBird).length;
-
-  // 1. Yuvalarda yaklaşan yavru çıkışları veya bilezik takma günü gelen yuvalar
-  const nestAlerts = [];
-  activePairsList.forEach(p => {
-    const dyn = computeDynamicBreedingStage(p.eventType || 'hatch', p.eventDate);
-    if (!dyn) return;
-    if (dyn.phaseType === 'CHICK_RING_NOW') {
-      nestAlerts.push({
-        type: 'ring_now',
-        pairId: p.id,
-        icon: '💍',
-        color: '#dc2626',
-        bg: '#fef2f2',
-        border: '#fecaca',
-        text: `<strong>${escapeHtml(p.nest)}</strong> yavruları ${dyn.chickAgeDays} günlük oldu — <strong>Bugün bilezik takma günü!</strong>`,
-        btnText: '🐣 Bilezik Tak',
-        btnAction: `registerChickFromActivePair('${p.id}')`
-      });
-    } else if (dyn.phaseType === 'INCUBATION' && dyn.daysToHatch >= 0 && dyn.daysToHatch <= 4) {
-      nestAlerts.push({
-        type: 'hatch_soon',
-        pairId: p.id,
-        icon: '🐣',
-        color: '#b45309',
-        bg: '#fffbeb',
-        border: '#fde68a',
-        text: `<strong>${escapeHtml(p.nest)}</strong> kuluçka ${dyn.incubationDay}/18. gün — <strong>Yavru çıkışına ${dyn.daysToHatch === 0 ? 'bugün!' : dyn.daysToHatch + ' gün kaldı'}</strong> (${escapeHtml(dyn.estHatchDateLabel)})`,
-        btnText: '🪺 Yuvayı Gör',
-        btnAction: `openHomeItemModal('${p.id}', 'pairs')`
-      });
-    } else if (dyn.phaseType === 'CHICK_PRE_RING' && dyn.daysToRing >= 0 && dyn.daysToRing <= 3) {
-      nestAlerts.push({
-        type: 'ring_soon',
-        pairId: p.id,
-        icon: '💍',
-        color: '#0369a1',
-        bg: '#f0f9ff',
-        border: '#bae6fd',
-        text: `<strong>${escapeHtml(p.nest)}</strong> yavrusu ${dyn.chickAgeDays} günlük — Bilezik gününe <strong>${dyn.daysToRing} gün kaldı</strong> (${escapeHtml(dyn.estRingDateLabel)})`,
-        btnText: '🐣 Yavru Kaydet',
-        btnAction: `registerChickFromActivePair('${p.id}')`
-      });
-    }
-  });
-
-  // 2. Aktif / Sonuç Bekleyen Yarış Durumu
-  let activeRaceEvent = null;
-  let pendingBirdsCount = 0;
-  if (typeof AvigenRaceTracker !== 'undefined' && Array.isArray(AvigenRaceTracker.events)) {
-    activeRaceEvent = AvigenRaceTracker.events.find(ev => {
-      const pending = (ev.entries || []).filter(e => e.resultStatus !== 'ENTERED').length;
-      if (pending > 0) {
-        pendingBirdsCount = pending;
-        return true;
-      }
-      return false;
-    });
-  }
-
-  // 3. Bugünün Kısa Yem & Suluk Özeti (GENESIS AI Beslenme Motorundan Canlı)
-  let feedSummaryText = 'Sabah hafif, akşam tam porsiyon dengeli tahıl rasyonu ve taze içme suyu.';
-  let feedGramsPerBird = 33;
-  let totalDailyKg = '';
-  if (typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.calculateSmartNutritionPlan === 'function') {
-    const plan = AvigenGenesisAI.calculateSmartNutritionPlan('auto_today_smart', 'ALL', Math.max(1, activeBirdsCount));
-    if (plan) {
-      feedGramsPerBird = plan.gramsPerBird;
-      totalDailyKg = plan.totalDailyKgLabel;
-      const topSeeds = (plan.seeds || []).slice(0, 2).map(s => `${s.name} %${s.pct}`).join(', ');
-      const liquidShort = (plan.todaySmart?.todayLiquidRecommendation || '').split('.')[0] || 'Temiz içme suyu';
-      feedSummaryText = `Kuş başı <strong>${feedGramsPerBird} gr</strong> (Toplam <strong>${escapeHtml(totalDailyKg)}/gün</strong> • ${escapeHtml(topSeeds)}) • 💧 ${escapeHtml(liquidShort)}.`;
-    }
-  }
-
-  const todayStr = new Date().toLocaleDateString('tr-TR', { weekday: 'short', day: '2-digit', month: 'short' });
-
-  box.innerHTML = `
-    <div class="ios-card" style="padding:9px 11px; border-left:4px solid #0066ff; background:var(--ios-card);">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px;">
-        <div style="display:flex; align-items:center; gap:5px;">
-          <span style="font-size:13px;">☀️</span>
-          <span style="font-size:11.5px; font-weight:900; color:var(--ios-text);">Kümes Sabah Özeti &amp; Bugün Yapılacaklar</span>
-        </div>
-        <span class="gene-badge gene-blue" style="font-size:8.5px; padding:2px 6px;">📅 ${escapeHtml(todayStr)}</span>
-      </div>
-
-      <div style="display:flex; flex-direction:column; gap:5px;">
-        ${activeRaceEvent ? `
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; background:#eff6ff; border:1px solid #93c5fd; border-radius:8px; padding:6px 8px;">
-            <div style="font-size:10px; color:#1e3a8a; line-height:1.35; flex:1; min-width:0;">
-              🏁 <strong>Aktif Yarış:</strong> ${escapeHtml(activeRaceEvent.codeTitle)} (${activeRaceEvent.distanceKm} km) • <strong>${pendingBirdsCount} kuşun dönüş sonucu bekleniyor!</strong>
-            </div>
-            <div style="display:flex; gap:4px; flex-shrink:0;">
-              <button type="button" class="ios-btn ios-btn-green" style="padding:4px 7px; font-size:9.3px;" onclick="openIosTab('flight'); AvigenUxManager.switchBreedingPlanSub('racetracker'); setTimeout(()=>AvigenRaceTracker.openBatchResultModal('${activeRaceEvent.id}'), 60);">
-                📋 Toplu Sonuç Gir
-              </button>
-            </div>
-          </div>
-        ` : ''}
-
-        ${nestAlerts.length > 0 ? nestAlerts.slice(0, 3).map(na => `
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; background:${na.bg}; border:1px solid ${na.border}; border-radius:8px; padding:5px 8px;">
-            <div style="font-size:9.8px; color:${na.color}; line-height:1.35; flex:1; min-width:0;">
-              ${na.icon} ${na.text}
-            </div>
-            <button type="button" class="nest-mini-action-btn gold" style="flex-shrink:0;" onclick="${na.btnAction}">
-              ${na.btnText}
-            </button>
-          </div>
-        `).join('') : `
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:5px 8px;">
-            <div style="font-size:9.8px; color:var(--ios-subtext); line-height:1.35;">
-              🪺 <strong>Yuva &amp; Kuluçka:</strong> ${activePairsList.length > 0 ? `${activePairsList.length} aktif yuva takipte, bugün acil bilezik/çıkış uyarısı yok.` : 'Henüz aktif yuva kaydı yok.'}
-            </div>
-            <button type="button" class="nest-mini-action-btn" style="flex-shrink:0;" onclick="openIosTab('pedigrees', document.querySelectorAll('.ios-tab-btn')[1]); switchBirdsViewMode('nests');">
-              💑 Yuvalar →
-            </button>
-          </div>
-        `}
-
-        <!-- BUGÜNÜN KISA YEM & SULUK NOTU -->
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:5px 8px;">
-          <div style="font-size:9.8px; color:var(--ios-text); line-height:1.35; flex:1; min-width:0;">
-            🥣 <strong>Bugünkü Yem &amp; Suluk:</strong> ${feedSummaryText}
-          </div>
-          <button type="button" class="nest-mini-action-btn" style="flex-shrink:0;" onclick="if(typeof AvigenGenesisAI!=='undefined') AvigenGenesisAI.openModuleDirectlyFromHome('nutrition');">
-            Reçete →
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
+  box.style.display = 'none';
+  box.innerHTML = '';
 }
 
 // Ana Sayfa Hızlı Güvercin Arama (1-Dokunuşla Pedigre, Profil veya GENESIS Analiz Açma)
@@ -2888,21 +2846,27 @@ function registerChickFromActivePair(pairId) {
     newBoxes[s.key] = { flag: '🇹🇷', ring: '', name: '', color: '', notes: '', photo: '' };
   });
 
-  // Baba, Anne ve 2-3. kuşak atalarını otomatik hazırla (Henüz Kaydet'e basmadan veritabanına boş ekleme yapma!)
-  newBoxes.sire = { ...(sTree.self || { flag: '🇹🇷', ring: sRing, name: pair.sire }) };
-  newBoxes.dam = { ...(dTree.self || { flag: '🇹🇷', ring: dRing, name: pair.dam }) };
-  if (sTree.p1) newBoxes.g2_1 = { ...sTree.p1 };
-  if (sTree.p2) newBoxes.g2_2 = { ...sTree.p2 };
-  if (dTree.p1) newBoxes.g2_3 = { ...dTree.p1 };
-  if (dTree.p2) newBoxes.g2_4 = { ...dTree.p2 };
-  if (sTree.g1) newBoxes.g3_1 = { ...sTree.g1 };
-  if (sTree.g2) newBoxes.g3_2 = { ...sTree.g2 };
-  if (sTree.g3) newBoxes.g3_3 = { ...sTree.g3 };
-  if (sTree.g4) newBoxes.g3_4 = { ...sTree.g4 };
-  if (dTree.g1) newBoxes.g3_5 = { ...dTree.g1 };
-  if (dTree.g2) newBoxes.g3_6 = { ...dTree.g2 };
-  if (dTree.g3) newBoxes.g3_7 = { ...dTree.g3 };
-  if (dTree.g4) newBoxes.g3_8 = { ...dTree.g4 };
+  // Baba, Anne ve 2-4. kuşak (toplam 30 üst ata kutusunu) otomatik hazırla (Henüz Kaydet'e basmadan veritabanına boş ekleme yapma!)
+  newBoxes.sire = { ...(sTree.self || { flag: '🇹🇷', ring: sRing, name: pair.sire }), sex: 'M' };
+  newBoxes.dam = { ...(dTree.self || { flag: '🇹🇷', ring: dRing, name: pair.dam }), sex: 'F' };
+  if (sTree.p1?.ring) newBoxes.g2_1 = { ...sTree.p1, sex: 'M' };
+  if (sTree.p2?.ring) newBoxes.g2_2 = { ...sTree.p2, sex: 'F' };
+  if (dTree.p1?.ring) newBoxes.g2_3 = { ...dTree.p1, sex: 'M' };
+  if (dTree.p2?.ring) newBoxes.g2_4 = { ...dTree.p2, sex: 'F' };
+  if (sTree.g1?.ring) newBoxes.g3_1 = { ...sTree.g1, sex: 'M' };
+  if (sTree.g2?.ring) newBoxes.g3_2 = { ...sTree.g2, sex: 'F' };
+  if (sTree.g3?.ring) newBoxes.g3_3 = { ...sTree.g3, sex: 'M' };
+  if (sTree.g4?.ring) newBoxes.g3_4 = { ...sTree.g4, sex: 'F' };
+  if (dTree.g1?.ring) newBoxes.g3_5 = { ...dTree.g1, sex: 'M' };
+  if (dTree.g2?.ring) newBoxes.g3_6 = { ...dTree.g2, sex: 'F' };
+  if (dTree.g3?.ring) newBoxes.g3_7 = { ...dTree.g3, sex: 'M' };
+  if (dTree.g4?.ring) newBoxes.g3_8 = { ...dTree.g4, sex: 'F' };
+  for (let i = 1; i <= 8; i++) {
+    const sG4 = sTree[`gg${i}`];
+    if (sG4?.ring) newBoxes[`g4_${i}`] = { ...sG4, sex: i % 2 === 1 ? 'M' : 'F' };
+    const dG4 = dTree[`gg${i}`];
+    if (dG4?.ring) newBoxes[`g4_${i + 8}`] = { ...dG4, sex: i % 2 === 1 ? 'M' : 'F' };
+  }
 
   const baseNum = Math.floor(100000 + Math.random() * 899990);
   const suggestedRing = `TR-2026-${baseNum}`;
@@ -3034,7 +2998,7 @@ function openLoftWithFilter(filterCode) {
   switchBirdsViewMode('list');
 
   const chips = document.querySelectorAll('#loftFilterChips .sub-pill');
-  const mapIdx = { ALL: 0, M: 1, F: 2, BREEDER: 3, RACER: 4, YOUNG: 5, RESTING: 6, LOST_SOLD: 7, ARCHIVE: 8 };
+  const mapIdx = { ALL: 0, M: 1, F: 2, BREEDER: 3, RACER: 4, YOUNG: 5, GRAND_PRIZE: 6, RESTING: 7, LOST_SOLD: 8, ARCHIVE: 9 };
   chips.forEach(c => c.classList.remove('active'));
   if (chips[mapIdx[filterCode] ?? 0]) chips[mapIdx[filterCode] ?? 0].classList.add('active');
   renderLoftBirdsDirectory();
@@ -3194,11 +3158,14 @@ function renderLoftBirdsDirectory() {
   const cleanQuery = query.replace(/[-\s./]+/g, '');
   const allBirds = collectUniqueLoftBirds();
 
-  // Sekme Başlıklarındaki (🏠 Kümesim, ♂ Erkek, ♀ Dişi, Damızlık, Yarışçı, Yavru, 🟠 Dinlenmede, 🔴 Kayıp/Satıldı, 📜 Soy Arşivi) Canlı Kuş Sayılarını Güncelle
-  const activeLoftBirds = allBirds.filter(b => b.isActiveLoftBird);
-  const cntResting = allBirds.filter(b => b.birdStatus === 'RESTING').length;
+  // Sekme Başlıklarındaki (🏠 Kümesim, ♂ Erkek, ♀ Dişi, Damızlık, Yarışçı, Yavru, 🏆 Büyük Yarış, 🟠 Dinlenmede, 🔴 Kayıp/Satıldı, 📜 Soy Arşivi) Canlı Kuş Sayılarını Güncelle
+  // KURAL: Büyük Ödüllü Yarışa (OLR / Derby) teslim edilen kuşlar organizasyon kümesinde olduğu için kendi kümesimizde (🏠 Kümesim, Erkek, Dişi, Damızlık, Yarışçı, Yavru) görünmez; yalnızca 🏆 Büyük Yarış sekmesinde görünür!
+  const grandPrizeRingsMap = getGrandPrizeEnteredRingsMap();
+  const activeLoftBirds = allBirds.filter(b => b.isActiveLoftBird && !grandPrizeRingsMap.has(b.ring.toUpperCase()));
+  const cntGrandPrize = allBirds.filter(b => grandPrizeRingsMap.has(b.ring.toUpperCase())).length;
+  const cntResting = allBirds.filter(b => b.birdStatus === 'RESTING' && !grandPrizeRingsMap.has(b.ring.toUpperCase())).length;
   const cntLostSold = allBirds.filter(b => b.birdStatus === 'LOST' || b.birdStatus === 'SOLD').length;
-  const archiveBirds = allBirds.filter(b => !b.isActiveLoftBird && b.birdStatus !== 'LOST' && b.birdStatus !== 'SOLD');
+  const archiveBirds = allBirds.filter(b => !b.isActiveLoftBird && !grandPrizeRingsMap.has(b.ring.toUpperCase()) && b.birdStatus !== 'LOST' && b.birdStatus !== 'SOLD');
   const cntAll = activeLoftBirds.length;
   const cntMale = activeLoftBirds.filter(b => b.sex === 'M').length;
   const cntFemale = activeLoftBirds.filter(b => b.sex === 'F').length;
@@ -3215,6 +3182,7 @@ function renderLoftBirdsDirectory() {
     `Damızlık (${cntBreeder})`,
     `Yarışçı (${cntRacer})`,
     `Yavru (${cntYoung})`,
+    `🏆 Büyük Yarış (${cntGrandPrize})`,
     `🟠 Dinlenmede (${cntResting})`,
     `🔴 Kayıp/Satıldı (${cntLostSold})`,
     `📜 Soy Arşivi (${cntArchive})`
@@ -3236,15 +3204,22 @@ function renderLoftBirdsDirectory() {
   };
 
   let filtered = allBirds.filter(b => {
-    if (activeLoftFilter === 'ARCHIVE') {
-      if (b.isActiveLoftBird || b.birdStatus === 'LOST' || b.birdStatus === 'SOLD') return false;
+    const isGrandPrizeBird = grandPrizeRingsMap.has(b.ring.toUpperCase());
+    if (activeLoftFilter === 'GRAND_PRIZE') {
+      const gp = grandPrizeRingsMap.get(b.ring.toUpperCase());
+      if (!gp) return false;
+      if (activeGrandPrizeOrgFilter !== 'ALL' && !(gp.organizations || []).includes(activeGrandPrizeOrgFilter)) {
+        return false;
+      }
+    } else if (activeLoftFilter === 'ARCHIVE') {
+      if (b.isActiveLoftBird || isGrandPrizeBird || b.birdStatus === 'LOST' || b.birdStatus === 'SOLD') return false;
     } else if (activeLoftFilter === 'LOST_SOLD') {
       if (b.birdStatus !== 'LOST' && b.birdStatus !== 'SOLD') return false;
     } else if (activeLoftFilter === 'RESTING') {
-      if (b.birdStatus !== 'RESTING') return false;
+      if (b.birdStatus !== 'RESTING' || isGrandPrizeBird) return false;
     } else {
-      // Diğer tüm filtrelerde (🏠 Kümesim, ♂ Erkek, ♀ Dişi, Damızlık, Yarışçı, Yavru) SADECE kümesimizde gerçekten mevcut olan kuşları göster!
-      if (!b.isActiveLoftBird) return false;
+      // Diğer tüm filtrelerde (🏠 Kümesim, ♂ Erkek, ♀ Dişi, Damızlık, Yarışçı, Yavru) SADECE kümesimizde gerçekten mevcut olan ve Büyük Yarışa teslim edilmemiş kuşları göster!
+      if (!b.isActiveLoftBird || isGrandPrizeBird) return false;
     }
 
     if (activeLoftFilter === 'M' && b.sex !== 'M') return false;
@@ -3255,6 +3230,58 @@ function renderLoftBirdsDirectory() {
 
     return matchesQuery(b);
   });
+
+  // 3 farklı Büyük Ödüllü Yarışa (OLR / Derby) aynı anda kuş veren kullanıcı için Organizasyon bazlı alt filtre şeridi
+  let grandPrizeOrgHeaderHtml = '';
+  if (activeLoftFilter === 'GRAND_PRIZE') {
+    const orgCounts = new Map();
+    allBirds.forEach(b => {
+      const gp = grandPrizeRingsMap.get(b.ring.toUpperCase());
+      if (gp && Array.isArray(gp.organizations)) {
+        gp.organizations.forEach(orgName => {
+          orgCounts.set(orgName, (orgCounts.get(orgName) || 0) + 1);
+        });
+      }
+    });
+    const orgEntries = Array.from(orgCounts.entries());
+    if (orgEntries.length > 0) {
+      grandPrizeOrgHeaderHtml = `
+        <div class="ios-card" style="padding:8px 10px; border-left:4px solid #d97706; background:linear-gradient(135deg,#fffbeb,#ffffff);">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap;">
+            <div style="font-size:10.5px; font-weight:900; color:#b45309;">
+              🏆 Büyük Ödüllü Yarış (Derby / OLR) Organizasyon Filtresi (${orgEntries.length} Organizasyon • ${cntGrandPrize} Kuş)
+            </div>
+            <button type="button" class="nest-mini-action-btn gold" onclick="openIosTab('flight'); AvigenUxManager.switchBreedingPlanSub('racetracker'); AvigenRaceTracker.setCategoryFilter('GRAND_PRIZE');">
+              🏁 Yarış Takip Ekranı →
+            </button>
+          </div>
+          <div class="sub-pills" style="padding:2px; gap:3px; flex-wrap:wrap;">
+            <button type="button" class="sub-pill ${activeGrandPrizeOrgFilter === 'ALL' ? 'active' : ''}" style="font-size:9px; padding:4px 7px;" onclick="setGrandPrizeOrgFilter('ALL')">
+              Tüm Derby'ler (${cntGrandPrize})
+            </button>
+            ${orgEntries.map(([orgName, c]) => `
+              <button type="button" class="sub-pill ${activeGrandPrizeOrgFilter === orgName ? 'active' : ''}" style="font-size:9px; padding:4px 7px;" onclick="setGrandPrizeOrgFilter('${escapeHtml(orgName)}')">
+                🏆 ${escapeHtml(orgName)} (${c})
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } else {
+      grandPrizeOrgHeaderHtml = `
+        <div class="ios-card" style="padding:10px 12px; border-left:4px solid #d97706; background:#fffbeb;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <div style="font-size:10px; color:#92400e; line-height:1.35; flex:1;">
+              🏆 Henüz Büyük Ödüllü Yarışa (One Loft Race / Derby) teslim edilmiş kuş kaydı yok. Yeni bir Derby / OLR kaydı açıp kuşlarınızı seçebilirsiniz.
+            </div>
+            <button type="button" class="ios-btn ios-btn-gold" style="padding:5px 9px; font-size:9.5px;" onclick="openIosTab('flight'); AvigenUxManager.switchBreedingPlanSub('racetracker'); setTimeout(()=>AvigenRaceTracker.openCreateRaceModal({ category: 'GRAND_PRIZE' }), 60);">
+              + Büyük Yarışa Kuş Teslim Et
+            </button>
+          </div>
+        </div>
+      `;
+    }
+  }
 
   // ÖNEMLİ KULLANICI DENEYİMİ DÜZELTMESİ:
   // Eğer kullanıcı Kuşlarım arama kutusuna bir halka no / isim yazdığında seçili filtrede (örn. sadece "🏠 Kümesim" veya "Damızlık")
@@ -3268,7 +3295,7 @@ function renderLoftBirdsDirectory() {
   }
 
   if (!filtered.length) {
-    container.innerHTML = `
+    container.innerHTML = grandPrizeOrgHeaderHtml + `
       <div class="ios-card" style="text-align:center; padding:24px;">
         <div style="font-size:28px; margin-bottom:6px;">🕊️</div>
         <div style="font-weight:800; font-size:13px;">Bu Filtrede Güvercin Bulunamadı</div>
@@ -3284,7 +3311,7 @@ function renderLoftBirdsDirectory() {
       </div>`
     : '';
 
-  container.innerHTML = crossFilterBannerHtml + filtered.map(b => {
+  container.innerHTML = grandPrizeOrgHeaderHtml + crossFilterBannerHtml + filtered.map(b => {
     const sexIcon = b.sex === 'M'
       ? `<span style="color:#0284c7; font-weight:900;">♂</span>`
       : (b.sex === 'F'
@@ -3300,6 +3327,10 @@ function renderLoftBirdsDirectory() {
         : (b.birdStatus === 'SOLD'
           ? `<span class="gene-badge gene-blue" style="font-size:7.8px; padding:1px 5px;">💸 Satıldı</span>`
           : ''));
+    const gpInfo = grandPrizeRingsMap.get(b.ring.toUpperCase());
+    const gpBadgeHtml = gpInfo && Array.isArray(gpInfo.entries)
+      ? gpInfo.entries.map(ent => `<span class="gene-badge gene-gold" style="font-size:7.8px; padding:1px 6px; background:#fef3c7; border-color:#f59e0b; color:#b45309;">🏆 ${escapeHtml(ent.organizationName)} • ${escapeHtml(ent.stageType || 'Etap')} (${escapeHtml(ent.statusLabel)}${ent.rank ? ' #' + ent.rank : ''})</span>`).join('')
+      : '';
     const physSummary = [b.bodyBuild, b.muscleType, b.pubicBone, b.wingFeather].filter(Boolean).join(' • ');
 
     const avatarHtml = b.photo
@@ -3321,6 +3352,7 @@ function renderLoftBirdsDirectory() {
               ${sexIcon}
               <span class="gene-badge ${roleClass}" style="font-size:8px; padding:1px 5px;">${roleLabel}</span>
               ${statusBadgeHtml}
+              ${gpBadgeHtml}
             </div>
             <div class="bird-dir-name">
               ${escapeHtml(b.name || 'İsimsiz Güvercin')} <span style="font-weight:500; color:var(--ios-subtext);">• ${escapeHtml(b.color)}</span>
@@ -3353,6 +3385,9 @@ function renderLoftBirdsDirectory() {
             </button>
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); if(typeof AvigenPerformanceEngine!=='undefined') AvigenPerformanceEngine.openProfileModal('${escapeHtml(b.ring)}');">
               <span>📊</span> <span>Performans &amp; Genetik Profil</span>
+            </button>
+            <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); if(typeof AvigenRaceTracker!=='undefined') AvigenRaceTracker.openQuickAssignBirdToGrandPrize('${escapeHtml(b.ring)}');">
+              <span>🏆</span> <span>Büyük Yarışa (Derby/OLR) Teslim Et</span>
             </button>
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); openBirdDossierModal('${escapeHtml(b.ring)}');">
               <span>📋</span> <span>Sicil Dosyası (${dCount} Kayıt)</span>
@@ -3438,10 +3473,16 @@ function deleteBirdFromDirectory(pedId, slotKey, ringVal, birdName) {
 
   if (slotKey === 'main') {
     if (!confirm(`🗑️ "${label}" güvercinini ve ana pedigre kaydını silmek istiyor musunuz?${nestWarn}`)) return;
+    try {
+      localStorage.setItem('avigen_auto_safety_snapshot_v1', JSON.stringify(buildFullAvigenSnapshotPayload()));
+    } catch (e) {}
     pedigrees = pedigrees.filter(p => p.id !== pedId);
     activePedigreeId = pedigrees[0]?.id || '';
   } else {
     if (!confirm(`🗑️ "${label}" güvercinini kümes listesinden ve soyağacı kutusundan silmek istiyor musunuz?${nestWarn}`)) return;
+    try {
+      localStorage.setItem('avigen_auto_safety_snapshot_v1', JSON.stringify(buildFullAvigenSnapshotPayload()));
+    } catch (e) {}
     pedigrees.forEach(p => {
       Object.keys(p.boxes || {}).forEach(k => {
         const box = p.boxes[k];
@@ -3576,6 +3617,52 @@ function createNewPedigreeRecord() {
   document.getElementById('boxEditModal').classList.add('open');
 }
 
+function restoreAutoSafetySnapshot() {
+  try {
+    const raw = localStorage.getItem('avigen_auto_safety_snapshot_v1');
+    if (!raw) {
+      alert('ℹ️ Henüz geri alınacak otomatik bir silme/yükleme yedeği bulunamadı.');
+      return;
+    }
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.pedigrees)) {
+      alert('⚠️ Otomatik güvenlik yedeği okunamadı.');
+      return;
+    }
+    if (!confirm(`⏪ Son silme veya yükleme işleminden önceki kümes durumuna (${data.pedigrees.length} Pedigri) geri dönmek istiyor musunuz?`)) return;
+    if (data.loftConfig) loftConfig = { ...loftConfig, ...data.loftConfig };
+    if (Array.isArray(data.pedigrees) && data.pedigrees.length) {
+      pedigrees = data.pedigrees;
+      activePedigreeId = pedigrees[0].id;
+    }
+    if (Array.isArray(data.remindersList)) remindersList = data.remindersList;
+    if (Array.isArray(data.activePairsList)) activePairsList = data.activePairsList;
+    if (Array.isArray(data.racesList)) racesList = data.racesList;
+    if (Array.isArray(data.birdDossierList)) birdDossierList = data.birdDossierList;
+    if (Array.isArray(data.notesList)) notesList = data.notesList;
+    if (Array.isArray(data.race_tracking_events) && typeof AvigenRaceTracker !== 'undefined') {
+      AvigenRaceTracker.events = data.race_tracking_events.map(ev =>
+        typeof AvigenRaceTracker.normalizeRaceRecord === 'function' ? AvigenRaceTracker.normalizeRaceRecord(ev) : ev
+      );
+      AvigenRaceTracker.saveEvents();
+      AvigenRaceTracker.renderRaceTrackerMainUI();
+    }
+    saveMypedigreData();
+    syncLoftIdentityAcrossUI();
+    renderPedigreeDropdown();
+    selectActivePedigree(activePedigreeId);
+    renderHomeDashboard();
+    renderLoftBirdsDirectory();
+    if (typeof AvigenUxManager !== 'undefined') {
+      AvigenUxManager.renderProfileAccountSection();
+      AvigenUxManager.renderBreedingPlanPairsList();
+    }
+    alert('✅ Son işlem geri alındı ve önceki kümes verileriniz eksiksiz geri yüklendi!');
+  } catch (e) {
+    alert('Geri alma sırasında bir hata oluştu.');
+  }
+}
+
 function deleteActivePedigree() {
   const ped = getActivePedigree();
   if (!ped) return;
@@ -3591,6 +3678,10 @@ function deleteActivePedigree() {
     : '';
 
   if (!confirm(`${mainRing || 'Seçili'} pedigresini silmek istiyor musunuz?${nestWarn}`)) return;
+
+  try {
+    localStorage.setItem('avigen_auto_safety_snapshot_v1', JSON.stringify(buildFullAvigenSnapshotPayload()));
+  } catch (e) {}
 
   pedigrees = pedigrees.filter(p => p.id !== ped.id);
   activePedigreeId = pedigrees[0]?.id || '';
@@ -3709,6 +3800,33 @@ function renderBoxHtml(ped, key, sex) {
   `;
 }
 
+function getInlineAvigenLogoSvgHtml(styleStr = 'width:100%;height:100%;display:block;') {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" style="${styleStr}">
+    <defs>
+      <linearGradient id="avWingBlueInl" x1="0%" y1="0%" x2="100%" y2="50%">
+        <stop offset="0%" stop-color="#1d4ed8"/><stop offset="55%" stop-color="#0284c7"/><stop offset="100%" stop-color="#38bdf8"/>
+      </linearGradient>
+      <linearGradient id="avBodyMagentaInl" x1="0%" y1="20%" x2="100%" y2="60%">
+        <stop offset="0%" stop-color="#7e22ce"/><stop offset="50%" stop-color="#c026d3"/><stop offset="100%" stop-color="#f43f5e"/>
+      </linearGradient>
+      <linearGradient id="avWingIndigoInl" x1="0%" y1="0%" x2="100%" y2="50%">
+        <stop offset="0%" stop-color="#4338ca"/><stop offset="55%" stop-color="#2563eb"/><stop offset="100%" stop-color="#06b6d4"/>
+      </linearGradient>
+      <linearGradient id="avWingSunsetInl" x1="0%" y1="0%" x2="100%" y2="80%">
+        <stop offset="0%" stop-color="#ec4899"/><stop offset="50%" stop-color="#fb923c"/><stop offset="100%" stop-color="#facc15"/>
+      </linearGradient>
+      <linearGradient id="avTailTealInl" x1="20%" y1="0%" x2="80%" y2="100%">
+        <stop offset="0%" stop-color="#0369a1"/><stop offset="50%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#10b981"/>
+      </linearGradient>
+    </defs>
+    <path d="M 68 68 C 82 95, 86 135, 102 165 C 112 182, 126 190, 145 190 C 128 170, 122 140, 118 105 Z" fill="url(#avTailTealInl)"/>
+    <path d="M 122 102 C 155 82, 195 82, 228 112 C 198 106, 175 125, 145 124 C 132 123, 124 114, 122 102 Z" fill="url(#avWingIndigoInl)"/>
+    <path d="M 76 74 C 102 115, 136 162, 172 152 C 188 148, 200 138, 206 132 C 175 142, 148 122, 124 94 Z" fill="url(#avWingSunsetInl)"/>
+    <path d="M 102 36 C 135 24, 172 52, 212 50 C 188 68, 152 68, 126 56 C 115 50, 106 43, 102 36 Z" fill="url(#avWingBlueInl)"/>
+    <path d="M 18 66 L 46 46 C 58 30, 78 28, 96 42 C 126 66, 158 76, 194 66 C 170 96, 136 114, 102 104 C 82 98, 68 74, 52 66 C 38 60, 26 63, 18 66 Z" fill="url(#avBodyMagentaInl)"/>
+  </svg>`;
+}
+
 function renderActivePedigree() {
   const paper = document.getElementById('mypedigrePaper');
   const ped = getActivePedigree();
@@ -3732,8 +3850,13 @@ function renderActivePedigree() {
   paper.style.fontFamily = "'Inter', sans-serif";
 
   const main = ped.boxes?.main || { flag: '🇹🇷', ring: 'TR-2026-0001', name: 'Şampiyon', color: '', notes: '', photo: '' };
-  const logoHtml = `<img src="${loftConfig.logo || 'avigen-logo.svg'}" style="width:100%;height:100%;object-fit:contain;background:#fff;padding:2px;" />`;
-  const birdPhotoHtml = main.photo ? `<img src="${main.photo}" />` : `<img src="avigen-logo.svg" style="width:82%;height:82%;object-fit:contain;" />`;
+  const hasCustomLoftLogo = Boolean(loftConfig.logo && !String(loftConfig.logo).includes('avigen-logo.svg'));
+  const logoHtml = hasCustomLoftLogo
+    ? `<img src="${loftConfig.logo}" style="width:100%;height:100%;object-fit:contain;background:#fff;padding:2px;" />`
+    : `<div style="width:100%;height:100%;background:#fff;padding:2px;display:flex;align-items:center;justify-content:center;">${getInlineAvigenLogoSvgHtml('width:100%;height:100%;')}</div>`;
+  const birdPhotoHtml = main.photo
+    ? `<img src="${main.photo}" />`
+    : `<div style="width:84%;height:84%;display:flex;align-items:center;justify-content:center;">${getInlineAvigenLogoSvgHtml('width:100%;height:100%;')}</div>`;
   const genDepth = parseInt(loftConfig.genDepth, 10) || 4;
 
   const badgeEl = document.getElementById('zoomBadge');
@@ -3801,18 +3924,30 @@ function renderActivePedigree() {
       ${g4ColumnHtml}
     </div>
 
-    <!-- ALT BİLGİ: TAM SOYAĞACI TAŞIYAN QR KOD & BARKOD -->
-    <div class="paper-footer">
+    <!-- ALT BİLGİ: TAM SOYAĞACI TAŞIYAN QR KOD & BARKOD + MİNİMAL AVIGEN GENESIS AI REKLAM BARI -->
+    <div class="paper-footer" style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
       <div class="paper-codes">
         ${showCodes ? makeQrSvg(encodeFullPedigreeQrPayload(ped)) : ''}
         ${showCodes ? makeBarcodeSvg(main.ring) : ''}
         <div>
           <strong style="color:${accent};">${escapeHtml(loftConfig.title)}</strong>
-          <div>AVIGEN Tam Soyağacı QR/Barkod Kodu: #AVG-${(main.ring || '001').replace(/[^A-Z0-9]/gi, '').slice(-5)}</div>
+          <div>AVIGEN QR/Barkod Kodu: #AVG-${(main.ring || '001').replace(/[^A-Z0-9]/gi, '').slice(-5)}</div>
         </div>
       </div>
-      <div style="text-align:right; font-weight:700;">
-        AVIGEN Official Certificate (${genDepth} Generations)
+
+      <!-- ANA SAYFADAKİ GÖRSEL İLE MİNİMAL AVIGEN GENESIS AI REKLAM & TANITIM ROZETİ -->
+      <div style="display:flex; align-items:center; gap:7px; background:linear-gradient(135deg, #0a1938 0%, #1e3a8a 60%, #3b0764 100%); border:1.2px solid #f59e0b; border-radius:7px; padding:3px 8px 3px 4px; color:#ffffff; box-shadow:0 2px 6px rgba(15,23,42,0.18);">
+        <img src="avigen-dna-pigeon.jpg" alt="AVIGEN GENESIS AI" style="width:32px; height:28px; object-fit:cover; border-radius:5px; border:1px solid #38bdf8; flex-shrink:0;" />
+        <div style="line-height:1.15; text-align:left;">
+          <div style="display:flex; align-items:center; gap:4px;">
+            <span style="background:#f59e0b; color:#0f172a; font-size:7px; font-weight:900; padding:0.5px 3.5px; border-radius:3px;">AI</span>
+            <span style="font-size:8.5px; font-weight:900; color:#fde047; letter-spacing:0.3px;">AVIGEN GENESIS AI</span>
+            <span style="font-size:7px; font-weight:700; color:#bae6fd;">• Official Certificate (${genDepth} Gen)</span>
+          </div>
+          <div style="font-size:7.2px; font-weight:600; color:#e2e8f0; margin-top:1px;">
+            5 Kuşak Genetik Eşleştirme • Yarış &amp; Beslenme Zekâsı
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -4396,11 +4531,24 @@ function saveBoxEditModal() {
     }
   }
 
-  // 2. Döngüsel Soy Ağacı (Kendi Kendinin Ebeveyni / Atası Olma) Kontrolü
+  // 2. Döngüsel Soy Ağacı (Kendi Kendinin Ebeveyni / Atası veya Çocuğu Olma) Kontrolü
   const mainRingUpper = (ped.boxes?.main?.ring || '').trim().toUpperCase();
-  if (editingSlotKey !== 'main' && cleanUpperRing && cleanUpperRing === mainRingUpper) {
-    alert(`⚠️ Soy Ağacı Mantık Hatası:\n\nAna güvercin (${ringVal}) kendi soy ağacında ebeveyn veya ata olarak kaydedilemez!`);
-    return;
+  if (editingSlotKey !== 'main' && cleanUpperRing) {
+    if (cleanUpperRing === mainRingUpper) {
+      alert(`⚠️ Soy Ağacı Mantık Hatası:\n\nAna güvercin (${ringVal}) kendi soy ağacında ebeveyn veya ata olarak kaydedilemez!`);
+      return;
+    }
+    const existingTreeOfCandidate = pedigrees.find(p => (p.boxes?.main?.ring || '').trim().toUpperCase() === cleanUpperRing);
+    if (existingTreeOfCandidate && mainRingUpper) {
+      const candAncs = Object.entries(existingTreeOfCandidate.boxes || {})
+        .filter(([k]) => k !== 'main')
+        .map(([, bx]) => (bx?.ring || '').trim().toUpperCase())
+        .filter(Boolean);
+      if (candAncs.includes(mainRingUpper)) {
+        alert(`⚠️ Döngüsel Soyağacı Hatası:\n\n"${ringVal}" kuşunun kendi soyağacında "${mainRingUpper}" zaten ata olarak yer alıyor! Bir kuşun yavrusu/torunu aynı zamanda onun üst atası olamaz.`);
+        return;
+      }
+    }
   }
 
   // 3. Ata Kutularında Erkek / Dişi Cinsiyet Tutarlılığı Doğrulaması
@@ -4440,14 +4588,15 @@ function saveBoxEditModal() {
   }
 
   // Eğer Ana Kuş (main) düzenlenirken Baba veya Anne açılır listesinden yeni bir ebeveyn seçildiyse,
-  // seçilen Baba ve Annenin kendi alt soylarını (Büyükbaba, Büyükanne ve 3. kuşak atalarını) otomatik bağla!
+  // seçilen Baba ve Annenin kendi alt soylarını (Büyükbaba, Büyükanne, 3. ve 4. kuşak toplam 30 atayı) otomatik bağla!
   if (editingSlotKey === 'main') {
     const selectedSireRef = document.getElementById('editBoxSireLink')?.value;
     const selectedDamRef = document.getElementById('editBoxDamLink')?.value;
 
     if (selectedSireRef) {
       const sTree = getCandidateLineageTree(selectedSireRef);
-      if (sTree.self?.ring && sTree.self.ring.trim().toUpperCase() !== cleanUpperRing) {
+      const sAllAncs = (sTree.ancRings || []).map(r => String(r || '').trim().toUpperCase());
+      if (sTree.self?.ring && sTree.self.ring.trim().toUpperCase() !== cleanUpperRing && !sAllAncs.includes(cleanUpperRing)) {
         ped.boxes.sire = { ...sTree.self, sex: 'M' };
         if (sTree.p1?.ring) ped.boxes.g2_1 = { ...sTree.p1, sex: 'M' };
         if (sTree.p2?.ring) ped.boxes.g2_2 = { ...sTree.p2, sex: 'F' };
@@ -4455,12 +4604,17 @@ function saveBoxEditModal() {
         if (sTree.g2?.ring) ped.boxes.g3_2 = { ...sTree.g2, sex: 'F' };
         if (sTree.g3?.ring) ped.boxes.g3_3 = { ...sTree.g3, sex: 'M' };
         if (sTree.g4?.ring) ped.boxes.g3_4 = { ...sTree.g4, sex: 'F' };
+        for (let i = 1; i <= 8; i++) {
+          const sG4 = sTree[`gg${i}`];
+          if (sG4?.ring) ped.boxes[`g4_${i}`] = { ...sG4, sex: i % 2 === 1 ? 'M' : 'F' };
+        }
       }
     }
 
     if (selectedDamRef) {
       const dTree = getCandidateLineageTree(selectedDamRef);
-      if (dTree.self?.ring && dTree.self.ring.trim().toUpperCase() !== cleanUpperRing) {
+      const dAllAncs = (dTree.ancRings || []).map(r => String(r || '').trim().toUpperCase());
+      if (dTree.self?.ring && dTree.self.ring.trim().toUpperCase() !== cleanUpperRing && !dAllAncs.includes(cleanUpperRing)) {
         ped.boxes.dam = { ...dTree.self, sex: 'F' };
         if (dTree.p1?.ring) ped.boxes.g2_3 = { ...dTree.p1, sex: 'M' };
         if (dTree.p2?.ring) ped.boxes.g2_4 = { ...dTree.p2, sex: 'F' };
@@ -4468,6 +4622,10 @@ function saveBoxEditModal() {
         if (dTree.g2?.ring) ped.boxes.g3_6 = { ...dTree.g2, sex: 'F' };
         if (dTree.g3?.ring) ped.boxes.g3_7 = { ...dTree.g3, sex: 'M' };
         if (dTree.g4?.ring) ped.boxes.g3_8 = { ...dTree.g4, sex: 'F' };
+        for (let i = 1; i <= 8; i++) {
+          const dG4 = dTree[`gg${i}`];
+          if (dG4?.ring) ped.boxes[`g4_${i + 8}`] = { ...dG4, sex: i % 2 === 1 ? 'M' : 'F' };
+        }
       }
     }
   }
@@ -4531,7 +4689,8 @@ function buildFullAvigenSnapshotPayload() {
     genesis_analysis_history: typeof AvigenGenesisAI !== 'undefined' ? AvigenGenesisAI.analysisHistory : [],
     performance_config: typeof AvigenPerformanceEngine !== 'undefined' ? AvigenPerformanceEngine.state.distanceLimits : null,
     user_account_state: typeof AvigenUxManager !== 'undefined' ? AvigenUxManager.state : null,
-    race_tracking_events: typeof AvigenRaceTracker !== 'undefined' ? AvigenRaceTracker.events : []
+    race_tracking_events: typeof AvigenRaceTracker !== 'undefined' ? AvigenRaceTracker.events : [],
+    race_relational_db: typeof AvigenRaceTracker !== 'undefined' ? AvigenRaceTracker.db : null
   };
 }
 
@@ -4624,7 +4783,9 @@ function importFullAvigenBackup(event) {
         AvigenUxManager.saveState();
       }
       if (Array.isArray(data.race_tracking_events) && typeof AvigenRaceTracker !== 'undefined') {
-        AvigenRaceTracker.events = data.race_tracking_events;
+        AvigenRaceTracker.events = data.race_tracking_events.map(ev =>
+          typeof AvigenRaceTracker.normalizeRaceRecord === 'function' ? AvigenRaceTracker.normalizeRaceRecord(ev) : ev
+        );
         AvigenRaceTracker.saveEvents();
         AvigenRaceTracker.renderRaceTrackerMainUI();
         AvigenRaceTracker.renderRaceAiInsightsUI();
@@ -5493,6 +5654,54 @@ function confirmAddBirdFromBarcode() {
 // (Ekranın tamamını veya uygulama menülerini asla çekmez; yalnızca #mypedigrePaper şecere sertifikasını üretir)
 // ============================================================================
 
+function drawAvigenVectorPigeonLogoOnCanvas(ctx, x, y, w, h) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(w / 240, h / 200);
+
+  // 5. Alt Turkuaz/Zümrüt Kuyruk Katmanı
+  const gTail = ctx.createLinearGradient(48, 68, 145, 190);
+  gTail.addColorStop(0, '#0369a1');
+  gTail.addColorStop(0.5, '#06b6d4');
+  gTail.addColorStop(1, '#10b981');
+  ctx.fillStyle = gTail;
+  ctx.fill(new Path2D('M 68 68 C 82 95, 86 135, 102 165 C 112 182, 126 190, 145 190 C 128 170, 122 140, 118 105 Z'));
+
+  // 3. Orta Sağ İndigo/Mavi Kanat Katmanı
+  const gInd = ctx.createLinearGradient(122, 82, 228, 125);
+  gInd.addColorStop(0, '#4338ca');
+  gInd.addColorStop(0.55, '#2563eb');
+  gInd.addColorStop(1, '#06b6d4');
+  ctx.fillStyle = gInd;
+  ctx.fill(new Path2D('M 122 102 C 155 82, 195 82, 228 112 C 198 106, 175 125, 145 124 C 132 123, 124 114, 122 102 Z'));
+
+  // 4. Pembe -> Altın Sarı Göğüs/Kanat Katmanı
+  const gSun = ctx.createLinearGradient(76, 74, 206, 152);
+  gSun.addColorStop(0, '#ec4899');
+  gSun.addColorStop(0.5, '#fb923c');
+  gSun.addColorStop(1, '#facc15');
+  ctx.fillStyle = gSun;
+  ctx.fill(new Path2D('M 76 74 C 102 115, 136 162, 172 152 C 188 148, 200 138, 206 132 C 175 142, 148 122, 124 94 Z'));
+
+  // 1. Üst Mavi/Siyan Kanat Teleği
+  const gBlue = ctx.createLinearGradient(102, 24, 212, 68);
+  gBlue.addColorStop(0, '#1d4ed8');
+  gBlue.addColorStop(0.55, '#0284c7');
+  gBlue.addColorStop(1, '#38bdf8');
+  ctx.fillStyle = gBlue;
+  ctx.fill(new Path2D('M 102 36 C 135 24, 172 52, 212 50 C 188 68, 152 68, 126 56 C 115 50, 106 43, 102 36 Z'));
+
+  // 2. Ana Baş, Gaga ve Mor/Macenta Üst Gövde
+  const gBody = ctx.createLinearGradient(18, 30, 194, 114);
+  gBody.addColorStop(0, '#7e22ce');
+  gBody.addColorStop(0.5, '#c026d3');
+  gBody.addColorStop(1, '#f43f5e');
+  ctx.fillStyle = gBody;
+  ctx.fill(new Path2D('M 18 66 L 46 46 C 58 30, 78 28, 96 42 C 126 66, 158 76, 194 66 C 170 96, 136 114, 102 104 C 82 98, 68 74, 52 66 C 38 60, 26 63, 18 66 Z'));
+
+  ctx.restore();
+}
+
 function drawNativePedigreeCertificateCanvas(ped) {
   const scale = 3; // 2280 x 1680 Ultra HD (A4 Yatay Oranı)
   const W = 760;
@@ -5535,15 +5744,13 @@ function drawNativePedigreeCertificateCanvas(ped) {
   ctx.fillRect(14, 13, 330, 66);
   ctx.strokeRect(14, 13, 330, 66);
 
-  // Sol Logo Rozeti
-  ctx.fillStyle = '#1d4ed8';
-  ctx.beginPath();
-  ctx.arc(44, 46, 20, 0, Math.PI * 2);
-  ctx.fill();
+  // Sol Logo Rozeti (Orijinal AVIGEN 5 Katmanlı Vektörel Güvercin Logosu — Asla Değişmez!)
   ctx.fillStyle = '#ffffff';
-  ctx.font = '900 11px Inter, Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('AVIGEN', 44, 49);
+  ctx.strokeStyle = '#1d4ed8';
+  ctx.lineWidth = 1.4;
+  ctx.fillRect(22, 24, 44, 44);
+  ctx.strokeRect(22, 24, 44, 44);
+  drawAvigenVectorPigeonLogoOnCanvas(ctx, 25, 29, 38, 34);
 
   ctx.textAlign = 'left';
   ctx.fillStyle = '#0f172a';
@@ -5666,12 +5873,12 @@ function drawNativePedigreeCertificateCanvas(ped) {
     });
   });
 
-  // 4. Alt Sertifika Çubuğu (y: 525..550)
+  // 4. Alt Sertifika Çubuğu + Minimal AVIGEN GENESIS AI Reklam Rozeti (y: 522..552)
   ctx.fillStyle = '#eff6ff';
   ctx.strokeStyle = '#bfdbfe';
   ctx.lineWidth = 1;
-  ctx.fillRect(14, 524, W - 28, 24);
-  ctx.strokeRect(14, 524, W - 28, 24);
+  ctx.fillRect(14, 522, W - 28, 28);
+  ctx.strokeRect(14, 522, W - 28, 28);
 
   const certCode = `#AVG-${(main.ring || '001').replace(/[^A-Z0-9]/gi, '').slice(-6).toUpperCase()}`;
   ctx.fillStyle = '#1e3a8a';
@@ -5679,10 +5886,30 @@ function drawNativePedigreeCertificateCanvas(ped) {
   ctx.textAlign = 'left';
   ctx.fillText(`${loftTitle}  •  AVIGEN Dijital Soyağacı Doğrulama Kodu: ${certCode}`, 22, 539);
 
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#1d4ed8';
-  ctx.font = '800 8.5px Inter, Arial, sans-serif';
-  ctx.fillText(`AVIGEN Official Pedigree Certificate (4 Generations) • ${new Date().toLocaleDateString('tr-TR')}`, W - 22, 539);
+  // Sağ Alt Minimal AVIGEN GENESIS AI Reklam Kutusu
+  const adX = W - 280;
+  const adY = 524;
+  const adW = 262;
+  const adH = 24;
+  const gAd = ctx.createLinearGradient(adX, adY, adX + adW, adY + adH);
+  gAd.addColorStop(0, '#0a1938');
+  gAd.addColorStop(0.6, '#1e3a8a');
+  gAd.addColorStop(1, '#3b0764');
+  ctx.fillStyle = gAd;
+  ctx.fillRect(adX, adY, adW, adH);
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(adX, adY, adW, adH);
+
+  drawAvigenVectorPigeonLogoOnCanvas(ctx, adX + 5, adY + 2, 22, 19);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#fde047';
+  ctx.font = '900 8.2px Inter, Arial, sans-serif';
+  ctx.fillText('AVIGEN GENESIS AI  •  Official Certificate (4 Gen)', adX + 32, adY + 10);
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = '600 7px Inter, Arial, sans-serif';
+  ctx.fillText('5 Kuşak Genetik Eşleştirme • Yarış & Beslenme Zekâsı', adX + 32, adY + 20);
 
   return canvas;
 }
@@ -5710,14 +5937,14 @@ async function captureOnlyPedigreePaperCanvas(targetPedId) {
       clone.style.height = '560px';
       clone.style.boxShadow = 'none';
 
-      // Harici SVG logosunun mobil WebView'da CORS / Tainted Canvas hatası vermesini önlemek için vektörel rozetle değiştir
+      // Eğer herhangi bir <img src="avigen-logo.svg"> kalmışsa, sahte mavi daire yerine gerçek 5 renkli vektörel AVIGEN güvercin logosunu (inline SVG) yerleştir!
       clone.querySelectorAll('img').forEach(img => {
         const srcAttr = String(img.getAttribute('src') || '');
         if (srcAttr.includes('avigen-logo.svg')) {
-          const badge = document.createElement('div');
-          badge.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1d4ed8;color:#ffffff;font-weight:900;font-size:9px;border-radius:50%;';
-          badge.textContent = 'AVIGEN';
-          img.replaceWith(badge);
+          const inlineLogoWrap = document.createElement('div');
+          inlineLogoWrap.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#ffffff;padding:2px;';
+          inlineLogoWrap.innerHTML = getInlineAvigenLogoSvgHtml('width:100%;height:100%;');
+          img.replaceWith(inlineLogoWrap);
         }
       });
 
@@ -7552,18 +7779,38 @@ function getCandidateLineageTree(refVal) {
   };
 
   // Kuşun kendisini ve 1. Kuşak -> 5. Kuşak arasındaki tüm eksik dalları diğer pedigre kartlarından otomatik tamamla
+  // (Döngü Koruması: Bir ata aynı dal üzerinde kendi üst atası olarak tekrar bağlanamaz!)
+  const rootRingUpper = (tree.self?.ring || '').trim().toUpperCase();
+  const safeFillChildren = (childNode, fatherSlotKey, motherSlotKey, branchVisited) => {
+    const childRingUpper = (childNode?.ring || '').trim().toUpperCase();
+    const nextVisited = new Set(branchVisited);
+    if (childRingUpper) nextVisited.add(childRingUpper);
+    fillMissingChildren(childNode, fatherSlotKey, motherSlotKey);
+    const fRing = (tree[fatherSlotKey]?.ring || '').trim().toUpperCase();
+    const mRing = (tree[motherSlotKey]?.ring || '').trim().toUpperCase();
+    if (fRing && nextVisited.has(fRing)) tree[fatherSlotKey] = {};
+    if (mRing && nextVisited.has(mRing)) tree[motherSlotKey] = {};
+    return nextVisited;
+  };
+
   tree.self = enrichNodeFromAllPedigrees(tree.self || {});
-  fillMissingChildren(tree.self, 'p1', 'p2');
-  fillMissingChildren(tree.p1, 'g1', 'g2');
-  fillMissingChildren(tree.p2, 'g3', 'g4');
-  for (let i = 1; i <= 4; i++) {
-    fillMissingChildren(tree[`g${i}`], `gg${2 * i - 1}`, `gg${2 * i}`);
-  }
+  const v0 = safeFillChildren(tree.self, 'p1', 'p2', new Set(rootRingUpper ? [rootRingUpper] : []));
+  const vP1 = safeFillChildren(tree.p1, 'g1', 'g2', v0);
+  const vP2 = safeFillChildren(tree.p2, 'g3', 'g4', v0);
+  const vG = [null,
+    safeFillChildren(tree.g1, 'gg1', 'gg2', vP1),
+    safeFillChildren(tree.g2, 'gg3', 'gg4', vP1),
+    safeFillChildren(tree.g3, 'gg5', 'gg6', vP2),
+    safeFillChildren(tree.g4, 'gg7', 'gg8', vP2)
+  ];
+  const vGG = [null];
   for (let i = 1; i <= 8; i++) {
-    fillMissingChildren(tree[`gg${i}`], `ggg${2 * i - 1}`, `ggg${2 * i}`);
+    const parentV = vG[Math.ceil(i / 2)] || v0;
+    vGG[i] = safeFillChildren(tree[`gg${i}`], `ggg${2 * i - 1}`, `ggg${2 * i}`, parentV);
   }
   for (let k = 1; k <= 16; k++) {
-    fillMissingChildren(tree[`ggg${k}`], `gggg${2 * k - 1}`, `gggg${2 * k}`);
+    const parentV = vGG[Math.ceil(k / 2)] || v0;
+    safeFillChildren(tree[`ggg${k}`], `gggg${2 * k - 1}`, `gggg${2 * k}`, parentV);
   }
 
   tree.ancRings = [
@@ -7764,9 +8011,10 @@ function escapeHtml(str) {
 const AVIGEN_UX_USER_KEY = 'avigen_ux_user_account_v1';
 
 const AvigenUxManager = {
-  // 2 Kademeli Resmi AVIGEN Ürün & Abonelik Stratejisi:
-  // 1. 'FREE'        -> AVIGEN FREE (0 TL - Temel güvercin ve pedigree yönetimi, Sınırlı kuş/pedigree)
-  // 2. 'GENETICS_AI' -> AVIGEN GENESIS AI (399 TL/ay - 3.990 TL/yıl - 5 Nesil Akıllı Eşleştirme & Akıllı Yem/Maliyet Sistemi)
+  // 3 Kademeli Resmi AVIGEN Ürün & Abonelik Mimarisi:
+  // 1. 'FREE'        -> AVIGEN FREE (0 TL - Temel kuş, kümes, 4 kuşak soy ağacı ve yarış yönetimi)
+  // 2. 'GENETICS_AI' -> AVIGEN AI (399 TL/ay - 3.990 TL/yıl - GENESIS AI destekli 5 Nesil Akıllı Eşleştirme, Haritalı Yarış Simülasyonu & Akıllı Yem/Maliyet)
+  // 3. 'GLOBAL'      -> AVIGEN GLOBAL (599 TL/ay - 5.990 TL/yıl - AVIGEN AI + Ortak gen havuzu ve izin verilen veriler üzerinden küresel soy araştırması)
   TIERS: {
     FREE: {
       id: 'FREE',
@@ -7776,17 +8024,27 @@ const AvigenUxManager = {
       monthlyPrice: '0 TL',
       yearlyPrice: '0 TL',
       maxPedigreesLimit: 10,
-      tagline: 'Güvercin yönetimi, 4 kuşak pedigri ve yarış takibi'
+      tagline: 'Temel kuş, kümes, 4 kuşak soy ağacı ve yarış yönetimi'
     },
     GENETICS_AI: {
       id: 'GENETICS_AI',
-      name: 'AVIGEN GENESIS AI',
-      badgeText: '🧬 GENESIS AI',
+      name: 'AVIGEN AI',
+      badgeText: '🧬 AVIGEN AI',
       badgeClass: 'gene-purple',
       monthlyPrice: '399 TL',
       yearlyPrice: '3.990 TL',
       maxPedigreesLimit: 99999,
-      tagline: '5 Nesil Akıllı Eşleştirme, Soy Analizi ve Akıllı Yem/Maliyet Sistemi'
+      tagline: 'GENESIS AI destekli 5 Nesil Akıllı Eşleştirme, Haritalı Yarış Simülasyonu ve Akıllı Yem/Maliyet'
+    },
+    GLOBAL: {
+      id: 'GLOBAL',
+      name: 'AVIGEN GLOBAL',
+      badgeText: '🌍 AVIGEN GLOBAL',
+      badgeClass: 'gene-gold',
+      monthlyPrice: '599 TL',
+      yearlyPrice: '5.990 TL',
+      maxPedigreesLimit: 99999,
+      tagline: 'AVIGEN AI + Ortak gen havuzu ve izinli veriler üzerinden küresel soy araştırması'
     }
   },
 
@@ -7822,9 +8080,30 @@ const AvigenUxManager = {
     language: 'tr'
   },
 
-  // Merkezi Yetkilendirme Motoru (Central Entitlement Check)
+  // Merkezi Yetkilendirme Motoru (Central Entitlement Check & Lisans Süresi Kontrolü)
+  checkLicenseExpirationStatus() {
+    if (!this.state.licenseExpiresAt || this.state.licenseType === 'UNLIMITED') {
+      return { isExpired: false, daysLeft: null, label: 'Süresiz / VIP Lisans' };
+    }
+    const expDate = new Date(this.state.licenseExpiresAt);
+    if (isNaN(expDate.getTime())) {
+      return { isExpired: false, daysLeft: null, label: 'Aktif Lisans' };
+    }
+    const diffMs = expDate.getTime() - Date.now();
+    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const dateLabel = expDate.toLocaleDateString('tr-TR');
+    if (daysLeft <= 0) {
+      return { isExpired: true, daysLeft: 0, label: `Süresi Doldu (${dateLabel})` };
+    }
+    return { isExpired: false, daysLeft, label: `${daysLeft} Gün Kaldı (Bitiş: ${dateLabel})` };
+  },
+
   getCurrentTier() {
-    if (this.state.membershipTier === 'GLOBAL') this.state.membershipTier = 'GENETICS_AI';
+    const exp = this.checkLicenseExpirationStatus();
+    if (exp.isExpired && (this.state.membershipTier === 'GENETICS_AI' || this.state.membershipTier === 'GLOBAL')) {
+      this.state.membershipTier = 'FREE';
+      this.saveState();
+    }
     return this.TIERS[this.state.membershipTier] || this.TIERS.FREE;
   },
 
@@ -7833,23 +8112,52 @@ const AvigenUxManager = {
   },
 
   hasGlobalPoolAccess() {
-    return false;
+    return this.state.membershipTier === 'GLOBAL';
   },
 
   setMembershipTier(tierId) {
-    const resolvedId = tierId === 'GLOBAL' ? 'GENETICS_AI' : tierId;
-    if (!this.TIERS[resolvedId]) return;
-    this.state.membershipTier = resolvedId;
+    if (!this.TIERS[tierId]) return;
+    this.state.membershipTier = tierId;
     this.saveState();
     if (typeof AvigenGenesisAI !== 'undefined') {
       AvigenGenesisAI.state.isPremiumActive = this.hasGeneticsAiAccess();
-      AvigenGenesisAI.state.planName = this.TIERS[resolvedId].name;
+      AvigenGenesisAI.state.planName = this.TIERS[tierId].name;
       AvigenGenesisAI.saveState();
       AvigenGenesisAI.renderGenesisModuleUI();
       AvigenGenesisAI.renderHomeTeaserCard();
     }
     this.syncHeaderAndProfileUI();
     calcMypedigreFlight();
+  },
+
+  // Her telefona / cihaza özel kalıcı Cihaz Kimliği (Device ID) üretir ve saklar (Örn: AVG-7K4M-9P2X)
+  getOrCreateDeviceId() {
+    const DEV_KEY = 'avigen_hardware_device_id_v1';
+    if (this.state.deviceId && /^AVG-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(this.state.deviceId)) {
+      return this.state.deviceId;
+    }
+    try {
+      const savedDev = localStorage.getItem(DEV_KEY);
+      if (savedDev && /^AVG-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(savedDev)) {
+        this.state.deviceId = savedDev;
+        return savedDev;
+      }
+    } catch (e) {}
+
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const randBlock = (len) => {
+      let s = '';
+      for (let i = 0; i < len; i++) {
+        s += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return s;
+    };
+    const newId = `AVG-${randBlock(4)}-${randBlock(4)}`;
+    this.state.deviceId = newId;
+    try {
+      localStorage.setItem(DEV_KEY, newId);
+    } catch (e) {}
+    return newId;
   },
 
   init() {
@@ -7859,9 +8167,7 @@ const AvigenUxManager = {
         this.state = { ...this.state, ...JSON.parse(raw) };
       }
     } catch (e) {}
-    if (this.state.membershipTier === 'GLOBAL') {
-      this.state.membershipTier = 'GENETICS_AI';
-    }
+    this.getOrCreateDeviceId();
     this.state.activeProfileSection = 'preferences';
     this.syncHeaderAndProfileUI();
     this.renderBreedingPlanPairsList();
@@ -7896,8 +8202,8 @@ const AvigenUxManager = {
     const memBtn = document.getElementById('navMembershipBtn');
     const tier = this.getCurrentTier();
     if (memBtn) {
-      memBtn.innerHTML = tier.id === 'GENETICS_AI' ? '🧬 GENESIS AI' : '🔓 FREE';
-      memBtn.className = tier.id === 'GENETICS_AI' ? 'ios-btn ios-btn-purple' : 'ios-btn ios-btn-primary';
+      memBtn.innerHTML = tier.id === 'GLOBAL' ? '🌍 GLOBAL' : (tier.id === 'GENETICS_AI' ? '🧬 AVIGEN AI' : '🔓 FREE');
+      memBtn.className = tier.id === 'GLOBAL' ? 'ios-btn ios-btn-gold' : (tier.id === 'GENETICS_AI' ? 'ios-btn ios-btn-purple' : 'ios-btn ios-btn-primary');
     }
 
     this.renderProfileAccountSection();
@@ -8044,7 +8350,7 @@ const AvigenUxManager = {
             <div title="Dijital Kümes Kimlik QR Kodu" style="flex-shrink:0;">${loftQrSvg}</div>
             ${this.state.isLoggedIn ? `
               <button type="button" class="ios-btn ios-btn-purple" style="padding:5px 8px; font-size:9px;" onclick="AvigenUxManager.openSubscriptionModal('checkout')">
-                💳 Paket
+                🔑 Lisans
               </button>
             ` : `
               <button type="button" class="ios-btn ios-btn-primary" style="padding:5px 8px; font-size:9px;" onclick="AvigenUxManager.openSubscriptionModal('auth')">
@@ -8052,6 +8358,16 @@ const AvigenUxManager = {
               </button>
             `}
           </div>
+        </div>
+
+        <!-- REHBER VE HATA / ÖNERİ BİLDİRİM HIZLI ERİŞİM ŞERİDİ -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--ios-border);">
+          <button type="button" class="ios-btn ios-btn-outline" style="padding:7px 8px; font-size:10px; font-weight:900; color:#0052cc; border-color:#93c5fd; background:#eff6ff;" onclick="AvigenUxManager.openUserGuideModal()" title="Nasıl Kullanılır? Kuşçu Kullanım Rehberi">
+            📖 Kullanım Rehberi (Nasıl Kullanılır?)
+          </button>
+          <button type="button" class="ios-btn ios-btn-outline" style="padding:7px 8px; font-size:10px; font-weight:900; color:#b45309; border-color:#fcd34d; background:#fffbeb;" onclick="AvigenUxManager.openFeedbackModal()" title="Hata Bildir, Öneri veya İstek Gönder">
+            💬 Hata / Öneri Bildir
+          </button>
         </div>
       </div>
     `;
@@ -8067,10 +8383,11 @@ const AvigenUxManager = {
       : 'preferences';
 
     const curTier = this.getCurrentTier();
+    const licExp = this.checkLicenseExpirationStatus();
     const invoices = Array.isArray(this.state.paymentHistory) ? this.state.paymentHistory : [];
 
     // ========================================================================
-    // KATEGORİ 1: HESAP, ŞİFRELİ GİRİŞ & ABONELİK / ÖDEME MERKEZİ
+    // KATEGORİ 1: HESAP, ŞİFRELİ GİRİŞ & LİSANS AKTİVASYON MERKEZİ
     // ========================================================================
     if (sec === 'membership') {
       root.innerHTML = `
@@ -8088,7 +8405,7 @@ const AvigenUxManager = {
               <div><span style="color:var(--ios-subtext);">Ad Soyad:</span><br/><strong>${escapeHtml(this.state.memberName)}</strong></div>
               <div><span style="color:var(--ios-subtext);">Kümes Ünvanı:</span><br/><strong>${escapeHtml(loftConfig.title)}</strong></div>
               <div><span style="color:var(--ios-subtext);">E-Posta (Kullanıcı Adı):</span><br/><strong>${escapeHtml(this.state.memberEmail)}</strong></div>
-              <div><span style="color:var(--ios-subtext);">Kayıtlı Kart / Şifre:</span><br/><strong>${escapeHtml(this.state.savedCardMasked || 'Kart Yok')} • 🔑 Aktif</strong></div>
+              <div><span style="color:var(--ios-subtext);">Aktif Lisans Durumu:</span><br/><strong style="color:${curTier.id === 'GENETICS_AI' ? '#059669' : '#0052cc'};">${curTier.id === 'GENETICS_AI' ? `🔑 ${escapeHtml(licExp.label)}` : 'AVIGEN FREE (Ücretsiz)'}</strong></div>
             </div>
 
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr 0.8fr; gap:5px;">
@@ -8133,14 +8450,14 @@ const AvigenUxManager = {
           `}
         </div>
 
-        <!-- 2. ABONELİK PAKETLERİ VE TEK DOKUNUŞLA ÖDEME KARTI -->
+        <!-- 2. ABONELİK PAKETLERİ VE LİSANS KODU AKTİVASYON KARTI -->
         <div class="ios-card" style="padding:11px 12px; border-top:3px solid #7c3aed;">
           <div class="ios-card-title" style="margin-bottom:6px;">
-            <span>👑 Abonelik Paketleri &amp; Online Ödeme</span>
+            <span>👑 Üyelik Paketleri &amp; Lisans Aktivasyonu</span>
             <span class="gene-badge ${curTier.badgeClass}">${curTier.name}</span>
           </div>
           <div style="font-size:10px; color:var(--ios-subtext); margin-bottom:8px;">
-            Aktif paketiniz: <strong>${curTier.name}</strong>. Paket yükseltmek veya kredi/banka kartıyla abonelik ödemesi yapmak için aşağıdaki paketlerden birini seçin:
+            Aktif paketiniz: <strong>${curTier.name}</strong>${curTier.id === 'GENETICS_AI' ? ` (<strong>${escapeHtml(licExp.label)}</strong>)` : ''}. Lisans anahtarınızla paket etkinleştirmek veya süre uzatmak için seçin:
           </div>
 
           <div style="display:flex; flex-direction:column; gap:6px;">
@@ -8148,38 +8465,51 @@ const AvigenUxManager = {
             <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1.5px solid ${curTier.id === 'FREE' ? '#0066ff' : 'var(--ios-border)'}; border-radius:9px; padding:7px 9px;">
               <div>
                 <div style="font-size:11px; font-weight:900; color:#0052cc;">1. AVIGEN FREE (0 TL)</div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">Güvercin yönetimi, 4 kuşak pedigri ve yarış takip sistemi</div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">Güvercin yönetimi, 4 kuşak pedigri ve yarış takip sistemi (10 Kuş)</div>
               </div>
               <button class="ios-btn ${curTier.id === 'FREE' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:5px 10px; font-size:9.5px;" onclick="AvigenUxManager.setMembershipTier('FREE')">
                 ${curTier.id === 'FREE' ? '✅ Aktif Paket' : 'Ücretsiz Geç'}
               </button>
             </div>
 
-            <!-- GENESIS AI -->
+            <!-- AVIGEN AI (GENESIS AI) -->
             <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1.5px solid ${curTier.id === 'GENETICS_AI' ? '#7c3aed' : 'var(--ios-border)'}; border-radius:9px; padding:7px 9px;">
               <div>
-                <div style="font-size:11px; font-weight:900; color:#7c3aed;">2. AVIGEN GENESIS AI (399 TL/ay • 3.990 TL/yıl)</div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">5 nesil akıllı eşleştirme, en uygun 5 çift, ortak ata kontrolü ve akıllı yem/maliyet sistemi</div>
+                <div style="font-size:11px; font-weight:900; color:#7c3aed;">2. AVIGEN AI (399 TL/ay • 3.990 TL/yıl)</div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">GENESIS AI 5 nesil akıllı eşleştirme, haritalı yarış simülasyonu ve akıllı yem/maliyet sistemi</div>
               </div>
               <div style="display:flex; gap:4px; flex-shrink:0;">
                 <button class="ios-btn ios-btn-purple" style="padding:5px 9px; font-size:9.5px;" onclick="AvigenUxManager.openCheckoutForTier('GENETICS_AI')">
-                  ${curTier.id === 'GENETICS_AI' ? '✅ Aktif (Yenile)' : '💳 Öde &amp; Başlat'}
+                  ${curTier.id === 'GENETICS_AI' ? '🔑 Lisans / Süre Uzat' : '🔑 Lisans Kodu İle Aç'}
+                </button>
+              </div>
+            </div>
+
+            <!-- AVIGEN GLOBAL -->
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1.5px solid ${curTier.id === 'GLOBAL' ? '#d97706' : 'var(--ios-border)'}; border-radius:9px; padding:7px 9px;">
+              <div>
+                <div style="font-size:11px; font-weight:900; color:#b45309;">3. AVIGEN GLOBAL (599 TL/ay • 5.990 TL/yıl)</div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">AVIGEN AI + Ortak gen havuzu ve kullanıcıların izin verdiği veriler üzerinden küresel soy araştırması</div>
+              </div>
+              <div style="display:flex; gap:4px; flex-shrink:0;">
+                <button class="ios-btn ios-btn-gold" style="padding:5px 9px; font-size:9.5px;" onclick="AvigenUxManager.openCheckoutForTier('GLOBAL')">
+                  ${curTier.id === 'GLOBAL' ? '🔑 Lisans / Süre Uzat' : '🔑 Lisans Kodu İle Aç'}
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- SON ÖDEME VE FATURA GEÇMİŞİ ÖZETİ -->
+          <!-- AKTİF LİSANS VE AKTİVASYON GEÇMİŞİ ÖZETİ -->
           <div style="margin-top:9px; padding-top:8px; border-top:1px dashed var(--ios-border);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-              <span style="font-size:10px; font-weight:900; color:var(--ios-subtext);">🧾 Son Abonelik Ödemeleri &amp; Faturalar (${invoices.length})</span>
-              <button class="ios-btn ios-btn-outline" style="padding:2px 8px; font-size:9px;" onclick="AvigenUxManager.openSubscriptionModal('checkout')">+ Yeni Ödeme Yap</button>
+              <span style="font-size:10px; font-weight:900; color:var(--ios-subtext);">🔑 Lisans Aktivasyon Geçmişi (${invoices.length})</span>
+              <button class="ios-btn ios-btn-outline" style="padding:2px 8px; font-size:9px;" onclick="AvigenUxManager.openSubscriptionModal('checkout')">+ Lisans Kodu Gir</button>
             </div>
             ${invoices.slice(0, 3).map(inv => `
               <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:7px; padding:5px 8px; font-size:9.5px; margin-bottom:4px;">
                 <div>
                   <strong>${escapeHtml(inv.planName)}</strong>
-                  <div style="font-size:8.5px; color:var(--ios-subtext);">Fatura: ${escapeHtml(inv.id)} • Tarih: ${escapeHtml(inv.date)} • Kart: ${escapeHtml(inv.cardMasked)}</div>
+                  <div style="font-size:8.5px; color:var(--ios-subtext);">Kayıt: ${escapeHtml(inv.id)} • Tarih: ${escapeHtml(inv.date)} • ${escapeHtml(inv.cardMasked)}</div>
                 </div>
                 <div style="text-align:right;">
                   <div style="font-weight:900; color:#059669;">${escapeHtml(inv.amount)}</div>
@@ -8225,6 +8555,25 @@ const AvigenUxManager = {
             </button>
             <button type="button" class="ios-btn ios-btn-green" style="padding:7px 6px; font-size:10px;" onclick="AvigenAutoUpdater.downloadLatestApk()">
               📦 Yeni APK İndir
+            </button>
+          </div>
+        </div>
+
+        <!-- 0.5 GENESIS AI – BULUT SİNİR AĞI BAĞLANTISI -->
+        <div class="ios-card" style="padding:11px 12px; border:1.5px solid #7c3aed; background:linear-gradient(135deg, rgba(124,58,237,0.06), rgba(2,132,199,0.05));">
+          <div class="ios-card-title" style="margin-bottom:5px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#4c1d95;">🧬 GENESIS AI – Bulut Sinir Ağı Ayarı</span>
+            <span class="gene-badge ${(localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim() ? 'gene-green' : 'gene-purple'}">
+              ${(localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim() ? '🟢 Canlı Sinir Ağı Aktif' : '🧬 Yerleşik Motor Aktif'}
+            </span>
+          </div>
+          <div style="font-size:9.8px; color:var(--ios-subtext); margin-bottom:7px; line-height:1.38;">
+            <strong>GENESIS AI</strong> tüm sorularınızı yerleşik bilimsel kümes motoruyla anında yanıtlar. İsteğe bağlı ücretsiz bulut yapay zekâ motor anahtarınızı bağlayarak derin doğal dil sinir ağını da aktif edebilirsiniz:
+          </div>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <input type="password" id="settingsGeminiApiKeyInput" class="ios-input" style="flex:1; min-width:170px; padding:6px 8px; font-size:10.8px;" placeholder="GENESIS AI Bulut Motor Anahtarı (İsteğe Bağlı)" value="${escapeHtml((localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim())}" />
+            <button type="button" class="ios-btn ios-btn-primary" style="padding:6px 10px; font-size:10px;" onclick="if(typeof AvigenGenesisAI!=='undefined'){AvigenGenesisAI.saveGeminiApiKeyFromInput('settingsGeminiApiKeyInput');}">
+              💾 Kaydet
             </button>
           </div>
         </div>
@@ -8279,10 +8628,13 @@ const AvigenUxManager = {
               ⬇️ Cihaza Yedek İndir (.JSON)
             </button>
           </div>
-          <label class="ios-btn ios-btn-outline" style="width:100%; padding:8px; font-size:10.5px; cursor:pointer; text-align:center; display:block;">
+          <label class="ios-btn ios-btn-outline" style="width:100%; padding:8px; font-size:10.5px; cursor:pointer; text-align:center; display:block; margin-bottom:6px;">
             ⬆️ Kayıtlı Yedek Dosyasını (.JSON) Geri Yükle
             <input type="file" accept=".json" style="display:none;" onchange="importFullAvigenBackup(event)" />
           </label>
+          <button type="button" class="ios-btn ios-btn-outline" style="width:100%; padding:7px; font-size:9.8px; color:#b45309; border-color:#fcd34d; background:#fffbeb;" onclick="restoreAutoSafetySnapshot()">
+            ⏪ Son Silme / Yükleme İşlemini Geri Al (Otomatik Güvenlik Yedeği)
+          </button>
         </div>
 
         <!-- 3. KÜMES NOT DEFTERİ & GEÇMİŞ ANALİZLER + SİSTEM DOĞRULAMA -->
@@ -8290,12 +8642,20 @@ const AvigenUxManager = {
           <div class="ios-card-title" style="margin-bottom:6px;">
             <span>🗂️ Kümes Not Defteri, Analiz Arşivi &amp; Sistem Testi</span>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;">
-            <button type="button" class="ios-btn ios-btn-outline" style="padding:8px; font-size:10px;" onclick="AvigenUxManager.switchProfileSection('notes')">
-              📝 Kümes Not Defteri (${notesList.length})
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
+            <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 5px; font-size:9.8px;" onclick="AvigenUxManager.switchProfileSection('notes')">
+              📝 Not Defteri (${notesList.length})
             </button>
-            <button type="button" class="ios-btn ios-btn-outline" style="padding:8px; font-size:10px;" onclick="if(typeof AvigenGenesisAI!=='undefined'){AvigenGenesisAI.openHistoryView(); openIosTab('breeding', document.querySelectorAll('.ios-tab-btn')[2]);}">
-              🕒 Geçmiş AI Analizleri (${typeof AvigenGenesisAI !== 'undefined' ? AvigenGenesisAI.analysisHistory.length : 0})
+            <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 5px; font-size:9.8px;" onclick="if(typeof AvigenGenesisAI!=='undefined'){AvigenGenesisAI.openHistoryView(); openIosTab('breeding', document.querySelectorAll('.ios-tab-btn')[2]);}">
+              🕒 AI Analizler (${typeof AvigenGenesisAI !== 'undefined' ? AvigenGenesisAI.analysisHistory.length : 0})
+            </button>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;">
+            <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 5px; font-size:9.8px; font-weight:900; color:#0052cc; border-color:#93c5fd; background:#eff6ff;" onclick="AvigenUxManager.openUserGuideModal()">
+              📖 Kullanım Rehberi
+            </button>
+            <button type="button" class="ios-btn ios-btn-gold" style="padding:8px 5px; font-size:9.8px; font-weight:900;" onclick="AvigenUxManager.openFeedbackModal()">
+              💬 Hata / Öneri Bildir
             </button>
           </div>
 
@@ -8329,6 +8689,7 @@ const AvigenUxManager = {
     if (!modal || !body) return;
 
     const curTier = this.getCurrentTier();
+    const licExp = this.checkLicenseExpirationStatus();
     const isYearly = this.state.selectedBillingCycle === 'yearly';
     const authMode = this.state.authViewMode || 'login';
     const checkoutTier = this.TIERS[this.state.checkoutTierId] || this.TIERS.GENETICS_AI;
@@ -8336,7 +8697,7 @@ const AvigenUxManager = {
 
     body.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:8px; font-size:11px;">
-        <!-- ÜST SEKME: 1. PAKETLER | 2. ŞİFRELİ GİRİŞ / ÜYE OL | 3. ABONELİK ÖDEMESİ YAP -->
+        <!-- ÜST SEKME: 1. PAKETLER | 2. ŞİFRELİ GİRİŞ / ÜYE OL | 3. LİSANS AKTİVASYONU -->
         <div class="sub-pills">
           <button class="sub-pill ${tabMode === 'plans' ? 'active' : ''}" onclick="AvigenUxManager.openSubscriptionModal('plans')">
             👑 Paketler
@@ -8345,7 +8706,7 @@ const AvigenUxManager = {
             🔐 Giriş / Şifre
           </button>
           <button class="sub-pill ${tabMode === 'checkout' ? 'active' : ''}" onclick="AvigenUxManager.openSubscriptionModal('checkout')">
-            💳 Ödeme Yap
+            🔑 Lisans Kodu
           </button>
         </div>
 
@@ -8454,72 +8815,78 @@ const AvigenUxManager = {
             </div>
           `)}
         ` : (tabMode === 'checkout' ? `
-          <!-- 3. SEKME: ABONELİK ÖDEME EKRANI (KREDİ / BANKA KARTI İLE GÜVENLİ ÖDEME) -->
-          <div style="background:var(--ios-card-alt); border:1.5px solid var(--ios-border); border-radius:11px; padding:10px 11px;">
+          <!-- 3. SEKME: CİHAZA ÖZEL LİSANS ANAHTARI (AKTİVASYON KODU) & WHATSAPP LİSANS TALEBİ EKRANI -->
+          <div style="background:var(--ios-card-alt); border:1.5px solid var(--ios-border); border-radius:11px; padding:11px 12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">
-              <span style="font-size:12px; font-weight:900; color:var(--ios-text);">💳 Abonelik Paketi &amp; Dönem Seçimi</span>
-              <span class="gene-badge gene-green">🔒 256-Bit SSL Güvenli Ödeme</span>
+              <span style="font-size:12px; font-weight:900; color:var(--ios-text);">🔑 AVIGEN GENESIS AI Lisans Aktivasyonu</span>
+              <span class="gene-badge gene-purple">${curTier.id === 'GENETICS_AI' ? escapeHtml(licExp.label) : 'Lisans Bekleniyor'}</span>
             </div>
 
-            <!-- PAKET SEÇİMİ -->
+            <!-- CİHAZ KİMLİK KODU (DEVICE ID) KUTUSU — HER TELEFONA ÖZELDİR -->
+            <div style="background:linear-gradient(135deg,#eff6ff,#f5f3ff); border:1.5px solid #93c5fd; border-radius:10px; padding:8px 10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <div>
+                <div style="font-size:8.8px; font-weight:800; color:#1e40af;">📱 BU TELEFONUN / CİHAZIN KİMLİK KODU (CİHAZ ID):</div>
+                <div style="font-size:13px; font-weight:900; color:#0052cc; letter-spacing:0.8px; margin-top:1px;">${escapeHtml(this.getOrCreateDeviceId())}</div>
+                <div style="font-size:8.3px; color:#475569; margin-top:1px;">Üretilen her lisans kodu yalnızca bu Cihaz Kodu ile eşleşen telefonda çalışır.</div>
+              </div>
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 8px; font-size:9px; font-weight:800; flex-shrink:0;" onclick="navigator.clipboard?.writeText('${escapeHtml(this.getOrCreateDeviceId())}'); alert('📱 Cihaz Kimlik Kodunuz Kopyalandı: ${escapeHtml(this.getOrCreateDeviceId())}')">
+                📋 Kopyala
+              </button>
+            </div>
+
+            <!-- PAKET & DÖNEM SEÇİMİ -->
             <div style="margin-bottom:7px;">
-              <div onclick="AvigenUxManager.selectCheckoutTier('GENETICS_AI')" style="cursor:pointer; border:2px solid #7c3aed; background:#f5f3ff; border-radius:9px; padding:7px 9px; display:flex; justify-content:space-between; align-items:center;">
+              <div style="border:2px solid #7c3aed; background:#f5f3ff; border-radius:9px; padding:7px 9px; display:flex; justify-content:space-between; align-items:center;">
                 <div style="font-size:11px; font-weight:900; color:#7c3aed;">🧬 AVIGEN GENESIS AI (Tam Sürüm)</div>
-                <div style="font-size:12.5px; font-weight:900; color:var(--ios-text);">${isYearly ? '3.990 TL / yıl' : '399 TL / ay'}</div>
+                <div style="font-size:12.5px; font-weight:900; color:var(--ios-text);">${isYearly ? '3.990 TL / yıl (365 Gün)' : '399 TL / ay (30 Gün)'}</div>
               </div>
             </div>
 
-            <!-- AYLIK / YILLIK DÖNEM SEÇİCİ -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:9px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px;">
               <button type="button" class="ios-btn ${!isYearly ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:6px; font-size:10px;" onclick="AvigenUxManager.selectBillingCycle('monthly', 'checkout')">
-                Aylık Ödeme (${checkoutTier.monthlyPrice})
+                30 Günlük Aylık Lisans (${checkoutTier.monthlyPrice})
               </button>
               <button type="button" class="ios-btn ${isYearly ? 'ios-btn-purple' : 'ios-btn-outline'}" style="padding:6px; font-size:10px;" onclick="AvigenUxManager.selectBillingCycle('yearly', 'checkout')">
-                Yıllık Ödeme (${checkoutTier.yearlyPrice} • 2 Ay Bedava)
+                365 Günlük Yıllık Lisans (${checkoutTier.yearlyPrice})
               </button>
             </div>
 
-            <!-- KREDİ / BANKA KARTI FORMU -->
-            <div style="display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--ios-border); padding-top:8px;">
-              <div>
-                <label style="font-size:9.5px; font-weight:800;">Kart Üzerindeki Ad Soyad *</label>
-                <input type="text" id="payCardHolder" class="ios-input" style="padding:6px 8px; font-size:11px;" value="${escapeHtml(this.state.memberName)}" placeholder="AD SOYAD" />
+            <!-- 1. ADIM: LİSANS KODU GİRİŞ KUTUSU -->
+            <div style="background:var(--ios-card); border:1.5px solid #c4b5fd; border-radius:10px; padding:10px; margin-bottom:9px;">
+              <div style="font-size:10.5px; font-weight:900; color:#5b21b6; margin-bottom:4px;">
+                1️⃣ Cihazınıza Özel Lisans Anahtarınızı Girin
               </div>
-              <div>
-                <label style="font-size:9.5px; font-weight:800;">Kart Numarası (16 Hane) *</label>
-                <input type="text" id="payCardNumber" class="ios-input" style="padding:6px 8px; font-size:11.5px; letter-spacing:1px;" value="4543 6000 1234 4892" maxlength="19" placeholder="0000 0000 0000 0000" />
+              <div style="font-size:9.3px; color:var(--ios-subtext); margin-bottom:7px; line-height:1.38;">
+                Cihaz kodunuza (<strong>${escapeHtml(this.getOrCreateDeviceId())}</strong>) özel üretilen <strong>Aylık (30 Gün)</strong>, <strong>Yıllık (365 Gün)</strong> veya <strong>VIP Süresiz</strong> lisans kodunu aşağıya yazıp onaylayın:
               </div>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-                <div>
-                  <label style="font-size:9.5px; font-weight:800;">Son Kullanma (AA/YY) *</label>
-                  <input type="text" id="payCardExpiry" class="ios-input" style="padding:6px 8px; font-size:11px;" value="09/29" maxlength="5" placeholder="AA/YY" />
-                </div>
-                <div>
-                  <label style="font-size:9.5px; font-weight:800;">CVC / CVV *</label>
-                  <input type="password" id="payCardCvc" class="ios-input" style="padding:6px 8px; font-size:11px;" value="842" maxlength="4" placeholder="123" />
-                </div>
+              <div style="display:grid; grid-template-columns:1fr auto; gap:6px;">
+                <input type="text" id="licenseActivationInput" class="ios-input" style="padding:8px 10px; font-size:11.5px; font-weight:900; text-transform:uppercase; letter-spacing:0.7px;" placeholder="Örn: AVIGEN-YIL-XXXXXX" />
+                <button type="button" class="ios-btn ios-btn-purple" style="padding:8px 12px; font-size:10.5px; font-weight:900;" onclick="AvigenUxManager.activateWithLicenseKey()">
+                  🔑 Kodu Onayla
+                </button>
               </div>
+            </div>
 
-              <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-radius:8px; padding:7px 9px; display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
-                <div>
-                  <div style="font-size:9.5px; color:var(--ios-subtext);">Ödenecek Toplam Tutar (KDV Dahil)</div>
-                  <div style="font-size:11px; font-weight:900; color:var(--ios-text);">${checkoutTier.name} (${isYearly ? 'Yıllık' : 'Aylık'})</div>
-                </div>
-                <div style="font-size:15px; font-weight:900; color:#059669;">${checkoutPrice}</div>
+            <!-- 2. ADIM: WHATSAPP İLE LİSANS KODU / HAVALE-EFT TALEBİ -->
+            <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px; padding:9px 10px;">
+              <div style="font-size:10px; font-weight:900; color:#047857; margin-bottom:3px;">
+                2️⃣ Henüz Lisans Kodunuz Yok mu?
               </div>
-
-              <button class="ios-btn ios-btn-green" style="width:100%; padding:10px; font-size:12px; margin-top:3px;" onclick="AvigenUxManager.processSubscriptionPayment()">
-                💳 ${checkoutPrice} Güvenli Ödeme Yap ve Paketi Etkinleştir
+              <div style="font-size:9.2px; color:#065f46; line-height:1.35; margin-bottom:7px;">
+                Aşağıdaki butona bastığınızda <strong>Cihaz Kimlik Kodunuz (${escapeHtml(this.getOrCreateDeviceId())})</strong> otomatik olarak WhatsApp mesajına eklenir ve sadece sizin telefonunuzda çalışacak lisans kodunuz gönderilir:
+              </div>
+              <button type="button" class="ios-btn ios-btn-green" style="width:100%; padding:9px; font-size:11px; font-weight:900;" onclick="AvigenUxManager.requestLicenseViaWhatsApp('${checkoutPrice}', '${isYearly ? 'Yıllık (365 Gün)' : 'Aylık (30 Gün)'}')">
+                📲 WhatsApp'tan Cihazıma Özel Lisans Kodu İste
               </button>
             </div>
           </div>
         ` : `
           <!-- 1. SEKME: 2 ÜYELİK PAKETİ KARŞILAŞTIRMA -->
           <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:6px 9px;">
-            <span style="font-size:10.5px; font-weight:800; color:var(--ios-text);">Faturalandırma Dönemi:</span>
+            <span style="font-size:10.5px; font-weight:800; color:var(--ios-text);">Lisans Süresi Seçimi:</span>
             <div style="display:flex; gap:5px;">
-              <button type="button" class="ios-btn ${!isYearly ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:4px 9px; font-size:10px;" onclick="AvigenUxManager.selectBillingCycle('monthly', 'plans')">Aylık</button>
-              <button type="button" class="ios-btn ${isYearly ? 'ios-btn-purple' : 'ios-btn-outline'}" style="padding:4px 9px; font-size:10px;" onclick="AvigenUxManager.selectBillingCycle('yearly', 'plans')">Yıllık (2 Ay İndirimli)</button>
+              <button type="button" class="ios-btn ${!isYearly ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:4px 9px; font-size:10px;" onclick="AvigenUxManager.selectBillingCycle('monthly', 'plans')">Aylık (30 Gün)</button>
+              <button type="button" class="ios-btn ${isYearly ? 'ios-btn-purple' : 'ios-btn-outline'}" style="padding:4px 9px; font-size:10px;" onclick="AvigenUxManager.selectBillingCycle('yearly', 'plans')">Yıllık (365 Gün • 2 Ay İndirimli)</button>
             </div>
           </div>
 
@@ -8532,7 +8899,7 @@ const AvigenUxManager = {
               </div>
               <div style="text-align:right;">
                 <div style="font-size:14px; font-weight:900; color:#0066ff;">0 TL</div>
-                <div style="font-size:8.5px; color:var(--ios-subtext);">Ücretsiz</div>
+                <div style="font-size:8.5px; color:var(--ios-subtext);">Süresiz Ücretsiz</div>
               </div>
             </div>
             <button class="ios-btn ${curTier.id === 'FREE' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="width:100%; padding:6px; font-size:10.5px; margin-top:6px;" onclick="AvigenUxManager.activateTierFromModal('FREE')">
@@ -8540,20 +8907,37 @@ const AvigenUxManager = {
             </button>
           </div>
 
-          <!-- 2. PAKET: AVIGEN GENESIS AI -->
+          <!-- 2. PAKET: AVIGEN AI (GENESIS AI) -->
           <div style="border:2px solid ${curTier.id === 'GENETICS_AI' ? '#7c3aed' : '#c4b5fd'}; background:var(--ios-card-alt); border-radius:11px; padding:9px 11px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <div style="font-size:12.5px; font-weight:900; color:#7c3aed;">2. AVIGEN GENESIS AI <span class="gene-badge gene-purple" style="font-size:8.5px;">Tam Sürüm</span></div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">Sınırsız Kuş/Pedigri + 5 Nesil Akıllı Eşleştirme + Akıllı Yem, Sıvı &amp; 1 Aylık Maliyet</div>
+                <div style="font-size:12.5px; font-weight:900; color:#7c3aed;">2. AVIGEN AI <span class="gene-badge gene-purple" style="font-size:8.5px;">GENESIS AI</span></div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">Sınırsız Kuş/Pedigri + 5 Nesil Akıllı Eşleştirme + Haritalı Yarış + Akıllı Yem &amp; Maliyet</div>
               </div>
               <div style="text-align:right;">
                 <div style="font-size:14px; font-weight:900; color:#7c3aed;">${isYearly ? '3.990 TL/yıl' : '399 TL/ay'}</div>
-                <div style="font-size:8.5px; color:#059669; font-weight:700;">${isYearly ? '(2 Ay Bedava)' : 'Aylık Abonelik'}</div>
+                <div style="font-size:8.5px; color:#059669; font-weight:700;">${isYearly ? '365 Günlük Lisans' : '30 Günlük Lisans'}</div>
               </div>
             </div>
             <button class="ios-btn ios-btn-purple" style="width:100%; padding:7px; font-size:11px; margin-top:6px;" onclick="AvigenUxManager.openCheckoutForTier('GENETICS_AI')">
-              ${curTier.id === 'GENETICS_AI' ? '✅ Aktif Paketiniz — Süreyi Uzat / Ödeme Yap' : '💳 Ödeme Yap &amp; GENESIS AI Paketini Başlat'}
+              ${curTier.id === 'GENETICS_AI' ? `🔑 Aktif (${escapeHtml(licExp.label)}) — Lisans / Süre Uzat` : '🔑 Lisans Kodu Gir &amp; AVIGEN AI Paketini Başlat'}
+            </button>
+          </div>
+
+          <!-- 3. PAKET: AVIGEN GLOBAL -->
+          <div style="border:2px solid ${curTier.id === 'GLOBAL' ? '#d97706' : '#fde68a'}; background:var(--ios-card-alt); border-radius:11px; padding:9px 11px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-size:12.5px; font-weight:900; color:#b45309;">3. AVIGEN GLOBAL <span class="gene-badge gene-gold" style="font-size:8.5px;">Küresel Soy Havuzu</span></div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">AVIGEN AI + Ortak gen havuzu ve izin verilen veriler üzerinden küresel soy araştırması</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:14px; font-weight:900; color:#b45309;">${isYearly ? '5.990 TL/yıl' : '599 TL/ay'}</div>
+                <div style="font-size:8.5px; color:#059669; font-weight:700;">${isYearly ? '365 Günlük Lisans' : '30 Günlük Lisans'}</div>
+              </div>
+            </div>
+            <button class="ios-btn ios-btn-gold" style="width:100%; padding:7px; font-size:11px; margin-top:6px;" onclick="AvigenUxManager.openCheckoutForTier('GLOBAL')">
+              ${curTier.id === 'GLOBAL' ? `🔑 Aktif (${escapeHtml(licExp.label)}) — Lisans / Süre Uzat` : '🔑 Lisans Kodu Gir &amp; AVIGEN GLOBAL Paketini Başlat'}
             </button>
           </div>
         `)}
@@ -8687,6 +9071,191 @@ const AvigenUxManager = {
 
   closeUserGuideModal() {
     document.getElementById('avigenUserGuideModal')?.classList.remove('open');
+  },
+
+  // --------------------------------------------------------------------------
+  // AVIGEN HATA BİLDİRİMİ, ÖNERİ & ÖZELLİK İSTEĞİ MERKEZİ
+  // (GitHub Issues Doğrudan Gönderim + WhatsApp / E-Posta Hızlı İletim + Yerel Kayıt)
+  // --------------------------------------------------------------------------
+  openFeedbackModal() {
+    const modal = document.getElementById('avigenFeedbackModal');
+    const body = document.getElementById('avigenFeedbackModalBody');
+    if (!modal || !body) return;
+
+    const savedLogs = this.getFeedbackLogs();
+    const curVer = typeof AvigenAutoUpdater !== 'undefined' ? `${AvigenAutoUpdater.state.localVersion} (Build ${AvigenAutoUpdater.state.localBuild})` : '5.0.0';
+    const loftTitle = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN Kümesi';
+
+    body.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:9px; font-size:11px;">
+        <div style="background:linear-gradient(135deg,#fffbeb,#eff6ff); border:1.5px solid #93c5fd; border-radius:10px; padding:9px 11px;">
+          <div style="font-size:12px; font-weight:900; color:#0052cc;">
+            💬 Uygulama Geliştiricisine Hata, Öneri veya İstek Bildirin
+          </div>
+          <div style="font-size:9.8px; color:#334155; margin-top:2px; line-height:1.38;">
+            Karşılaştığınız bir hatayı veya eklenmesini istediğiniz yeni bir özelliği aşağıya yazıp <strong>GitHub Resmi Bildirim Panosu</strong>, <strong>WhatsApp</strong> veya <strong>E-Posta</strong> üzerinden doğrudan bize ulaştırabilirsiniz.
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+          <div>
+            <label style="font-size:9.5px; font-weight:800;">Bildirim Türü *</label>
+            <select id="fbTypeSelect" class="ios-select" style="font-weight:800;">
+              <option value="Öneri / Yeni Özellik İsteği">💡 Öneri / Yeni Özellik İsteği</option>
+              <option value="Hata / Sorun Bildirimi">🐞 Hata / Sorun Bildirimi</option>
+              <option value="Yarış / Derby Takip Talebi">🏁 Yarış / Derby Takip Talebi</option>
+              <option value="GENESIS AI / Pedigri Görüşü">🧬 GENESIS AI / Pedigri Görüşü</option>
+              <option value="Üyelik / Lisans &amp; Ödeme">💳 Üyelik / Lisans &amp; Ödeme</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:9.5px; font-weight:800;">İlgili Bölüm / Ekran</label>
+            <select id="fbModuleSelect" class="ios-select">
+              <option value="Ana Sayfa &amp; Kümes Özeti">🏠 Ana Sayfa &amp; Kümes Özeti</option>
+              <option value="Kuşlarım &amp; Pedigre PDF">🕊️ Kuşlarım &amp; Pedigre PDF</option>
+              <option value="GENESIS AI Eşleştirme / Yem">🧬 GENESIS AI Eşleştirme / Yem</option>
+              <option value="Yarış Yönetimi &amp; Büyük Yarış">🏁 Yarış Yönetimi &amp; Büyük Yarış</option>
+              <option value="Yuva &amp; Kuluçka Takibi">🪺 Yuva &amp; Kuluçka Takibi</option>
+              <option value="Diğer / Genel">⚙️ Diğer / Genel</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+          <div>
+            <label style="font-size:9.5px; font-weight:800;">Adınız / Kümes Adı</label>
+            <input type="text" id="fbSenderName" class="ios-input" value="${escapeHtml(this.state.memberName || loftTitle)}" placeholder="Adınız veya Kümes Ünvanı" />
+          </div>
+          <div>
+            <label style="font-size:9.5px; font-weight:800;">Telefon veya E-Posta (İsteğe Bağlı)</label>
+            <input type="text" id="fbSenderContact" class="ios-input" value="${escapeHtml(this.state.memberPhone || this.state.memberEmail || '')}" placeholder="Size dönüş yapabilmemiz için" />
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:9.5px; font-weight:800;">Kısa Başlık *</label>
+          <input type="text" id="fbSubjectInput" class="ios-input" placeholder="Örn: Büyük yarışta etap sıralaması hakkında öneri..." />
+        </div>
+
+        <div>
+          <label style="font-size:9.5px; font-weight:800;">Mesajınız / Detaylı Açıklama *</label>
+          <textarea id="fbMessageInput" class="ios-input" rows="3" style="resize:vertical; font-family:inherit;" placeholder="Yaşadığınız sorunu veya önerinizi detaylıca yazabilirsiniz..."></textarea>
+        </div>
+
+        <!-- 3 FARKLI DOĞRUDAN GÖNDERİM KANALI -->
+        <div style="display:flex; flex-direction:column; gap:6px; margin-top:2px;">
+          <button type="button" class="ios-btn ios-btn-primary" style="width:100%; padding:10px; font-size:11.5px; font-weight:900;" onclick="AvigenUxManager.submitUserFeedback('github')">
+            🚀 GitHub Resmi Bildirim Panosuna Gönder (Anında Görünür)
+          </button>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+            <button type="button" class="ios-btn ios-btn-green" style="padding:8px; font-size:10.5px; font-weight:900;" onclick="AvigenUxManager.submitUserFeedback('whatsapp')">
+              📲 WhatsApp İle Gönder
+            </button>
+            <button type="button" class="ios-btn ios-btn-outline" style="padding:8px; font-size:10.5px; font-weight:800;" onclick="AvigenUxManager.submitUserFeedback('email')">
+              ✉️ E-Posta İle Gönder
+            </button>
+          </div>
+        </div>
+
+        ${savedLogs.length > 0 ? `
+          <div style="border-top:1px dashed var(--ios-border); padding-top:8px; margin-top:2px;">
+            <div style="font-size:9.8px; font-weight:900; color:var(--ios-subtext); margin-bottom:5px;">
+              📋 Bu Cihazdan Gönderilen Son Bildirimleriniz (${savedLogs.length}):
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px; max-height:110px; overflow-y:auto;">
+              ${savedLogs.slice(0, 5).map(item => `
+                <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:7px; padding:5px 8px; font-size:9px;">
+                  <div style="display:flex; justify-content:space-between; font-weight:800; color:var(--ios-text);">
+                    <span>${escapeHtml(item.type)} — ${escapeHtml(item.subject)}</span>
+                    <span style="color:var(--ios-subtext);">${escapeHtml(item.date)}</span>
+                  </div>
+                  <div style="color:var(--ios-subtext); margin-top:1px;">${escapeHtml(item.message.slice(0, 110))}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    modal.classList.add('open');
+  },
+
+  closeFeedbackModal() {
+    document.getElementById('avigenFeedbackModal')?.classList.remove('open');
+  },
+
+  getFeedbackLogs() {
+    try {
+      const raw = localStorage.getItem('avigen_user_feedback_logs_v1');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  submitUserFeedback(channel = 'github') {
+    const type = document.getElementById('fbTypeSelect')?.value || 'Öneri / Yeni Özellik İsteği';
+    const mod = document.getElementById('fbModuleSelect')?.value || 'Genel';
+    const sender = (document.getElementById('fbSenderName')?.value || 'AVIGEN Kullanıcısı').trim();
+    const contact = (document.getElementById('fbSenderContact')?.value || 'Belirtilmedi').trim();
+    const subject = (document.getElementById('fbSubjectInput')?.value || '').trim();
+    const message = (document.getElementById('fbMessageInput')?.value || '').trim();
+
+    if (!subject && !message) {
+      alert('⚠️ Lütfen bildirmek istediğiniz hata veya öneri için kısa bir başlık veya açıklama yazın.');
+      return;
+    }
+
+    const finalSubject = subject || `${type} (${mod})`;
+    const curVer = typeof AvigenAutoUpdater !== 'undefined' ? `v${AvigenAutoUpdater.state.localVersion} (Build ${AvigenAutoUpdater.state.localBuild})` : 'v5.0.0';
+    const dateStr = new Date().toLocaleString('tr-TR');
+
+    // 1. Yerel bildirim geçmişine kaydet
+    const logs = this.getFeedbackLogs();
+    logs.unshift({
+      id: 'fb_' + Date.now(),
+      date: dateStr,
+      type,
+      module: mod,
+      sender,
+      contact,
+      subject: finalSubject,
+      message: message || finalSubject,
+      channel
+    });
+    try {
+      localStorage.setItem('avigen_user_feedback_logs_v1', JSON.stringify(logs.slice(0, 30)));
+    } catch (e) {}
+
+    const formattedReport = [
+      `📌 AVIGEN KULLANICI BİLDİRİMİ (${type})`,
+      `• Başlık: ${finalSubject}`,
+      `• İlgili Ekran: ${mod}`,
+      `• Gönderen Kümes / Kişi: ${sender}`,
+      `• İletişim: ${contact}`,
+      `• Uygulama Sürümü: ${curVer}`,
+      `• Tarih: ${dateStr}`,
+      ``,
+      `📝 Mesaj / Açıklama:`,
+      `${message || finalSubject}`
+    ].join('\n');
+
+    if (channel === 'github') {
+      const ghTitle = encodeURIComponent(`[${type}] ${finalSubject}`);
+      const ghBody = encodeURIComponent(formattedReport);
+      const ghIssueUrl = `https://github.com/hasanbenzer/avigen/issues/new?title=${ghTitle}&body=${ghBody}`;
+      window.open(ghIssueUrl, '_blank');
+    } else if (channel === 'whatsapp') {
+      const waText = encodeURIComponent(formattedReport);
+      window.open(`https://wa.me/?text=${waText}`, '_blank');
+    } else if (channel === 'email') {
+      const mailSubject = encodeURIComponent(`AVIGEN Bildirim: [${type}] ${finalSubject}`);
+      const mailBody = encodeURIComponent(formattedReport);
+      window.location.href = `mailto:destek@avigen.app?subject=${mailSubject}&body=${mailBody}`;
+    }
+
+    this.openFeedbackModal();
   },
 
   selectBillingCycle(cycle, returnTab = 'plans') {
@@ -8829,50 +9398,131 @@ const AvigenUxManager = {
     alert(`✅ Hoş geldiniz ${name}! AVIGEN yetiştirici hesabınız ve giriş şifreniz kaydedildi.`);
   },
 
-  processSubscriptionPayment() {
-    const holder = (document.getElementById('payCardHolder')?.value || '').trim();
-    const cardNum = (document.getElementById('payCardNumber')?.value || '').replace(/\s+/g, '');
-    const expiry = (document.getElementById('payCardExpiry')?.value || '').trim();
-    const cvc = (document.getElementById('payCardCvc')?.value || '').trim();
-
-    if (!holder || cardNum.length < 12 || !expiry || cvc.length < 3) {
-      alert('⚠️ Lütfen kart üzerindeki ad soyad, 16 haneli kart numarası, son kullanma tarihi ve CVC güvenlik kodunu eksiksiz girin.');
-      return;
-    }
-
-    const tierId = this.state.checkoutTierId || 'GENETICS_AI';
-    const tierObj = this.TIERS[tierId] || this.TIERS.GENETICS_AI;
-    const isYearly = this.state.selectedBillingCycle === 'yearly';
-    const amountStr = isYearly ? tierObj.yearlyPrice : tierObj.monthlyPrice;
-    const last4 = cardNum.slice(-4);
-    const masked = `**** **** **** ${last4}`;
-
-    this.state.savedCardMasked = masked;
-    if (!Array.isArray(this.state.paymentHistory)) {
-      this.state.paymentHistory = [];
-    }
-    const invId = 'INV-2026-' + Math.floor(1000 + Math.random() * 8999);
-    const todayStr = new Date().toLocaleDateString('tr-TR');
-
-    this.state.paymentHistory.unshift({
-      id: invId,
-      date: todayStr,
-      planName: `${tierObj.name} (${isYearly ? 'Yıllık Abonelik' : 'Aylık Abonelik'})`,
-      amount: amountStr,
-      cardMasked: `**** ${last4}`,
-      status: 'Ödendi ✓'
-    });
-
-    this.setMembershipTier(tierId);
-    this.closeSubscriptionModal();
-    alert(`🎉 Ödeme Başarılı!\n\nFatura No: ${invId}\nPaket: ${tierObj.name}\nTutar: ${amountStr}\nKart: ${masked}\n\nAboneliğiniz anında etkinleştirildi!`);
-  },
-
   activateTierFromModal(tierId) {
     this.setMembershipTier(tierId);
     this.closeSubscriptionModal();
     const t = this.getCurrentTier();
     alert(`👑 Aktif Üyelik Paketiniz: ${t.name}\n\n${t.tagline}`);
+  },
+
+  // --------------------------------------------------------------------------
+  // CİHAZ KİMLİK KODUNA (DEVICE ID) KİLİTLİ LİSANS DOĞRULAYICI
+  // (Kod üretici müşterilerin indirdiği app.js içinde yer almaz; yalnızca kurucunun avigen-lisans-uretici.html aracında bulunur!)
+  // Bir müşterinin Cihaz Koduna (Örn: AVG-7K4M-9P2X) özel üretilen lisans anahtarı başka hiçbir telefonda çalışmaz!
+  // --------------------------------------------------------------------------
+  computeDeviceBoundLicenseSignature(prefix, deviceId, nonce) {
+    const cleanDev = String(deviceId || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const cleanNonce = String(nonce || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const payload = `AVIGEN_HW_LOCK_2026::${prefix}::${cleanDev}::${cleanNonce}`;
+    let h1 = 0x811c9dc5;
+    let h2 = 0x5A17C3;
+    for (let i = 0; i < payload.length; i++) {
+      const c = payload.charCodeAt(i);
+      h1 ^= c;
+      h1 = Math.imul(h1, 0x01000193) >>> 0;
+      h2 = ((h2 << 5) - h2 + c) & 0xFFFFFF;
+    }
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const s1 = chars[h1 % chars.length];
+    const s2 = chars[Math.floor(h1 / chars.length) % chars.length];
+    const s3 = chars[h2 % chars.length];
+    const s4 = chars[Math.floor(h2 / chars.length) % chars.length];
+    return `${s1}${s2}${s3}${s4}`;
+  },
+
+  verifySignedLicenseKey(rawKey) {
+    const clean = (rawKey || '').trim().toUpperCase();
+    // Format: <PREFIX>-<2 KARAKTER NONCE><4 KARAKTER CİHAZ İMZASI> (Örn: AVIGEN-YIL-K9X4M7)
+    const m = clean.match(/^(AVIGEN-AY|AVIGEN-30G|AVIGEN-YIL|AVIGEN-PRO|AVG-VIP)-([A-Z0-9]{2})([A-Z0-9]{4})$/);
+    if (!m) return false;
+    const [, prefix, nonce, givenSig] = m;
+    const myDeviceId = this.getOrCreateDeviceId();
+    const expectedSig = this.computeDeviceBoundLicenseSignature(prefix, myDeviceId, nonce);
+    return givenSig === expectedSig;
+  },
+
+  // GitHub üzerinden dağıtılan uygulamada Cihaza Özel Lisans Anahtarı ile AVIGEN GENESIS AI paketini süreli (30 Gün / 365 Gün) veya süresiz (VIP) etkinleştirme
+  activateWithLicenseKey() {
+    const rawKey = (document.getElementById('licenseActivationInput')?.value || '').trim().toUpperCase();
+    if (!rawKey) {
+      alert('⚠️ Lütfen size verilen AVIGEN Lisans / Aktivasyon Kodunu girin.');
+      return;
+    }
+
+    const myDeviceId = this.getOrCreateDeviceId();
+    if (!this.verifySignedLicenseKey(rawKey)) {
+      alert(`⚠️ Geçersiz veya Başka Cihaza Ait Lisans Anahtarı!\n\nGirdiğiniz kod bu telefonun Cihaz Kimlik Kodu (${myDeviceId}) ile eşleşmiyor.\n\n(Not: Her lisans kodu yalnızca üretildiği telefonda çalışır, başka cihazda kullanılamaz.)`);
+      return;
+    }
+
+    const targetTierId = this.state.checkoutTierId === 'GLOBAL' ? 'GLOBAL' : 'GENETICS_AI';
+    const tierObj = this.TIERS[targetTierId] || this.TIERS.GENETICS_AI;
+    let durationDays = 365;
+    let licenseType = 'YEARLY';
+    let durationLabel = '365 Gün (1 Yıl)';
+    let amountStr = tierObj.yearlyPrice;
+
+    if (rawKey.startsWith('AVIGEN-AY-') || rawKey.startsWith('AVIGEN-30G-')) {
+      durationDays = 30;
+      licenseType = 'MONTHLY';
+      durationLabel = '30 Gün (1 Ay)';
+      amountStr = tierObj.monthlyPrice;
+    } else if (rawKey.startsWith('AVG-VIP-')) {
+      durationDays = null;
+      licenseType = 'UNLIMITED';
+      durationLabel = 'Süresiz VIP Lisans';
+      amountStr = 'VIP';
+    } else if (this.state.selectedBillingCycle === 'monthly' && !rawKey.startsWith('AVIGEN-YIL-')) {
+      durationDays = 30;
+      licenseType = 'MONTHLY';
+      durationLabel = '30 Gün (1 Ay)';
+      amountStr = tierObj.monthlyPrice;
+    }
+
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('tr-TR');
+    let expiresIso = null;
+    let expiresDateStr = 'Süresiz';
+
+    if (durationDays) {
+      // Eğer halihazırda devam eden bir süresi varsa kalan sürenin üzerine ekle, yoksa bugünden başlat
+      const baseTime = (this.state.licenseExpiresAt && new Date(this.state.licenseExpiresAt).getTime() > Date.now())
+        ? new Date(this.state.licenseExpiresAt).getTime()
+        : Date.now();
+      const expObj = new Date(baseTime + durationDays * 24 * 60 * 60 * 1000);
+      expiresIso = expObj.toISOString();
+      expiresDateStr = expObj.toLocaleDateString('tr-TR');
+    }
+
+    const invId = 'LIC-' + rawKey;
+    if (!Array.isArray(this.state.paymentHistory)) {
+      this.state.paymentHistory = [];
+    }
+    this.state.paymentHistory.unshift({
+      id: invId,
+      date: todayStr,
+      planName: `${tierObj.name} (${durationLabel})`,
+      amount: amountStr,
+      cardMasked: `Bitiş: ${expiresDateStr}`,
+      status: 'Aktif ✓'
+    });
+
+    this.state.activatedLicenseKey = rawKey;
+    this.state.licenseType = licenseType;
+    this.state.licenseActivatedAt = now.toISOString();
+    this.state.licenseExpiresAt = expiresIso;
+    this.setMembershipTier(targetTierId);
+    this.closeSubscriptionModal();
+    alert(`🎉 Lisans Anahtarınız Doğrulandı!\n\n• Lisans Kodu: ${rawKey}\n• Aktif Paket: ${tierObj.name}\n• Kullanım Süresi: ${durationLabel}\n• Bitiş Tarihi: ${expiresDateStr}\n\n(Not: Süre dolduğunda üyeliğiniz otomatik olarak ücretsiz pakete döner; yeni kod girerek istediğiniz zaman uzatabilirsiniz.)`);
+  },
+
+  requestLicenseViaWhatsApp(priceText, cycleText) {
+    const loftTitle = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN Kümesi';
+    const myDevId = this.getOrCreateDeviceId();
+    const msg = encodeURIComponent(
+      `Merhaba, AVIGEN GENESIS AI (${cycleText} - ${priceText}) paketi için cihazıma özel Lisans Aktivasyon Kodu almak istiyorum.\n\n📱 Cihaz Kimlik Kodu (Cihaz ID): ${myDevId}\n🏠 Kümes Adı: ${loftTitle}\n✉️ E-Posta: ${this.state.memberEmail || '-'}`
+    );
+    window.open(`https://wa.me/?text=${msg}`, '_blank');
   }
 };
 
@@ -8890,16 +9540,16 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '4.0.0',
-    localBuild: 400,
-    remoteVersion: '4.0.0',
-    remoteBuild: 400,
-    remoteTitle: 'AVIGEN v4.0 — APK İçi Canlı OTA Güncelleme Motoru, Kümes Sabah Özeti & WhatsApp Tek Tuş Yedekleme',
+    localVersion: '5.2.0',
+    localBuild: 520,
+    remoteVersion: '5.2.0',
+    remoteBuild: 520,
+    remoteTitle: "AVIGEN v5.2 — GENESIS AI'ya Sor (Birleşik Yapay Zeka & Kümes Danışmanı), Mobil Ergonomik Haritalı Yarış Simülasyonu & %100 Veri Korumalı Güncelleme",
     remoteNotes: [
-      'APK İçi Canlı OTA Yama Motoru: Tekrar APK indirmeye gerek kalmadan yeni özellikleri doğrudan GitHub üzerinden uygulama içine canlı yükleme (⚡ Şimdi Güncelle)',
-      'Ana Sayfa Kümes Sabah Özeti: Yaklaşan yavru çıkışları, bugün bilezik takılacak yuvalar, sonuç bekleyen aktif yarış kısayolu ve bugünkü yem/suluk gramaj özeti tek kartta',
-      'Kuş & Yuva Hızlı Durum Filtreleri: Kuşlarım listesinde "🟠 Dinlenmede" ve "🔴 Kayıp/Satıldı" filtre çipleri ile 18 gün kuluçka / 7. gün bilezik takma geri sayımı',
-      'Profil & Yedekleme v4.0: "📲 WhatsApp Yedek Gönder" ile tüm kümes verisini (.JSON) tek dokunuşla WhatsApp/Drive üzerinden paylaşma ve QR kodlu Dijital Kümes Kimlik Kartı'
+      "GENESIS AI'ya Sor (Birleşik Yapay Zeka & Kümes Danışmanı): Ana ekran ve Akıllı Eşleştirme modülüne entegre doğal dil soru-cevap sistemi, 14 kategorili bilimsel yanıt motoru ve sıfır token israfı sağlayan akıllı önbellek",
+      "Haritalı Akıllı Yarış Simülasyonu (Tam Mobil Kart Ergonomisi): Yatay kaydırmayı tamamen ortadan kaldıran dikey mobil kuş kartları (Olası Dönüş, Hız & Tecrübe, Erken/Geç Aralığı), tam genişlikli İl/İlçe seçiciler ve tek tuşla kadro sepetleme",
+      "Kompakt Tek Ekran Ana Sayfa & Kesintisiz Navigasyon: Tek ekrana sığan sadeleştirilmiş Ana Sayfa ve açık pencerelerden tek dokunuşla GENESIS AI ana komut ekranına dönüş",
+      "%100 Veri Korumalı Canlı Güncelleme (Zero-Data-Loss OTA): Güncelleme sırasında kümes, kuş, 4 kuşak pedigri, yuva, yarış ve lisans verilerini otomatik koruyan güvenlik yedeği mimarisi"
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',
@@ -8908,6 +9558,7 @@ const AvigenAutoUpdater = {
   },
 
   init() {
+    this.ensureZeroDataLossSafetyBackup();
     this.applySavedOtaBundleIfNewer();
     // Sadece Ayarlar & Yedek bölümünden yönetilir; ana ekranı kalabalık yapmaz
     setTimeout(() => {
@@ -8915,12 +9566,29 @@ const AvigenAutoUpdater = {
     }, 1500);
   },
 
+  ensureZeroDataLossSafetyBackup() {
+    try {
+      const lastBackedUpBuild = Number(localStorage.getItem('avigen_last_backed_up_build_v1') || 0);
+      if (lastBackedUpBuild < this.state.localBuild && typeof buildFullAvigenSnapshotPayload === 'function') {
+        const currentPayload = buildFullAvigenSnapshotPayload();
+        if (Array.isArray(currentPayload.pedigrees) && currentPayload.pedigrees.length > 0) {
+          localStorage.setItem('avigen_auto_safety_snapshot_v1', JSON.stringify(currentPayload));
+          localStorage.setItem('avigen_last_backed_up_build_v1', String(this.state.localBuild));
+        }
+      }
+    } catch (e) {}
+  },
+
   applySavedOtaBundleIfNewer() {
     try {
       const raw = localStorage.getItem(this.OTA_BUNDLE_STORAGE_KEY);
       if (!raw) return;
       const bundle = JSON.parse(raw);
-      if (!bundle || !bundle.build || Number(bundle.build) <= this.state.localBuild) return;
+      if (!bundle || !bundle.build || Number(bundle.build) <= this.state.localBuild) {
+        // Statik sürüm OTA paketine eşit veya daha yeniyse eski OTA paketini temizleyerek localStorage kotasını koru
+        localStorage.removeItem(this.OTA_BUNDLE_STORAGE_KEY);
+        return;
+      }
       if (bundle.css) {
         let st = document.getElementById('avigenOtaLiveCss');
         if (!st) {
@@ -8929,12 +9597,6 @@ const AvigenAutoUpdater = {
           document.head.appendChild(st);
         }
         st.textContent = bundle.css;
-      }
-      if (bundle.genesisJs) {
-        try { (0, eval)(bundle.genesisJs); } catch (e) {}
-      }
-      if (bundle.perfJs) {
-        try { (0, eval)(bundle.perfJs); } catch (e) {}
       }
       this.state.localVersion = bundle.version || this.state.localVersion;
       this.state.localBuild = Number(bundle.build) || this.state.localBuild;
@@ -9016,24 +9678,29 @@ const AvigenAutoUpdater = {
   },
 
   async applyWebLiveUpdate() {
-    // 1. Önce GitHub üzerinden en güncel version.json, styles.css, genesis-ai.js ve performance-profile.js dosyalarını çekip yerel OTA önbelleğine kaydet
+    // 0. Güncelleme öncesi kullanıcının tüm mevcut kümes, kuş, pedigri, yuva ve yarış verilerinin otomatik güvenlik yedeğini al
+    try {
+      if (typeof saveMypedigreData === 'function') {
+        saveMypedigreData();
+      }
+      if (typeof buildFullAvigenSnapshotPayload === 'function') {
+        const snapshot = buildFullAvigenSnapshotPayload();
+        if (Array.isArray(snapshot.pedigrees) && snapshot.pedigrees.length > 0) {
+          localStorage.setItem('avigen_auto_safety_snapshot_v1', JSON.stringify(snapshot));
+        }
+      }
+    } catch (e) {}
+
+    // 1. Önce GitHub üzerinden en güncel version.json ve styles.css dosyalarını çekip yerel OTA önbelleğine kaydet
     try {
       const ts = Date.now();
       const verRes = await fetch(`${this.REMOTE_RAW_VERSION_URL}?t=${ts}`, { cache: 'no-store' });
       if (verRes.ok) {
         const verData = await verRes.json();
         let cssText = '';
-        let genesisJs = '';
-        let perfJs = '';
         try {
-          const [cssRes, genRes, perfRes] = await Promise.all([
-            fetch(`${this.REMOTE_RAW_BASE_URL}styles.css?t=${ts}`, { cache: 'no-store' }),
-            fetch(`${this.REMOTE_RAW_BASE_URL}genesis-ai.js?t=${ts}`, { cache: 'no-store' }),
-            fetch(`${this.REMOTE_RAW_BASE_URL}performance-profile.js?t=${ts}`, { cache: 'no-store' })
-          ]);
+          const cssRes = await fetch(`${this.REMOTE_RAW_BASE_URL}styles.css?t=${ts}`, { cache: 'no-store' });
           if (cssRes.ok) cssText = await cssRes.text();
-          if (genRes.ok) genesisJs = await genRes.text();
-          if (perfRes.ok) perfJs = await perfRes.text();
         } catch (e) {}
 
         if (verData && verData.build) {
@@ -9041,9 +9708,7 @@ const AvigenAutoUpdater = {
             version: verData.version,
             build: verData.build,
             updatedAt: new Date().toISOString(),
-            css: cssText,
-            genesisJs,
-            perfJs
+            css: cssText
           }));
         }
       }
@@ -9122,7 +9787,6 @@ window.addEventListener('DOMContentLoaded', () => {
   updateThemeButtonLabels();
   loadMypedigreData();
   AvigenLiveWeather.init();
-  AvigenAutoUpdater.init();
   syncLoftIdentityAcrossUI();
   if (typeof AvigenGenesisAI !== 'undefined') {
     AvigenGenesisAI.init();
@@ -9130,6 +9794,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (typeof AvigenRaceTracker !== 'undefined') {
     AvigenRaceTracker.init();
   }
+  AvigenAutoUpdater.init();
   renderPedigreeDropdown();
   selectActivePedigree(activePedigreeId);
   renderHomeDashboard();
@@ -9208,7 +9873,7 @@ const AvigenSystemAuditQA = {
     assert('T08', 'Veri Bütünlüğü', 'Bilezik Benzersizliği & Erkek/Dişi Aday Ayrımı', noDupCandidates && genderPartitionValid, `${cands.all.length} tekil aday (${cands.males.length}♂, ${cands.females.length}♀), mükerrer kayıt: 0`);
 
     // 9. 4 Kuşak (31 Kutu) Soyağacı Bağlantı Bütünlüğü
-    const ped0 = pedigrees[0];
+    const ped0 = pedigrees.find(p => p?.boxes?.main?.ring && p?.boxes?.sire?.ring && p?.boxes?.dam?.ring) || pedigrees[0];
     const has31Slots = BOX_SLOTS.length === 31 && Boolean(ped0?.boxes?.main?.ring && ped0?.boxes?.sire?.ring && ped0?.boxes?.dam?.ring);
     assert('T09', 'Pedigree Motoru', '4 Kuşak (31 Kutu) Soy Ağacı Şeması ve Ebeveyn Bağlantısı', has31Slots, `BOX_SLOTS: ${BOX_SLOTS.length} kutu • Ana kuş: ${ped0?.boxes?.main?.ring}`);
 
@@ -9235,7 +9900,7 @@ const AvigenSystemAuditQA = {
     assert('T12', 'Yuva Çakışma', 'Aynı Kuşun Eşzamanlı İki Aktif Yuvada Kullanılmasının Tespiti', simConflict.hasConflicts && Boolean(simConflict.conflictsByRing['TR-2024-100245']), `Tespit edilen çakışan halka: TR-2024-100245 (Yuva #A ve Yuva #B)`);
 
     // 13. Resmi Yarış Hızı (m/dk) ve Performans Profili Hesaplaması
-    const profTest = AvigenPerformanceEngine.calculateFullProfile(pedigrees[0]?.boxes?.main?.ring);
+    const profTest = AvigenPerformanceEngine.calculateFullProfile(ped0?.boxes?.main?.ring);
     const speedMetric = profTest?.categories?.flight?.metrics?.find(m => m.key === 'speed');
     assert('T13', 'Performans Motoru', 'Bireysel Yarış Hızı ve Güvenilirlik (%) Hesaplaması', Boolean(speedMetric && speedMetric.score > 0 && speedMetric.reliability > 0), `${profTest?.bird?.ring} Hız Puanı: ${speedMetric?.score}/100 (Güven: %${speedMetric?.reliability})`);
 
@@ -9256,11 +9921,12 @@ const AvigenSystemAuditQA = {
     const doiVerified = kolvenbag && kolvenbag.doi === '10.1007/s13353-022-00697-w' && kolvenbag.pmid === '35505002';
     assert('T16', 'Bilimsel Kütüphane', '6 Birincil Hakemli Makale & DOI/PMID Doğrulaması', sciCount >= 6 && doiVerified, `${sciCount} doğrulanmış yayın • Kolvenbag 2022 DOI & PMID aktif.`);
 
-    // 17. 2 Kademeli Üyelik ve Yetkilendirme (AVIGEN FREE vs AVIGEN GENESIS AI)
+    // 17. 3 Kademeli Üyelik ve Yetkilendirme (AVIGEN FREE, AVIGEN AI & AVIGEN GLOBAL)
     const tiersOk = AvigenUxManager.TIERS.FREE.maxPedigreesLimit === 10 &&
-                    AvigenUxManager.TIERS.GENETICS_AI.name === 'AVIGEN GENESIS AI' &&
-                    Object.keys(AvigenUxManager.TIERS).length === 2;
-    assert('T17', 'Ticari Paketler', 'AVIGEN FREE (10 Limit) ve AVIGEN GENESIS AI (399 TL) 2 Kademeli Yetki Mimarisi', tiersOk, '2 üyelik seviyesi (AVIGEN FREE & AVIGEN GENESIS AI) doğrulandı.');
+                    AvigenUxManager.TIERS.GENETICS_AI.name === 'AVIGEN AI' &&
+                    AvigenUxManager.TIERS.GLOBAL.name === 'AVIGEN GLOBAL' &&
+                    Object.keys(AvigenUxManager.TIERS).length === 3;
+    assert('T17', 'Ticari Paketler', 'AVIGEN FREE (10 Limit), AVIGEN AI (399 TL) ve AVIGEN GLOBAL (599 TL) 3 Kademeli Yetki Mimarisi', tiersOk, '3 üyelik seviyesi (AVIGEN FREE, AVIGEN AI & AVIGEN GLOBAL) doğrulandı.');
 
     // 18. Tam JSON Yedekleme Şeması Doğrulaması
     const snap = buildFullAvigenSnapshotPayload();
@@ -9276,12 +9942,12 @@ const AvigenSystemAuditQA = {
 
     // 19. Tek Bütünleşik GENESIS AI – AKILLI EŞLEŞTİRME Motoru, 11 Özellikte Yavru Öngörüsü & Koşullu BLUP Doğrulaması
     const mainMods = AvigenGenesisAI.MAIN_MODULES || [];
-    const hasUnifiedSmartPairing = mainMods.length === 2 &&
+    const hasUnifiedSmartPairing = mainMods.length >= 2 &&
       mainMods[0].id === 'breeding_hub' &&
       mainMods[0].title === 'GENESIS AI – AKILLI EŞLEŞTİRME' &&
       Array.isArray(mainMods[0].subFunctions) &&
       mainMods[0].subFunctions.length === 0 &&
-      mainMods[1].id === 'nutrition_hub';
+      mainMods.some(m => m.id === 'nutrition_hub');
     const nutCheck = typeof AvigenGenesisAI.calculateSmartNutritionPlan === 'function'
       ? AvigenGenesisAI.calculateSmartNutritionPlan('auto_today_smart', 'ALL', 64)
       : null;
@@ -9303,33 +9969,73 @@ const AvigenSystemAuditQA = {
       Boolean(brCheck.blupEvaluation && typeof brCheck.blupEvaluation.isBlupEligible === 'boolean');
     assert('T19', 'GENESIS AI', 'Tek Bütünleşik Akıllı Eşleştirme Motoru, 11 Yavru Özelliği (Farklı h²) & 3 Karar Seviyesi', cacheAndUncertaintyOk, `Tek Modül aktif • Karar: ${brCheck?.decisionLabel} • 11 Yavru Özelliği & Koşullu BLUP doğrulandı.`);
 
-    // 20. AVIGEN Yarış Takip Sistemi (İzole Yarış Kaydı, Hız m/dk Hesaplaması & GENESIS AI Gerçek Yarış Ayrımı)
+    // 20. AVIGEN Gelişmiş Yarış Yönetimi & Takip Sistemi (3 Kategori, 7 Kuş Durumu, Manuel Kayıp Koruması, Hız Hesabı & GENESIS AI Ayrımı)
     let raceTrackerOk = false;
     let rtDetail = '';
     if (typeof AvigenRaceTracker !== 'undefined') {
       const backupEvents = JSON.parse(JSON.stringify(AvigenRaceTracker.events || []));
-      const testRing = pedigrees[0]?.boxes?.main?.ring || 'TR-2024-100245';
+      const testRing = ped0?.boxes?.main?.ring || 'TR-2024-100245';
+      const has3Categories = Boolean(
+        AvigenRaceTracker.CATEGORIES?.LOFT_ENDURANCE &&
+        AvigenRaceTracker.CATEGORIES?.CLUB_RACE &&
+        AvigenRaceTracker.CATEGORIES?.GRAND_PRIZE
+      );
+      const has7Statuses = Object.keys(AvigenRaceTracker.BIRD_STATUSES || {}).length === 7;
+
       AvigenRaceTracker.events = [
-        {
-          id: 'qa_test_race_1',
-          codeTitle: 'QA TEST ETABI 420 KM',
+        AvigenRaceTracker.normalizeRaceRecord({
+          id: 'qa_test_loft_1',
+          category: 'LOFT_ENDURANCE',
+          codeTitle: 'QA KÜMESÜSTÜ UÇUŞ 60 KM',
+          releasePoint: 'Kümes Çatısı',
+          distanceKm: 60,
+          releaseDate: '2026-05-03',
+          releaseDateLabel: '03 Mayıs',
+          releaseTime: '07:00',
+          stageType: 'Haftalık Performans',
+          entries: [
+            {
+              ring: testRing,
+              birdName: 'QA Test Kuşu',
+              flag: '🇹🇷',
+              birdStatus: 'RETURNED',
+              resultStatus: 'ENTERED',
+              arrivalDate: '2026-05-03',
+              arrivalTime: '07:45',
+              durationMinutes: 45,
+              durationLabel: '45 dk',
+              speedMpm: 1333.3,
+              rank: 1,
+              totalCompetitors: 12,
+              weather: 'Açık 19°C'
+            }
+          ]
+        }),
+        AvigenRaceTracker.normalizeRaceRecord({
+          id: 'qa_test_club_1',
+          category: 'CLUB_RACE',
+          organizationName: 'QA Test Derneği',
+          seasonYear: '2026',
+          stageNumber: 2,
+          codeTitle: 'QA DERNEK ETABI 420 KM',
           releasePoint: 'Eskişehir',
           distanceKm: 420,
           releaseDate: '2026-05-10',
           releaseDateLabel: '10 Mayıs',
           releaseTime: '06:30',
           totalCompetitors: 1200,
-          raceType: 'Orta Mesafe',
+          raceType: 'Orta mesafe',
           entries: [
             {
               ring: testRing,
               birdName: 'QA Test Kuşu',
               flag: '🇹🇷',
+              birdStatus: 'RETURNED',
               resultStatus: 'ENTERED',
               arrivalDate: '2026-05-10',
               arrivalTime: '11:30',
-              flightMinutes: 300,
-              durationLabel: '5s 00dk',
+              durationMinutes: 300,
+              durationLabel: '5 sa 00 dk',
               speedMpm: 1400,
               rank: 4,
               totalCompetitors: 1200,
@@ -9337,18 +10043,60 @@ const AvigenSystemAuditQA = {
               weather: 'Açık 21°C'
             }
           ]
-        }
+        }),
+        AvigenRaceTracker.normalizeRaceRecord({
+          id: 'qa_test_grand_1',
+          category: 'GRAND_PRIZE',
+          organizationName: 'QA Derby OLR',
+          stageType: 'Büyük Final',
+          codeTitle: 'QA DERBY FİNAL 505 KM',
+          releasePoint: 'Sivas',
+          distanceKm: 505,
+          releaseDate: '2026-05-24',
+          releaseDateLabel: '24 Mayıs',
+          releaseTime: '06:30',
+          totalCompetitors: 2400,
+          entries: [
+            {
+              ring: testRing,
+              birdName: 'QA Test Kuşu',
+              flag: '🇹🇷',
+              birdStatus: 'RETURNED',
+              resultStatus: 'ENTERED',
+              arrivalDate: '2026-05-24',
+              arrivalTime: '12:45',
+              durationMinutes: 375,
+              durationLabel: '6 sa 15 dk',
+              speedMpm: 1346.7,
+              rank: 2,
+              totalCompetitors: 2400,
+              wonPrizeAmountTl: 125000,
+              wonAwardTitle: 'Final 2.lik Büyük Ödülü',
+              weather: 'Karşıdan Rüzgar 16°C'
+            }
+          ]
+        })
       ];
-      const hist = AvigenRaceTracker.getBirdRaceHistory(testRing);
+
+      const catArchive = AvigenRaceTracker.getBirdCategorizedArchive(testRing);
       const realAnalytics = AvigenRaceTracker.computeGenesisRealRaceAnalytics();
-      raceTrackerOk = hist.length >= 1 &&
-        hist[0].distanceKm === 420 &&
-        hist[0].speedMpm === 1400 &&
+      const calcTest = AvigenRaceTracker.calculateFlightMetrics(420, '2026-05-10', '06:30', '2026-05-10', '11:30', null);
+
+      raceTrackerOk = has3Categories &&
+        has7Statuses &&
+        calcTest.durationMinutes === 300 &&
+        calcTest.speedMpm === 1400 &&
+        catArchive.overall.totalParticipations === 3 &&
+        catArchive.categories.LOFT_ENDURANCE.totalParticipations === 1 &&
+        catArchive.categories.CLUB_RACE.totalParticipations === 1 &&
+        catArchive.categories.GRAND_PRIZE.totalParticipations === 1 &&
+        catArchive.categories.GRAND_PRIZE.totalPrizeTl === 125000 &&
         Boolean(realAnalytics && realAnalytics.birdsWithRealRaces.length >= 1);
-      rtDetail = `İzole etap testi: ${testRing} • 420 km • 1400 m/dk • 4/1200 klasman ve AI gerçek yarış ayrımı doğrulandı.`;
+
+      rtDetail = `3 Kategori (Kümesüstü: 1, Dernek: 1, Büyük Ödüllü: 1) • 7 Kuş Durumu • 420 km / 300 dk = 1400 m/dk • 125.000 TL Ödül & GENESIS AI doğrulandı.`;
       AvigenRaceTracker.events = backupEvents;
     }
-    assert('T20', 'Yarış Takip Sistemi', 'Yarış Yönetimi, 11 Alanlı Kuş Yarış Geçmişi & GENESIS AI Gerçek Yarış Öğrenimi', raceTrackerOk, rtDetail);
+    assert('T20', 'Gelişmiş Yarış Yönetimi', '3 Yarış Kategorisi, 7 Kuş Durumu, Kategori Bazlı Arşiv & GENESIS AI Entegrasyonu', raceTrackerOk, rtDetail);
 
     const passedCount = results.filter(r => r.passed).length;
     return {

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AVIGEN — Kurucu Cihaza Özel Lisans Anahtarı Üretici (Sadece Yönetici)</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #3b0764 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card {
+      background: #ffffff;
+      color: #0f172a;
+      max-width: 500px;
+      width: 100%;
+      border-radius: 18px;
+      padding: 22px 24px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      border: 2px solid #f59e0b;
+    }
+    h1 {
+      font-size: 18px;
+      font-weight: 900;
+      color: #4c1d95;
+      margin: 0 0 6px;
+    }
+    p {
+      font-size: 12px;
+      color: #475569;
+      margin: 0 0 16px;
+      line-height: 1.45;
+    }
+    label {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 5px;
+    }
+    select, input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1.5px solid #cbd5e1;
+      font-size: 13px;
+      font-weight: 700;
+      box-sizing: border-box;
+      margin-bottom: 12px;
+    }
+    .dev-input {
+      font-size: 15px;
+      font-weight: 900;
+      color: #0052cc;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 11px;
+      font-size: 13.5px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .btn-purple {
+      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+      color: #fff;
+      margin-bottom: 14px;
+    }
+    .btn-green {
+      background: #059669;
+      color: #fff;
+    }
+    .btn-blue {
+      background: #0052cc;
+      color: #fff;
+    }
+    .out-box {
+      background: #f5f3ff;
+      border: 2px solid #7c3aed;
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+    .key-input {
+      text-align: center;
+      font-size: 18px;
+      font-weight: 900;
+      color: #4c1d95;
+      letter-spacing: 1.5px;
+      background: #fff;
+      border-color: #8b5cf6;
+      margin-bottom: 10px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .badge-info {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      color: #92400e;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔐 AVIGEN Cihaza Kilitli Lisans Üretici</h1>
+    <p>Bu dosya yalnızca sizin bilgisayarınızda / telefonunuzda durur; müşterilere veya GitHub'a yüklenmez.</p>
+
+    <div class="badge-info">
+      🔒 <strong>Cihaz Kilidi Aktif:</strong> Müşterinin WhatsApp mesajında gönderdiği <strong>Cihaz Kimlik Kodunu (Örn: AVG-7K4M-9P2X)</strong> aşağıya yazarak kod üretin. Üretilen lisans kodu <strong>dünyada yalnızca o müşterinin telefonunda</strong> çalışır, başka telefonda açılmaz!
+    </div>
+
+    <label>1. Müşterinin Cihaz Kimlik Kodu (Cihaz ID) *</label>
+    <input type="text" id="deviceIdInput" class="dev-input" placeholder="Örn: AVG-7K4M-9P2X" oninput="this.value = this.value.toUpperCase()" />
+
+    <label>2. Lisans Süresi Seçin *</label>
+    <select id="prefixSel">
+      <option value="AVIGEN-AY">📅 Aylık Lisans — 30 Gün (399 TL)</option>
+      <option value="AVIGEN-YIL" selected>👑 Yıllık Lisans — 365 Gün (3.990 TL)</option>
+      <option value="AVG-VIP">💎 VIP Süresiz Lisans (Ömür Boyu)</option>
+    </select>
+
+    <label>3. Müşteri / Kümes Adı (İsteğe Bağlı)</label>
+    <input type="text" id="custInput" placeholder="Örn: Anadolu Kümesi" />
+
+    <button class="btn btn-purple" onclick="generateNow()">⚡ Bu Cihaza Özel İmzalı Lisans Kodu Üret</button>
+
+    <div class="out-box">
+      <div style="font-size:11px; font-weight:800; color:#5b21b6; margin-bottom:6px;">ÜRETİLEN CİHAZA ÖZEL LİSANS ANAHTARI:</div>
+      <input type="text" id="keyOut" class="key-input" readonly placeholder="Önce Cihaz ID girin..." />
+      <div class="grid-2">
+        <button class="btn btn-blue" onclick="copyKey()">📋 Kodu Kopyala</button>
+        <button class="btn btn-green" onclick="sendWhatsApp()">📲 WhatsApp Gönder</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function computeDeviceBoundLicenseSignature(prefix, deviceId, nonce) {
+      const cleanDev = String(deviceId || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const cleanNonce = String(nonce || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const payload = `AVIGEN_HW_LOCK_2026::${prefix}::${cleanDev}::${cleanNonce}`;
+      let h1 = 0x811c9dc5;
+      let h2 = 0x5A17C3;
+      for (let i = 0; i < payload.length; i++) {
+        const c = payload.charCodeAt(i);
+        h1 ^= c;
+        h1 = Math.imul(h1, 0x01000193) >>> 0;
+        h2 = ((h2 << 5) - h2 + c) & 0xFFFFFF;
+      }
+      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+      const s1 = chars[h1 % chars.length];
+      const s2 = chars[Math.floor(h1 / chars.length) % chars.length];
+      const s3 = chars[h2 % chars.length];
+      const s4 = chars[Math.floor(h2 / chars.length) % chars.length];
+      return `${s1}${s2}${s3}${s4}`;
+    }
+
+    function generateDeviceBoundKey(prefix, deviceId) {
+      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+      const n1 = chars[Math.floor(Math.random() * chars.length)];
+      const n2 = chars[Math.floor(Math.random() * chars.length)];
+      const nonce = `${n1}${n2}`;
+      const sig = computeDeviceBoundLicenseSignature(prefix, deviceId, nonce);
+      return `${prefix}-${nonce}${sig}`;
+    }
+
+    function generateNow() {
+      const devId = (document.getElementById('deviceIdInput').value || '').trim().toUpperCase();
+      if (!devId || devId.replace(/[^A-Z0-9]/g, '').length < 6) {
+        alert('⚠️ Lütfen müşterinin gönderdiği Cihaz Kimlik Kodunu (Örn: AVG-7K4M-9P2X) girin.');
+        document.getElementById('deviceIdInput').focus();
+        return;
+      }
+      const prefix = document.getElementById('prefixSel').value;
+      document.getElementById('keyOut').value = generateDeviceBoundKey(prefix, devId);
+    }
+
+    function copyKey() {
+      const el = document.getElementById('keyOut');
+      if (!el.value) {
+        alert('Önce bir lisans kodu üretin.');
+        return;
+      }
+      el.select();
+      document.execCommand('copy');
+      alert('Kopyalandı: ' + el.value);
+    }
+
+    function sendWhatsApp() {
+      const keyVal = document.getElementById('keyOut').value;
+      const devId = (document.getElementById('deviceIdInput').value || '').trim().toUpperCase();
+      if (!keyVal) {
+        alert('Önce müşterinin Cihaz ID kodunu girip lisans üretin.');
+        return;
+      }
+      const prefix = document.getElementById('prefixSel').value;
+      const cust = document.getElementById('custInput').value || 'Değerli Yetiştiricimiz';
+      const durText = prefix === 'AVIGEN-AY' ? '30 Günlük (Aylık)' : (prefix === 'AVG-VIP' ? 'Süresiz VIP' : '365 Günlük (1 Yıllık)');
+      const text = encodeURIComponent(
+        `🧬 *AVIGEN GENESIS AI CİHAZA ÖZEL LİSANS ANAHTARINIZ*\n\nMerhaba ${cust},\n📱 *${devId}* kimlik numaralı cihazınız için *AVIGEN GENESIS AI (${durText})* tam sürüm lisans aktivasyon kodunuz:\n\n🔑 Lisans Kodu: *${keyVal}*\n\nUygulamada *🧬 GENESIS AI -> 🔑 Lisans Kodu* kutusuna bu kodu girerek paketinizi hemen etkinleştirebilirsiniz. (Bu kod yalnızca sizin cihazınıza özeldir.)`
+      );
+      window.open(`https://wa.me/?text=${text}`, '_blank');
+    }
+  </script>
+</body>
+</html>

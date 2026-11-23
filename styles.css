@@ -469,8 +469,8 @@ body.dark-theme .ios-tab-btn.genesis-tab-btn {
    ============================================================================ */
 .hero-stats-strip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
   flex-shrink: 0;
 }
 
@@ -479,23 +479,27 @@ body.dark-theme .ios-tab-btn.genesis-tab-btn {
   border: 1px solid var(--ios-border);
   border-top: 3px solid #d97706;
   border-radius: 11px;
-  padding: 8px 6px;
+  padding: 7px 4px;
   text-align: center;
   cursor: pointer;
+  min-width: 0;
 }
 
 .hero-stat-pill .num {
-  font-size: 18px;
+  font-size: 16.5px;
   font-weight: 900;
   color: var(--ios-text);
   line-height: 1.1;
 }
 
 .hero-stat-pill .lbl {
-  font-size: 10.5px;
+  font-size: 9.5px;
   font-weight: 700;
   color: var(--ios-subtext);
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* AVIGEN AI Karar Asistanı (Ferah, Aydınlık, Göz Yormayan Prestij Kart) */
@@ -2206,11 +2210,11 @@ body.cyber-ai-skin .loft-identity-banner {
   cursor: pointer;
 }
 
-/* 2. Dört Eşit Büyüklükte Küçük ve Zarif Kuş İstatistik Kartı */
+/* 2. Beş Eşit Büyüklükte Küçük ve Zarif Kuş İstatistik Kartı (Tek Satır) */
 body.cyber-ai-skin .hero-stats-strip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 7px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
   background: transparent;
   border: none;
   padding: 0;
@@ -2220,13 +2224,14 @@ body.cyber-ai-skin .hero-stats-strip {
 body.cyber-ai-skin .hero-stat-pill.cyber-stat-col {
   background: linear-gradient(180deg, rgba(16, 33, 66, 0.92) 0%, rgba(10, 21, 44, 0.95) 100%);
   border: 1.5px solid rgba(0, 102, 255, 0.35);
-  border-radius: 12px;
+  border-radius: 11px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
-  padding: 6px 4px;
+  padding: 6px 2px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  min-width: 0;
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
@@ -2236,23 +2241,27 @@ body.cyber-ai-skin .hero-stat-pill.cyber-stat-col:hover {
 }
 
 .cyber-stat-icon {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
   margin-bottom: 2px;
 }
 
 body.cyber-ai-skin .hero-stat-pill .num {
   color: #ffffff;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 900;
   line-height: 1.1;
 }
 
 body.cyber-ai-skin .hero-stat-pill .lbl {
   color: #cbd5e1;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 700;
   margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* 3. Cyber Arama & + Kuş Ekle */
@@ -2652,21 +2661,24 @@ body.cyber-ai-skin.cyber-light-skin .cyber-weather-row {
   font-weight: 700;
 }
 
-/* 2. Dört Eşit Büyüklükte Küçük ve Zarif Kuş İstatistik Kartı */
+/* 2. Beş Eşit Büyüklükte Küçük ve Zarif Kuş İstatistik Kartı (Tek Satır) */
 body.cyber-ai-skin.cyber-light-skin .hero-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   background: transparent;
   border: none;
   box-shadow: none;
   padding: 0;
-  gap: 7px;
+  gap: 5px;
 }
 
 body.cyber-ai-skin.cyber-light-skin .hero-stat-pill.cyber-stat-col {
   background: #ffffff;
   border: 1.5px solid rgba(0, 102, 255, 0.18);
-  border-radius: 12px;
-  padding: 6px 4px;
+  border-radius: 11px;
+  padding: 6px 2px;
   box-shadow: 0 3px 10px rgba(0, 102, 255, 0.05);
+  min-width: 0;
 }
 
 body.cyber-ai-skin.cyber-light-skin .hero-stat-pill.cyber-stat-col:hover {
@@ -2676,13 +2688,16 @@ body.cyber-ai-skin.cyber-light-skin .hero-stat-pill.cyber-stat-col:hover {
 
 body.cyber-ai-skin.cyber-light-skin .hero-stat-pill .num {
   color: #0052cc;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 body.cyber-ai-skin.cyber-light-skin .hero-stat-pill .lbl {
   color: #64748b;
   font-weight: 700;
-  font-size: 9px;
+  font-size: 8.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 3. Arama Kutusu & Elektrik Mavisi + Kuş Ekle */
@@ -3502,11 +3517,12 @@ body.cyber-ai-skin.cyber-light-skin .nest-parent-chip .sex-ico.female {
   border-radius: 4px;
 }
 
-/* GENESIS AI 3 Ana Modül Başlatıcı Başlığı & Kartları (1: Mor, 2: Elektrik Mavisi, 3: Zümrüt Yeşili) */
+/* GENESIS AI 3 Ana Modül Başlatıcı Başlığı & Kartları (Aydınlık, Ferah ve Ana Sayfa Resimli Minimal Tasarım) */
 body.cyber-ai-skin.cyber-light-skin .genesis-launcher-hero {
-  background: linear-gradient(135deg, #1e1b4b 0%, #3b0764 55%, #0f172a 100%);
-  border: 1px solid rgba(124, 58, 237, 0.4);
-  box-shadow: 0 6px 16px rgba(88, 28, 135, 0.14);
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 50%, #dbeafe 100%);
+  border: 1.5px solid #0066ff;
+  box-shadow: 0 6px 18px rgba(0, 102, 255, 0.11), inset 0 0 0 1px rgba(212, 175, 55, 0.22);
+  color: #0f172a;
 }
 
 body.cyber-ai-skin.cyber-light-skin .genesis-3main-card {

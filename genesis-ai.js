@@ -37,6 +37,7 @@ const AvigenGenesisAI = {
     smartRaceMapZoom: 1.0,
     smartRaceMapPanX: 0,
     smartRaceMapPanY: 0,
+    smartRaceTileLayerType: 'google_hybrid', // 'google_hybrid' (Google Uydu + Yol/İlçe) | 'google_road' (Google Karayolu) | 'google_terrain' (Google Arazi/Dağ) | 'vector_offline' (Çevrimdışı Vektör)
     smartRaceCustomTitle: '',
     smartRaceSearchQuery: '',
     smartRaceSelectedBirdRings: [], // Boşsa aktif yarış kadrosu otomatik kullanılır
@@ -45,7 +46,9 @@ const AvigenGenesisAI = {
     smartRaceSavedSimulations: [],
     smartRaceEventId: 'auto', // 'auto' | 'custom' | raceId
     smartRaceReleaseCityId: 'ankara',
+    smartRaceReleaseDistrictId: 'polatli',
     smartRaceLoftCityId: 'bursa',
+    smartRaceLoftDistrictId: 'karacabey',
     smartRaceDate: '2026-11-22',
     smartRaceReleaseTime: '06:45',
     smartRaceManualKm: 0,
@@ -77,7 +80,12 @@ const AvigenGenesisAI = {
     cortexCustomQuestion: '',
     cortexLearningLog: [],
     cortexModelVersion: 'v2.2.0',
-    hasVerifiedDnaLabData: false
+    hasVerifiedDnaLabData: false,
+    geminiModel: 'gemini-2.0-flash',
+    geminiTopic: 'breeding_advice',
+    geminiDraftPrompt: '',
+    geminiIsLoading: false,
+    geminiChatHistory: []
   },
 
   analysisHistory: [],
@@ -101,7 +109,7 @@ const AvigenGenesisAI = {
 
   // ==========================================================================
   // AVIGEN GENESIS AI — ÇEKİRDEK BİLİMSEL MODÜL MİMARİSİ
-  // 1. GENESIS AI – AKILLI EŞLEŞTİRME (Tek Bütünleşik 5 Nesil Soy, Performans & 11 Özellikli Yavru Öngörü Motoru)
+  // 1. GENESIS AI – AKILLI EŞLEŞTİRME & CANLI KÜMES/SOY DANIŞMANI (5 Nesil Soy, COI, Yavru Öngörüsü & Canlı Soru-Cevap)
   // 2. GENESIS AI – AKILLI YARIŞ YÖNETİMİ (Rota/Coğrafya, 3 Bölgeli Meteoroloji & Risk, Kuş Uygunluğu, Tahmini Dönüş & Öğrenen Yarış Sonrası Analiz Motoru)
   // 3. AKILLI YEM, TARİH/DURUM SIVI ÖNERİSİ & 1 AYLIK MALİYET MOTORU
   // ==========================================================================
@@ -111,14 +119,14 @@ const AvigenGenesisAI = {
       defaultSubMode: 'breeding',
       num: '1',
       icon: '💞',
-      title: 'GENESIS AI – AKILLI EŞLEŞTİRME',
-      shortTitle: '1. GENESIS AI – Akıllı Eşleştirme',
-      badge: '5 NESİL SOY • COI • EN İYİ 5 ÇİFT & YAVRU POTANSİYELİ',
+      title: 'GENESIS AI – AKILLI EŞLEŞTİRME & SOY DANIŞMANI',
+      shortTitle: '1. GENESIS AI – Akıllı Eşleştirme & Soy Danışmanı',
+      badge: '5 NESİL SOY • COI • EN İYİ 5 ÇİFT • CANLI SORU-CEVAP',
       accent: '#7c3aed',
       bgGrad: 'linear-gradient(135deg, rgba(124,58,237,0.10), rgba(0,102,255,0.06), rgba(255,255,255,0.98))',
-      purpose: 'Hangi erkekle hangi dişiyi eşleştirmeliyim? Kümesinizdeki en uyumlu 5 çifti bulur, 5 nesil akrabalık (COI), ortak şampiyon ata, fenotip uyumu ve doğacak yavrunun hız/dayanıklılık profilini hesaplar.',
-      inputs: '5 kuşak soyağacı, bireysel/kardeş/yavru yarış kayıtları ve kayıtlı fiziksel özellikler.',
-      outputs: '6 bölümlü tek bütünleşik bilimsel eşleşme ve yavru potansiyeli raporu.',
+      purpose: 'Hangi erkekle hangi dişiyi eşleştirmeliyim? Kümesinizdeki en uyumlu 5 çifti bulur, 5 nesil akrabalık (COI), ortak şampiyon ata, yavru potansiyelini hesaplar ve soy/kümes sorularınızı yanıtlar.',
+      inputs: '5 kuşak soyağacı, bireysel/kardeş/yavru yarış kayıtları, fiziksel özellikler ve serbest sorunuz.',
+      outputs: '6 bölümlü bütünleşik bilimsel eşleşme raporu ve GENESIS AI canlı danışman yanıtı.',
       subFunctions: []
     },
     {
@@ -232,6 +240,13 @@ const AvigenGenesisAI = {
       }
       if (!['breeding', 'smart_race', 'nutrition'].includes(this.state.activeMode)) {
         this.state.activeMode = 'breeding';
+      }
+      if (Array.isArray(this.state.geminiChatHistory)) {
+        this.state.geminiChatHistory = this.state.geminiChatHistory.filter(item =>
+          !String(item?.answerHtml || '').includes('yukarıdaki raporda listelenmiştir') &&
+          !String(item?.answerHtml || '').includes('5 kuşak soyağacı verileri tarandı') &&
+          !String(item?.answerHtml || '').includes('Sorunuz alındı. Eşleştirme, soyağacı (COI)')
+        );
       }
       const savedHist = localStorage.getItem(GENESIS_HISTORY_STORAGE_KEY);
       if (savedHist) {
@@ -1990,6 +2005,376 @@ const AvigenGenesisAI = {
     { id: 'amsterdam', name: 'Amsterdam (Hollanda)', lat: 52.3676, lon: 4.9041, altM: 5, region: 'Avrupa', terrain: 'Deniz Seviyesi Kıyı & Yan Rüzgâr Hattı', isEurope: true }
   ],
 
+  // ==========================================================================
+  // 81 İL İÇİN GERÇEK WGS84 KOORDİNATLI İLÇE VE SALIM NOKTASI VERİTABANI
+  // ==========================================================================
+  SMART_RACE_DISTRICTS: {
+    adana: [
+      { id: 'merkez', name: 'Seyhan / Merkez', lat: 37.0000, lon: 35.3213, altM: 25 },
+      { id: 'ceyhan', name: 'Ceyhan', lat: 37.0247, lon: 35.8175, altM: 30 },
+      { id: 'pozanti', name: 'Pozantı (Gülek Boğazı)', lat: 37.4258, lon: 34.8717, altM: 830 },
+      { id: 'kozan', name: 'Kozan', lat: 37.4553, lon: 35.8156, altM: 150 },
+      { id: 'yuregir', name: 'Yüreğir', lat: 36.9950, lon: 35.3450, altM: 25 },
+      { id: 'cukurova', name: 'Çukurova', lat: 37.0500, lon: 35.2800, altM: 60 }
+    ],
+    afyon: [
+      { id: 'merkez', name: 'Afyon Merkez', lat: 38.7507, lon: 30.5567, altM: 1021 },
+      { id: 'emirdag', name: 'Emirdağ', lat: 39.0197, lon: 31.1500, altM: 980 },
+      { id: 'sandikli', name: 'Sandıklı', lat: 38.4650, lon: 30.2700, altM: 1095 },
+      { id: 'dinar', name: 'Dinar', lat: 38.0650, lon: 30.1656, altM: 880 },
+      { id: 'bolvadin', name: 'Bolvadin', lat: 38.7111, lon: 31.0486, altM: 995 },
+      { id: 'cay', name: 'Çay', lat: 38.5917, lon: 31.0286, altM: 1015 }
+    ],
+    aksaray: [
+      { id: 'merkez', name: 'Aksaray Merkez', lat: 38.3687, lon: 34.0370, altM: 980 },
+      { id: 'ortakoy', name: 'Ortaköy', lat: 38.7369, lon: 34.0386, altM: 1120 },
+      { id: 'eskil', name: 'Eskil (Tuz Gölü)', lat: 38.4017, lon: 33.4125, altM: 920 },
+      { id: 'sultanhani', name: 'Sultanhanı', lat: 38.2464, lon: 33.5472, altM: 945 }
+    ],
+    amasya: [
+      { id: 'merzifon', name: 'Merzifon', lat: 40.8733, lon: 35.4631, altM: 750 },
+      { id: 'merkez', name: 'Amasya Merkez', lat: 40.6499, lon: 35.8353, altM: 412 },
+      { id: 'suluova', name: 'Suluova', lat: 40.8311, lon: 35.6478, altM: 510 },
+      { id: 'tasova', name: 'Taşova', lat: 40.7622, lon: 36.3236, altM: 240 }
+    ],
+    ankara: [
+      { id: 'polatli', name: 'Polatlı (Ana Salım Üssü)', lat: 39.5842, lon: 32.1472, altM: 855 },
+      { id: 'merkez', name: 'Çankaya / Merkez', lat: 39.9334, lon: 32.8597, altM: 890 },
+      { id: 'golbasi', name: 'Gölbaşı', lat: 39.7936, lon: 32.8044, altM: 980 },
+      { id: 'sereflikochisar', name: 'Şereflikoçhisar', lat: 38.9392, lon: 33.5386, altM: 915 },
+      { id: 'kizilcahamam', name: 'Kızılcahamam', lat: 40.4706, lon: 32.6500, altM: 1015 },
+      { id: 'sincan', name: 'Sincan / Temelli', lat: 39.9747, lon: 32.5825, altM: 810 },
+      { id: 'beypazari', name: 'Beypazarı', lat: 40.1675, lon: 31.9211, altM: 685 },
+      { id: 'haymana', name: 'Haymana', lat: 39.4319, lon: 32.4972, altM: 1215 }
+    ],
+    antalya: [
+      { id: 'merkez', name: 'Muratpaşa / Merkez', lat: 36.8969, lon: 30.7133, altM: 40 },
+      { id: 'alanya', name: 'Alanya', lat: 36.5444, lon: 31.9956, altM: 15 },
+      { id: 'manavgat', name: 'Manavgat', lat: 36.7867, lon: 31.4431, altM: 20 },
+      { id: 'serik', name: 'Serik', lat: 36.9169, lon: 31.0989, altM: 25 },
+      { id: 'korkuteli', name: 'Korkuteli', lat: 37.0650, lon: 30.1958, altM: 1020 },
+      { id: 'dosemealti', name: 'Döşemealtı (Çubuk Boğazı)', lat: 37.0322, lon: 30.5944, altM: 310 }
+    ],
+    aydin: [
+      { id: 'merkez', name: 'Efeler / Merkez', lat: 37.8560, lon: 27.8416, altM: 65 },
+      { id: 'nazilli', name: 'Nazilli', lat: 37.9125, lon: 28.3206, altM: 85 },
+      { id: 'soke', name: 'Söke', lat: 37.7508, lon: 27.4061, altM: 35 },
+      { id: 'kusadasi', name: 'Kuşadası', lat: 37.8579, lon: 27.2610, altM: 15 },
+      { id: 'cine', name: 'Çine', lat: 37.6122, lon: 28.0614, altM: 90 }
+    ],
+    balikesir: [
+      { id: 'susurluk', name: 'Susurluk (Salım & Geçit)', lat: 39.9136, lon: 28.1578, altM: 60 },
+      { id: 'merkez', name: 'Karesi / Altıeylül Merkez', lat: 39.6484, lon: 27.8826, altM: 145 },
+      { id: 'bandirma', name: 'Bandırma', lat: 40.3522, lon: 27.9767, altM: 25 },
+      { id: 'edremit', name: 'Edremit', lat: 39.5961, lon: 27.0244, altM: 30 },
+      { id: 'gonen', name: 'Gönen', lat: 40.1047, lon: 27.6539, altM: 45 },
+      { id: 'ayvalik', name: 'Ayvalık', lat: 39.3192, lon: 26.6931, altM: 15 }
+    ],
+    bilecik: [
+      { id: 'bozuyuk', name: 'Bozüyük (Geçit Noktası)', lat: 39.9078, lon: 30.0367, altM: 740 },
+      { id: 'merkez', name: 'Bilecik Merkez', lat: 40.1451, lon: 29.9799, altM: 520 },
+      { id: 'osmaneli', name: 'Osmaneli', lat: 40.3578, lon: 30.0142, altM: 110 },
+      { id: 'sogut', name: 'Söğüt', lat: 40.0186, lon: 30.1819, altM: 680 }
+    ],
+    bolu: [
+      { id: 'gerede', name: 'Gerede (Salım Üssü)', lat: 40.8008, lon: 32.1969, altM: 1320 },
+      { id: 'merkez', name: 'Bolu Merkez', lat: 40.7350, lon: 31.6061, altM: 740 },
+      { id: 'mengen', name: 'Mengen', lat: 40.9383, lon: 32.0781, altM: 615 },
+      { id: 'mudurnu', name: 'Mudurnu', lat: 40.4675, lon: 31.2106, altM: 840 }
+    ],
+    bursa: [
+      { id: 'karacabey', name: 'Karacabey', lat: 40.2144, lon: 28.3611, altM: 35 },
+      { id: 'merkez', name: 'Osmangazi / Merkez', lat: 40.1885, lon: 29.0610, altM: 155 },
+      { id: 'nilufer', name: 'Nilüfer', lat: 40.2147, lon: 28.9383, altM: 110 },
+      { id: 'yildirim', name: 'Yıldırım', lat: 40.1892, lon: 29.1128, altM: 185 },
+      { id: 'inegol', name: 'İnegöl', lat: 40.0781, lon: 29.5133, altM: 295 },
+      { id: 'mustafakemalpasa', name: 'Mustafakemalpaşa', lat: 40.0381, lon: 28.4083, altM: 45 },
+      { id: 'gemlik', name: 'Gemlik', lat: 40.4325, lon: 29.1564, altM: 15 },
+      { id: 'mudanya', name: 'Mudanya', lat: 40.3753, lon: 28.8822, altM: 15 },
+      { id: 'yenisehir', name: 'Yenişehir', lat: 40.2644, lon: 29.6531, altM: 230 }
+    ],
+    canakkale: [
+      { id: 'merkez', name: 'Çanakkale Merkez', lat: 40.1553, lon: 26.4142, altM: 15 },
+      { id: 'biga', name: 'Biga', lat: 40.2281, lon: 27.2422, altM: 45 },
+      { id: 'gelibolu', name: 'Gelibolu', lat: 40.4103, lon: 26.6708, altM: 20 },
+      { id: 'ezine', name: 'Ezine', lat: 39.7897, lon: 26.3422, altM: 60 },
+      { id: 'can', name: 'Çan', lat: 40.0333, lon: 27.0500, altM: 120 }
+    ],
+    corum: [
+      { id: 'merkez', name: 'Çorum Merkez', lat: 40.5506, lon: 34.9556, altM: 801 },
+      { id: 'sungurlu', name: 'Sungurlu (Salım Noktası)', lat: 40.1675, lon: 34.3739, altM: 780 },
+      { id: 'osmancik', name: 'Osmancık', lat: 40.9717, lon: 34.8017, altM: 420 },
+      { id: 'alaca', name: 'Alaca', lat: 40.1683, lon: 35.1436, altM: 950 }
+    ],
+    denizli: [
+      { id: 'merkez', name: 'Pamukkale / Merkezefendi', lat: 37.7765, lon: 29.0864, altM: 354 },
+      { id: 'civril', name: 'Çivril', lat: 38.3014, lon: 29.7386, altM: 830 },
+      { id: 'acipayam', name: 'Acıpayam', lat: 37.4239, lon: 29.3494, altM: 895 },
+      { id: 'honaz', name: 'Honaz (Geçit)', lat: 37.7567, lon: 29.2661, altM: 510 },
+      { id: 'saraykoy', name: 'Sarayköy', lat: 37.9228, lon: 28.9244, altM: 170 }
+    ],
+    diyarbakir: [
+      { id: 'merkez', name: 'Bağlar / Kayapınar Merkez', lat: 37.9144, lon: 40.2306, altM: 675 },
+      { id: 'bismil', name: 'Bismil', lat: 37.8467, lon: 40.6661, altM: 545 },
+      { id: 'silvan', name: 'Silvan', lat: 38.1419, lon: 41.0081, altM: 825 },
+      { id: 'ergani', name: 'Ergani', lat: 38.2703, lon: 39.7617, altM: 955 }
+    ],
+    duzce: [
+      { id: 'merkez', name: 'Düzce Merkez', lat: 40.8438, lon: 31.1565, altM: 160 },
+      { id: 'kaynasli', name: 'Kaynaşlı (Bolu Dağı Girişi)', lat: 40.7772, lon: 31.3056, altM: 310 },
+      { id: 'akcakoca', name: 'Akçakoca', lat: 41.0869, lon: 31.1247, altM: 20 }
+    ],
+    edirne: [
+      { id: 'merkez', name: 'Edirne Merkez (Kapıkule)', lat: 41.6771, lon: 26.5557, altM: 42 },
+      { id: 'kesan', name: 'Keşan', lat: 40.8558, lon: 26.6303, altM: 110 },
+      { id: 'uzunkopru', name: 'Uzunköprü', lat: 41.2708, lon: 26.6872, altM: 35 },
+      { id: 'havsa', name: 'Havsa (Trakya Salım)', lat: 41.5489, lon: 26.8222, altM: 75 },
+      { id: 'ipsala', name: 'İpsala', lat: 40.9219, lon: 26.3828, altM: 25 }
+    ],
+    erzincan: [
+      { id: 'merkez', name: 'Erzincan Merkez', lat: 39.7500, lon: 39.5000, altM: 1185 },
+      { id: 'refahiye', name: 'Refahiye (Sakaltutan)', lat: 39.9008, lon: 38.7667, altM: 1580 },
+      { id: 'tercan', name: 'Tercan', lat: 39.7769, lon: 40.3886, altM: 1425 }
+    ],
+    erzurum: [
+      { id: 'merkez', name: 'Yakutiye / Palandöken Merkez', lat: 39.9055, lon: 41.2658, altM: 1900 },
+      { id: 'askale', name: 'Aşkale (Kop Geçidi)', lat: 39.9214, lon: 40.6950, altM: 1660 },
+      { id: 'horasan', name: 'Horasan', lat: 40.0406, lon: 42.1728, altM: 1560 },
+      { id: 'oltu', name: 'Oltu', lat: 40.5472, lon: 41.9958, altM: 1275 }
+    ],
+    eskisehir: [
+      { id: 'sivrihisar', name: 'Sivrihisar (Ana Salım Kavşağı)', lat: 39.4508, lon: 31.5369, altM: 1070 },
+      { id: 'merkez', name: 'Odunpazarı / Tepebaşı Merkez', lat: 39.7767, lon: 30.5206, altM: 788 },
+      { id: 'inonu', name: 'İnönü', lat: 39.8147, lon: 30.1456, altM: 835 },
+      { id: 'cifteler', name: 'Çifteler', lat: 39.3831, lon: 31.0392, altM: 875 }
+    ],
+    gaziantep: [
+      { id: 'merkez', name: 'Şahinbey / Şehitkamil Merkez', lat: 37.0662, lon: 37.3833, altM: 850 },
+      { id: 'nizip', name: 'Nizip', lat: 37.0097, lon: 37.7944, altM: 530 },
+      { id: 'nurdagi', name: 'Nurdağı (Geçit)', lat: 37.1778, lon: 36.7364, altM: 560 },
+      { id: 'islahiye', name: 'İslahiye', lat: 37.0250, lon: 36.6361, altM: 520 }
+    ],
+    hatay: [
+      { id: 'iskenderun', name: 'İskenderun', lat: 36.5872, lon: 36.1733, altM: 15 },
+      { id: 'merkez', name: 'Antakya / Merkez', lat: 36.2021, lon: 36.1606, altM: 85 },
+      { id: 'belen', name: 'Belen (Belen Geçidi)', lat: 36.4917, lon: 36.1947, altM: 620 },
+      { id: 'dortyol', name: 'Dörtyol', lat: 36.8422, lon: 36.2236, altM: 55 },
+      { id: 'kirikhan', name: 'Kırıkhan', lat: 36.4981, lon: 36.3547, altM: 155 }
+    ],
+    istanbul: [
+      { id: 'merkez', name: 'İstanbul Merkez (Avrupa)', lat: 41.0082, lon: 28.9784, altM: 45 },
+      { id: 'silivri', name: 'Silivri (Batı Kapısı)', lat: 41.0739, lon: 28.2464, altM: 35 },
+      { id: 'catalca', name: 'Çatalca', lat: 41.1436, lon: 28.4614, altM: 85 },
+      { id: 'buyukcekmece', name: 'Büyükçekmece / Esenyurt', lat: 41.0203, lon: 28.5850, altM: 40 },
+      { id: 'arnavutkoy', name: 'Arnavutköy / Hadımköy', lat: 41.1856, lon: 28.7406, altM: 130 },
+      { id: 'sariyer', name: 'Sarıyer / Boğaz Hattı', lat: 41.1667, lon: 29.0500, altM: 55 },
+      { id: 'beykoz', name: 'Beykoz (Anadolu Kuzey)', lat: 41.1272, lon: 29.0972, altM: 60 },
+      { id: 'pendik', name: 'Pendik / Kartal', lat: 40.8775, lon: 29.2336, altM: 35 },
+      { id: 'tuzla', name: 'Tuzla (Doğu Kapısı)', lat: 40.8161, lon: 29.3006, altM: 25 },
+      { id: 'cekmekoy', name: 'Çekmeköy / Sancaktepe', lat: 41.0339, lon: 29.1778, altM: 140 }
+    ],
+    izmir: [
+      { id: 'merkez', name: 'Konak / Bornova Merkez', lat: 38.4237, lon: 27.1428, altM: 30 },
+      { id: 'menemen', name: 'Menemen', lat: 38.6069, lon: 27.0692, altM: 25 },
+      { id: 'bergama', name: 'Bergama', lat: 39.1214, lon: 27.1797, altM: 70 },
+      { id: 'torbali', name: 'Torbalı', lat: 38.1519, lon: 27.3622, altM: 45 },
+      { id: 'odemis', name: 'Ödemiş', lat: 38.2278, lon: 27.9719, altM: 125 },
+      { id: 'cesme', name: 'Çeşme', lat: 38.3228, lon: 26.3061, altM: 15 },
+      { id: 'kemalpasa', name: 'Kemalpaşa (Belkahve Geçidi)', lat: 38.4264, lon: 27.4172, altM: 180 },
+      { id: 'aliaga', name: 'Aliağa', lat: 38.7994, lon: 26.9719, altM: 20 }
+    ],
+    kahramanmaras: [
+      { id: 'merkez', name: 'Onikişubat / Dulkadiroğlu Merkez', lat: 37.5858, lon: 36.9371, altM: 568 },
+      { id: 'elbistan', name: 'Elbistan', lat: 38.2039, lon: 37.1964, altM: 1150 },
+      { id: 'afsin', name: 'Afşin', lat: 38.2478, lon: 36.9144, altM: 1230 },
+      { id: 'pazarcik', name: 'Pazarcık', lat: 37.4869, lon: 37.2981, altM: 750 }
+    ],
+    kars: [
+      { id: 'merkez', name: 'Kars Merkez', lat: 40.6013, lon: 43.0975, altM: 1768 },
+      { id: 'sarikamis', name: 'Sarıkamış', lat: 40.3328, lon: 42.5908, altM: 2100 },
+      { id: 'kagizman', name: 'Kağızman', lat: 40.1558, lon: 43.1333, altM: 1400 }
+    ],
+    kastamonu: [
+      { id: 'merkez', name: 'Kastamonu Merkez', lat: 41.3887, lon: 33.7827, altM: 775 },
+      { id: 'tosya', name: 'Tosya (Salım Hattı)', lat: 41.0156, lon: 34.0369, altM: 820 },
+      { id: 'inebolu', name: 'İnebolu', lat: 41.9747, lon: 33.7608, altM: 20 }
+    ],
+    kayseri: [
+      { id: 'merkez', name: 'Melikgazi / Kocasinan Merkez', lat: 38.7312, lon: 35.4787, altM: 1054 },
+      { id: 'pinarbasi', name: 'Pınarbaşı (Doğu Salım)', lat: 38.7228, lon: 36.3919, altM: 1530 },
+      { id: 'develi', name: 'Develi', lat: 38.3889, lon: 35.4922, altM: 1180 },
+      { id: 'incesu', name: 'İncesu', lat: 38.6247, lon: 35.1864, altM: 1090 }
+    ],
+    kirikkale: [
+      { id: 'merkez', name: 'Kırıkkale Merkez', lat: 39.8468, lon: 33.5153, altM: 740 },
+      { id: 'keskin', name: 'Keskin', lat: 39.6731, lon: 33.6136, altM: 1060 },
+      { id: 'delice', name: 'Delice (Salım Kavşağı)', lat: 39.9519, lon: 34.0322, altM: 690 }
+    ],
+    kirklareli: [
+      { id: 'merkez', name: 'Kırklareli Merkez', lat: 41.7351, lon: 27.2252, altM: 203 },
+      { id: 'luleburgaz', name: 'Lüleburgaz (Trakya Merkez)', lat: 41.4056, lon: 27.3569, altM: 65 },
+      { id: 'babaeski', name: 'Babaeski', lat: 41.4325, lon: 27.0931, altM: 55 },
+      { id: 'vize', name: 'Vize', lat: 41.5725, lon: 27.7658, altM: 185 }
+    ],
+    kirsehir: [
+      { id: 'merkez', name: 'Kırşehir Merkez', lat: 39.1425, lon: 34.1639, altM: 985 },
+      { id: 'kaman', name: 'Kaman', lat: 39.3567, lon: 33.7239, altM: 1075 },
+      { id: 'mucur', name: 'Mucur', lat: 39.0628, lon: 34.3872, altM: 1090 }
+    ],
+    kocaeli: [
+      { id: 'izmit', name: 'İzmit Merkez', lat: 40.8533, lon: 29.8815, altM: 60 },
+      { id: 'gebze', name: 'Gebze', lat: 40.8028, lon: 29.4306, altM: 140 },
+      { id: 'golcuk', name: 'Gölcük', lat: 40.7175, lon: 29.8194, altM: 25 },
+      { id: 'kartepe', name: 'Kartepe', lat: 40.7533, lon: 30.0236, altM: 95 },
+      { id: 'kandira', name: 'Kandıra', lat: 41.0706, lon: 30.1528, altM: 55 }
+    ],
+    konya: [
+      { id: 'merkez', name: 'Selçuklu / Meram / Karatay', lat: 37.8746, lon: 32.4932, altM: 1016 },
+      { id: 'cihanbeyli', name: 'Cihanbeyli (Salım Üssü)', lat: 38.6531, lon: 32.9244, altM: 965 },
+      { id: 'kulu', name: 'Kulu (Kuzey Salım)', lat: 39.0950, lon: 33.0794, altM: 1005 },
+      { id: 'eregli', name: 'Konya Ereğli', lat: 37.5133, lon: 34.0467, altM: 1045 },
+      { id: 'aksehir', name: 'Akşehir', lat: 38.3575, lon: 31.4164, altM: 1030 },
+      { id: 'beysehir', name: 'Beyşehir', lat: 37.6772, lon: 31.7247, altM: 1135 },
+      { id: 'karapinar', name: 'Karapınar', lat: 37.7153, lon: 33.5506, altM: 995 }
+    ],
+    kutahya: [
+      { id: 'merkez', name: 'Kütahya Merkez', lat: 39.4167, lon: 29.9833, altM: 969 },
+      { id: 'tavsanli', name: 'Tavşanlı', lat: 39.5469, lon: 29.4939, altM: 840 },
+      { id: 'gediz', name: 'Gediz', lat: 38.9939, lon: 29.3914, altM: 760 },
+      { id: 'simav', name: 'Simav', lat: 39.0897, lon: 28.9778, altM: 810 }
+    ],
+    malatya: [
+      { id: 'merkez', name: 'Battalgazi / Yeşilyurt Merkez', lat: 38.3552, lon: 38.3095, altM: 954 },
+      { id: 'darende', name: 'Darende (Salım Geçidi)', lat: 38.5483, lon: 37.5089, altM: 1030 },
+      { id: 'akcadag', name: 'Akçadağ', lat: 38.3389, lon: 37.9686, altM: 1070 }
+    ],
+    manisa: [
+      { id: 'akhisar', name: 'Akhisar (Salım & Kümes)', lat: 38.9189, lon: 27.8400, altM: 95 },
+      { id: 'merkez', name: 'Yunusemre / Şehzadeler Merkez', lat: 38.6191, lon: 27.4289, altM: 75 },
+      { id: 'turgutlu', name: 'Turgutlu', lat: 38.4953, lon: 27.6997, altM: 80 },
+      { id: 'salihli', name: 'Salihli', lat: 38.4833, lon: 28.1394, altM: 115 },
+      { id: 'soma', name: 'Soma', lat: 39.1856, lon: 27.6089, altM: 175 },
+      { id: 'kula', name: 'Kula (İç Ege Geçidi)', lat: 38.5453, lon: 28.6478, altM: 675 }
+    ],
+    mersin: [
+      { id: 'merkez', name: 'Yenişehir / Akdeniz Merkez', lat: 36.8121, lon: 34.6415, altM: 15 },
+      { id: 'tarsus', name: 'Tarsus', lat: 36.9167, lon: 34.8956, altM: 25 },
+      { id: 'silifke', name: 'Silifke', lat: 36.3778, lon: 33.9344, altM: 20 },
+      { id: 'mut', name: 'Mut (Sertavul Geçidi)', lat: 36.6439, lon: 33.4389, altM: 290 },
+      { id: 'erdemli', name: 'Erdemli', lat: 36.6050, lon: 34.3083, altM: 15 }
+    ],
+    mugla: [
+      { id: 'merkez', name: 'Menteşe / Merkez', lat: 37.2153, lon: 28.3636, altM: 660 },
+      { id: 'milas', name: 'Milas', lat: 37.3164, lon: 27.7839, altM: 60 },
+      { id: 'fethiye', name: 'Fethiye', lat: 36.6217, lon: 29.1164, altM: 15 },
+      { id: 'bodrum', name: 'Bodrum', lat: 37.0344, lon: 27.4305, altM: 20 },
+      { id: 'marmaris', name: 'Marmaris', lat: 36.8550, lon: 28.2742, altM: 15 }
+    ],
+    nigde: [
+      { id: 'merkez', name: 'Niğde Merkez', lat: 37.9667, lon: 34.6833, altM: 1229 },
+      { id: 'bor', name: 'Bor', lat: 37.8919, lon: 34.5586, altM: 1115 },
+      { id: 'ulukisla', name: 'Ulukışla (Gülek Kuzey Girişi)', lat: 37.5472, lon: 34.4847, altM: 1425 }
+    ],
+    sakarya: [
+      { id: 'hendek', name: 'Hendek (Salım Noktası)', lat: 40.7994, lon: 30.7481, altM: 140 },
+      { id: 'merkez', name: 'Adapazarı / Serdivan Merkez', lat: 40.7569, lon: 30.3783, altM: 45 },
+      { id: 'akyazi', name: 'Akyazı', lat: 40.6844, lon: 30.6250, altM: 65 },
+      { id: 'sapanca', name: 'Sapanca', lat: 40.6914, lon: 30.2675, altM: 45 },
+      { id: 'geyve', name: 'Geyve (Sakarya Boğazı)', lat: 40.5081, lon: 30.2925, altM: 110 }
+    ],
+    samsun: [
+      { id: 'merkez', name: 'İlkadım / Atakum Merkez', lat: 41.2867, lon: 36.3300, altM: 20 },
+      { id: 'bafra', name: 'Bafra', lat: 41.5678, lon: 35.9069, altM: 25 },
+      { id: 'carsamba', name: 'Çarşamba', lat: 41.1981, lon: 36.7219, altM: 20 },
+      { id: 'havza', name: 'Havza (İç Geçit)', lat: 40.9708, lon: 35.6625, altM: 650 },
+      { id: 'kavak', name: 'Kavak (Salım Geçidi)', lat: 41.0731, lon: 36.0408, altM: 605 }
+    ],
+    sanliurfa: [
+      { id: 'merkez', name: 'Haliliye / Eyyübiye Merkez', lat: 37.1674, lon: 38.7955, altM: 518 },
+      { id: 'siverek', name: 'Siverek', lat: 37.7550, lon: 39.3167, altM: 800 },
+      { id: 'viranşehir', name: 'Viranşehir', lat: 37.2353, lon: 39.7631, altM: 570 },
+      { id: 'birecik', name: 'Birecik (Fırat Geçidi)', lat: 37.0258, lon: 37.9786, altM: 350 }
+    ],
+    sivas: [
+      { id: 'yildizeli', name: 'Yıldızeli (Çamlıbel Salım)', lat: 39.8658, lon: 36.5975, altM: 1410 },
+      { id: 'merkez', name: 'Sivas Merkez', lat: 39.7477, lon: 37.0179, altM: 1285 },
+      { id: 'sarkisla', name: 'Şarkışla', lat: 39.3519, lon: 36.4097, altM: 1240 },
+      { id: 'kangal', name: 'Kangal', lat: 39.2367, lon: 37.3889, altM: 1540 },
+      { id: 'zara', name: 'Zara', lat: 39.8958, lon: 37.7569, altM: 1350 },
+      { id: 'suşehri', name: 'Suşehri', lat: 40.1644, lon: 38.0867, altM: 1020 }
+    ],
+    tekirdag: [
+      { id: 'corlu', name: 'Çorlu (Trakya Merkez)', lat: 41.1592, lon: 27.8000, altM: 165 },
+      { id: 'merkez', name: 'Süleymanpaşa / Merkez', lat: 40.9781, lon: 27.5117, altM: 35 },
+      { id: 'cerkezkoy', name: 'Çerkezköy', lat: 41.2858, lon: 28.0003, altM: 155 },
+      { id: 'malkara', name: 'Malkara (Salım Hattı)', lat: 40.8897, lon: 26.9011, altM: 210 },
+      { id: 'sarkoy', name: 'Şarköy', lat: 40.6147, lon: 27.1144, altM: 20 }
+    ],
+    tokat: [
+      { id: 'merkez', name: 'Tokat Merkez', lat: 40.3167, lon: 36.5500, altM: 623 },
+      { id: 'turhal', name: 'Turhal', lat: 40.3886, lon: 36.0825, altM: 530 },
+      { id: 'erbaa', name: 'Erbaa', lat: 40.6697, lon: 36.5658, altM: 250 },
+      { id: 'niksar', name: 'Niksar', lat: 40.5917, lon: 36.9539, altM: 365 }
+    ],
+    trabzon: [
+      { id: 'merkez', name: 'Ortahisar / Merkez', lat: 41.0027, lon: 39.7168, altM: 35 },
+      { id: 'akcaabat', name: 'Akçaabat', lat: 41.0206, lon: 39.5706, altM: 25 },
+      { id: 'macka', name: 'Maçka (Zigana Girişi)', lat: 40.8136, lon: 39.6108, altM: 410 },
+      { id: 'of', name: 'Of', lat: 40.9469, lon: 40.2692, altM: 15 }
+    ],
+    van: [
+      { id: 'merkez', name: 'İpekyolu / Tuşba Merkez', lat: 38.4891, lon: 43.4089, altM: 1727 },
+      { id: 'ercis', name: 'Erciş', lat: 39.0286, lon: 43.3586, altM: 1750 },
+      { id: 'tatvan_gecit', name: 'Gevaş (Van Gölü Güney)', lat: 38.2975, lon: 43.1061, altM: 1740 }
+    ],
+    yozgat: [
+      { id: 'merkez', name: 'Yozgat Merkez', lat: 39.8181, lon: 34.8147, altM: 1300 },
+      { id: 'sorgun', name: 'Sorgun (Salım Üssü)', lat: 39.8103, lon: 35.1861, altM: 1085 },
+      { id: 'yerkoy', name: 'Yerköy', lat: 39.6386, lon: 34.4675, altM: 770 },
+      { id: 'akdagmadeni', name: 'Akdağmadeni', lat: 39.6606, lon: 35.8839, altM: 1350 }
+    ]
+  },
+
+  getDistrictsForProvince(cityId) {
+    const cleanId = String(cityId || 'ankara').toLowerCase();
+    if (this.SMART_RACE_DISTRICTS && Array.isArray(this.SMART_RACE_DISTRICTS[cleanId]) && this.SMART_RACE_DISTRICTS[cleanId].length > 0) {
+      return this.SMART_RACE_DISTRICTS[cleanId];
+    }
+    const baseNode = this.SMART_RACE_GEO_NODES.find(n => n.id === cleanId) || this.SMART_RACE_GEO_NODES[0];
+    const baseName = String(baseNode.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0].trim();
+    return [
+      { id: 'merkez', name: `${baseName} Merkez`, lat: baseNode.lat, lon: baseNode.lon, altM: baseNode.altM },
+      { id: 'bati_cikisi', name: `${baseName} Batı Salım Noktası`, lat: Number((baseNode.lat + 0.03).toFixed(4)), lon: Number((baseNode.lon - 0.16).toFixed(4)), altM: baseNode.altM + 20 },
+      { id: 'dogu_cikisi', name: `${baseName} Doğu Salım Noktası`, lat: Number((baseNode.lat - 0.02).toFixed(4)), lon: Number((baseNode.lon + 0.16).toFixed(4)), altM: baseNode.altM + 35 },
+      { id: 'kuzey_hatti', name: `${baseName} Kuzey Çevre Yolu`, lat: Number((baseNode.lat + 0.12).toFixed(4)), lon: baseNode.lon, altM: baseNode.altM + 15 }
+    ];
+  },
+
+  resolveProvinceAndDistrictNode(cityId, districtId, customCoord = null, fallbackCityId = 'ankara') {
+    if (customCoord && customCoord.lat && customCoord.lon) {
+      return customCoord;
+    }
+    const prov = this.findGeoNodeByNameOrId(cityId, fallbackCityId);
+    const districts = this.getDistrictsForProvince(prov.id);
+    const dist = districts.find(d => d.id === districtId) || districts[0];
+    if (!dist) return prov;
+    const provShort = String(prov.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0].trim();
+    const distClean = String(dist.name || '').split(' (')[0].trim();
+    const displayLabel = distClean.toLowerCase().includes(provShort.toLowerCase())
+      ? dist.name
+      : `${provShort} / ${dist.name}`;
+    return {
+      ...prov,
+      id: prov.id,
+      districtId: dist.id,
+      districtName: dist.name,
+      name: displayLabel,
+      lat: Number(dist.lat || prov.lat),
+      lon: Number(dist.lon || prov.lon),
+      altM: Number(dist.altM ?? prov.altM)
+    };
+  },
+
   findGeoNodeByNameOrId(query, fallbackId = 'ankara') {
     const q = String(query || '').trim();
     if (!q) {
@@ -2025,6 +2410,19 @@ const AvigenGenesisAI = {
       .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u')
       .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c');
     const qAsc = cleanAscii(qLow);
+
+    // Önce 81 il içindeki özel ilçe veritabanını tara (Örn: "Polatlı", "Cihanbeyli", "Karacabey", "Silivri" vb.)
+    if (this.SMART_RACE_DISTRICTS) {
+      for (const [cityKey, distList] of Object.entries(this.SMART_RACE_DISTRICTS)) {
+        for (const d of distList) {
+          if (d.id === 'merkez') continue;
+          const dAsc = cleanAscii(d.name.split(' (')[0]);
+          if (qAsc === d.id || (qAsc.length >= 3 && (dAsc === qAsc || dAsc.includes(qAsc)))) {
+            return this.resolveProvinceAndDistrictNode(cityKey, d.id, null, fallbackId);
+          }
+        }
+      }
+    }
 
     for (const node of this.SMART_RACE_GEO_NODES) {
       const nAsc = cleanAscii(node.name.replace(/^\d{2}\s*-\s*/, ''));
@@ -2111,10 +2509,79 @@ const AvigenGenesisAI = {
     this.renderGenesisReportOnly();
   },
 
+  _mapDragState: {
+    active: false,
+    moved: false,
+    startX: 0,
+    startY: 0,
+    startPanX: 0,
+    startPanY: 0
+  },
+
+  startTurkeyMapDrag(evt) {
+    if (!evt) return;
+    if (evt.type === 'mousedown' && evt.button !== 0) return;
+    const pt = evt.touches && evt.touches[0] ? evt.touches[0] : evt;
+    this._mapDragState = {
+      active: true,
+      moved: false,
+      startX: pt.clientX,
+      startY: pt.clientY,
+      startPanX: Number(this.state.smartRaceMapPanX) || 0,
+      startPanY: Number(this.state.smartRaceMapPanY) || 0
+    };
+  },
+
+  moveTurkeyMapDrag(evt) {
+    if (!this._mapDragState || !this._mapDragState.active || !evt) return;
+    const pt = evt.touches && evt.touches[0] ? evt.touches[0] : evt;
+    const dxPx = pt.clientX - this._mapDragState.startX;
+    const dyPx = pt.clientY - this._mapDragState.startY;
+    if (Math.hypot(dxPx, dyPx) < 5 && !this._mapDragState.moved) return;
+
+    this._mapDragState.moved = true;
+    if (evt.cancelable && typeof evt.preventDefault === 'function') evt.preventDefault();
+
+    const svgEl = document.getElementById('avigenInteractiveTurkeySvg');
+    if (!svgEl) return;
+    const rect = svgEl.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const zoom = Math.max(1.0, Math.min(2.8, Number(this.state.smartRaceMapZoom) || 1.0));
+    const vbW = Math.round(720 / zoom);
+    const vbH = Math.round(320 / zoom);
+    const svgDx = -(dxPx / rect.width) * vbW;
+    const svgDy = -(dyPx / rect.height) * vbH;
+
+    const nextPanX = Math.max(-240, Math.min(240, Math.round(this._mapDragState.startPanX + svgDx)));
+    const nextPanY = Math.max(-120, Math.min(120, Math.round(this._mapDragState.startPanY + svgDy)));
+    this.state.smartRaceMapPanX = nextPanX;
+    this.state.smartRaceMapPanY = nextPanY;
+
+    const vbX = Math.max(-95, Math.min(720 - vbW + 95, Math.round((720 - vbW) / 2 + nextPanX)));
+    const vbY = Math.max(-40, Math.min(320 - vbH + 40, Math.round((320 - vbH) / 2 + nextPanY)));
+    svgEl.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+  },
+
+  endTurkeyMapDrag(evt) {
+    if (!this._mapDragState || !this._mapDragState.active) return;
+    const wasMoved = this._mapDragState.moved;
+    this._mapDragState.active = false;
+    if (wasMoved) {
+      this.saveState();
+      setTimeout(() => {
+        if (this._mapDragState) this._mapDragState.moved = false;
+      }, 60);
+    }
+  },
+
   selectCityFromTurkeyMap(cityId, evt) {
     if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+    if (this._mapDragState && this._mapDragState.moved) return;
     const node = this.SMART_RACE_GEO_NODES.find(n => n.id === cityId);
     if (!node) return;
+    const dists = this.getDistrictsForProvince(node.id);
+    const defDistId = dists[0] ? dists[0].id : 'merkez';
 
     this.state.smartRaceEventId = 'custom';
     this.state.smartRaceManualKm = 0;
@@ -2122,9 +2589,34 @@ const AvigenGenesisAI = {
 
     if (this.state.smartRaceMapClickTarget === 'arrival') {
       this.state.smartRaceLoftCityId = node.id;
+      this.state.smartRaceLoftDistrictId = defDistId;
       this.state.smartRaceCustomLoftCoord = null;
     } else {
       this.state.smartRaceReleaseCityId = node.id;
+      this.state.smartRaceReleaseDistrictId = defDistId;
+      this.state.smartRaceCustomReleaseCoord = null;
+    }
+
+    this.invalidateEngineCache();
+    this.saveState();
+    this.renderGenesisReportOnly();
+  },
+
+  selectDistrictFromTurkeyMap(cityId, districtId, evt) {
+    if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+    if (this._mapDragState && this._mapDragState.moved) return;
+
+    this.state.smartRaceEventId = 'custom';
+    this.state.smartRaceManualKm = 0;
+    this.state.smartRaceLiveRouteData = null;
+
+    if (this.state.smartRaceMapClickTarget === 'arrival') {
+      this.state.smartRaceLoftCityId = cityId;
+      this.state.smartRaceLoftDistrictId = districtId;
+      this.state.smartRaceCustomLoftCoord = null;
+    } else {
+      this.state.smartRaceReleaseCityId = cityId;
+      this.state.smartRaceReleaseDistrictId = districtId;
       this.state.smartRaceCustomReleaseCoord = null;
     }
 
@@ -2134,6 +2626,7 @@ const AvigenGenesisAI = {
   },
 
   onTurkeyMapCanvasClick(evt) {
+    if (this._mapDragState && this._mapDragState.moved) return;
     const svgEl = document.getElementById('avigenInteractiveTurkeySvg');
     if (!svgEl || !evt) return;
     const rect = svgEl.getBoundingClientRect();
@@ -2154,24 +2647,48 @@ const AvigenGenesisAI = {
     const nearest = this.findNearestGeoNode(lat, lon);
     const distKm = this.computeRawHaversineKm(lat, lon, nearest.lat, nearest.lon);
 
+    // En yakın ilçeyi de kontrol et
+    const dists = this.getDistrictsForProvince(nearest.id);
+    let nearestDist = dists[0];
+    let nearestDistKm = 999999;
+    dists.forEach(d => {
+      const dk = this.computeRawHaversineKm(lat, lon, d.lat, d.lon);
+      if (dk < nearestDistKm) {
+        nearestDistKm = dk;
+        nearestDist = d;
+      }
+    });
+
     this.state.smartRaceEventId = 'custom';
     this.state.smartRaceManualKm = 0;
     this.state.smartRaceLiveRouteData = null;
 
-    if (distKm <= 38) {
-      // Yakındaki şehir merkezine mıknatısla
+    if (nearestDist && nearestDistKm <= 26) {
       if (this.state.smartRaceMapClickTarget === 'arrival') {
         this.state.smartRaceLoftCityId = nearest.id;
+        this.state.smartRaceLoftDistrictId = nearestDist.id;
         this.state.smartRaceCustomLoftCoord = null;
       } else {
         this.state.smartRaceReleaseCityId = nearest.id;
+        this.state.smartRaceReleaseDistrictId = nearestDist.id;
+        this.state.smartRaceCustomReleaseCoord = null;
+      }
+    } else if (distKm <= 38) {
+      // Yakındaki şehir merkezine mıknatısla
+      if (this.state.smartRaceMapClickTarget === 'arrival') {
+        this.state.smartRaceLoftCityId = nearest.id;
+        this.state.smartRaceLoftDistrictId = dists[0] ? dists[0].id : 'merkez';
+        this.state.smartRaceCustomLoftCoord = null;
+      } else {
+        this.state.smartRaceReleaseCityId = nearest.id;
+        this.state.smartRaceReleaseDistrictId = dists[0] ? dists[0].id : 'merkez';
         this.state.smartRaceCustomReleaseCoord = null;
       }
     } else {
       // Harita üzerinde tıklanan tam koordinatı kullan
       const customNode = {
         id: 'custom_coord',
-        name: `${nearest.name.split(' ')[0]} Kırsalı (${lat.toFixed(2)}°K, ${lon.toFixed(2)}°D)`,
+        name: `${nearest.name.replace(/^\d{2}\s*-\s*/, '').split(' ')[0]} Kırsalı (${lat.toFixed(2)}°K, ${lon.toFixed(2)}°D)`,
         lat,
         lon,
         altM: nearest.altM || 750,
@@ -2192,23 +2709,291 @@ const AvigenGenesisAI = {
     this.renderGenesisReportOnly();
   },
 
+  _leafletMapInstance: null,
+  _leafletTileLayer: null,
+  _leafletOverlayGroup: null,
+  _leafletLastCenter: null,
+  _leafletLastZoom: null,
+
+  setSmartRaceTileLayerType(layerType, evt) {
+    if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+    if (!['google_hybrid', 'google_road', 'google_terrain', 'vector_offline'].includes(layerType)) {
+      layerType = 'google_hybrid';
+    }
+    this.state.smartRaceTileLayerType = layerType;
+    this.saveState();
+    this.renderGenesisReportOnly();
+  },
+
+  getGoogleTileUrlForType(layerType) {
+    // Google Maps Türkçe (hl=tr) yüksek çözünürlüklü katmanları:
+    // y = Hybrid (Uydu + İl/İlçe/Mahalle/Yol etiketleri)
+    // m = Standart Google Karayolu & Şehir/İlçe Haritası
+    // p = Google Fiziki Arazi / Dağ / Rakım Haritası
+    if (layerType === 'google_road') {
+      return 'https://mt1.google.com/vt/lyrs=m&hl=tr&x={x}&y={y}&z={z}';
+    }
+    if (layerType === 'google_terrain') {
+      return 'https://mt1.google.com/vt/lyrs=p&hl=tr&x={x}&y={y}&z={z}';
+    }
+    return 'https://mt1.google.com/vt/lyrs=y&hl=tr&x={x}&y={y}&z={z}';
+  },
+
+  mountSmartRaceLeafletMap() {
+    const mapBox = document.getElementById('avigenGoogleLeafletMap');
+    const fallbackBox = document.getElementById('avigenOfflineVectorMapWrap');
+    const layerType = this.state.smartRaceTileLayerType || 'google_hybrid';
+
+    if (layerType === 'vector_offline' || typeof window.L === 'undefined' || !mapBox) {
+      if (this._leafletMapInstance) {
+        try { this._leafletMapInstance.remove(); } catch (e) {}
+        this._leafletMapInstance = null;
+      }
+      if (mapBox) mapBox.style.display = 'none';
+      if (fallbackBox) fallbackBox.style.display = 'block';
+      return;
+    }
+
+    if (mapBox) mapBox.style.display = 'block';
+    if (fallbackBox) fallbackBox.style.display = 'none';
+
+    const sr = this.analyzeSmartRaceManagement();
+    const r = sr.route;
+
+    // Eski DOM üzerinde kalan harita örneğini temizle
+    if (this._leafletMapInstance) {
+      try { this._leafletMapInstance.remove(); } catch (e) {}
+      this._leafletMapInstance = null;
+    }
+
+    const defaultCenter = this._leafletLastCenter || [
+      Number(((r.relNode.lat + r.loftNode.lat) / 2).toFixed(4)),
+      Number(((r.relNode.lon + r.loftNode.lon) / 2).toFixed(4))
+    ];
+    const defaultZoom = this._leafletLastZoom || 6;
+
+    const map = window.L.map(mapBox, {
+      center: defaultCenter,
+      zoom: defaultZoom,
+      minZoom: 5,
+      maxZoom: 18,
+      zoomControl: false,
+      attributionControl: false
+    });
+    this._leafletMapInstance = map;
+
+    map.on('moveend zoomend', () => {
+      if (!this._leafletMapInstance) return;
+      const c = this._leafletMapInstance.getCenter();
+      this._leafletLastCenter = [c.lat, c.lng];
+      this._leafletLastZoom = this._leafletMapInstance.getZoom();
+    });
+
+    const tileUrl = this.getGoogleTileUrlForType(layerType);
+    this._leafletTileLayer = window.L.tileLayer(tileUrl, {
+      maxZoom: 19,
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    }).addTo(map);
+
+    const overlayGroup = window.L.layerGroup().addTo(map);
+    this._leafletOverlayGroup = overlayGroup;
+
+    // 1. Kuş Uçuşu Ana Rota Çizgisi ve Arazi Sapma Koridoru
+    const relLatLng = [r.relNode.lat, r.relNode.lon];
+    const loftLatLng = [r.loftNode.lat, r.loftNode.lon];
+    const midLat = (r.relNode.lat + r.loftNode.lat) / 2;
+    const midLon = (r.relNode.lon + r.loftNode.lon) / 2;
+    const curveLat = midLat + Math.min(0.45, Math.abs(r.relNode.lon - r.loftNode.lon) * 0.08);
+
+    // Olası Vadi Sapma Koridoru (Kesikli Mavi Hat)
+    window.L.polyline([relLatLng, [curveLat, midLon], loftLatLng], {
+      color: '#38bdf8',
+      weight: 2.5,
+      dashArray: '6, 6',
+      opacity: 0.85
+    }).addTo(overlayGroup);
+
+    // Kuş Uçuşu Düz Hat (Parlak Beyaz Alt + Mavi/Kırmızı Üst Çizgi)
+    window.L.polyline([relLatLng, loftLatLng], {
+      color: '#ffffff',
+      weight: 5,
+      opacity: 0.9
+    }).addTo(overlayGroup);
+
+    window.L.polyline([relLatLng, loftLatLng], {
+      color: '#2563eb',
+      weight: 3,
+      dashArray: '8, 6',
+      opacity: 1
+    }).addTo(overlayGroup);
+
+    // 2. Orta Geçit Mesafe & Risk Rozeti
+    const midHtmlIcon = window.L.divIcon({
+      className: 'avigen-leaflet-mid-badge',
+      html: `<div style="background:rgba(15,23,42,0.92); color:#ffffff; border:1.5px solid #38bdf8; border-radius:7px; padding:2px 7px; font-size:9.5px; font-weight:900; white-space:nowrap; box-shadow:0 3px 10px rgba(0,0,0,0.45); transform:translate(-50%, -50%);">
+        📏 ${r.crowFliesKm} km Kuş Uçuşu • ⛰️ ~${r.midPassAltM}m
+      </div>`,
+      iconSize: [0, 0]
+    });
+    window.L.marker([midLat, midLon], { icon: midHtmlIcon, interactive: false }).addTo(overlayGroup);
+
+    // 3. 🔴 Salım Noktası İşaretçisi (Sürüklenebilir & Tıklanabilir)
+    const relShort = String(r.relNode.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0];
+    const relPinIcon = window.L.divIcon({
+      className: 'avigen-leaflet-pin-release',
+      html: `<div style="display:flex; flex-direction:column; align-items:center; transform:translate(-50%, -100%);">
+        <div style="background:#991b1b; color:#ffffff; border:1.5px solid #fca5a5; border-radius:6px; padding:2px 7px; font-size:9.2px; font-weight:900; white-space:nowrap; box-shadow:0 3px 8px rgba(0,0,0,0.5); margin-bottom:3px;">
+          🔴 SALIM: ${escapeHtml(relShort)} (${r.relNode.altM}m)
+        </div>
+        <div style="width:18px; height:18px; border-radius:50%; background:#dc2626; border:2.5px solid #ffffff; box-shadow:0 2px 8px rgba(220,38,38,0.8);"></div>
+      </div>`,
+      iconSize: [0, 0]
+    });
+    const relMarker = window.L.marker(relLatLng, { icon: relPinIcon, draggable: true }).addTo(overlayGroup);
+    relMarker.on('dragend', (ev) => {
+      const pos = ev.target.getLatLng();
+      this.applyLatLonSelectionToSmartRace(pos.lat, pos.lng, 'release');
+    });
+
+    // 4. 🟢 Varış / Kümes Noktası İşaretçisi (Sürüklenebilir & Tıklanabilir)
+    const loftShort = String(r.loftNode.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0];
+    const loftPinIcon = window.L.divIcon({
+      className: 'avigen-leaflet-pin-loft',
+      html: `<div style="display:flex; flex-direction:column; align-items:center; transform:translate(-50%, -100%);">
+        <div style="background:#065f46; color:#ffffff; border:1.5px solid #6ee7b7; border-radius:6px; padding:2px 7px; font-size:9.2px; font-weight:900; white-space:nowrap; box-shadow:0 3px 8px rgba(0,0,0,0.5); margin-bottom:3px;">
+          🟢 KÜMES: ${escapeHtml(loftShort)} (${r.loftNode.altM}m)
+        </div>
+        <div style="width:18px; height:18px; border-radius:50%; background:#059669; border:2.5px solid #ffffff; box-shadow:0 2px 8px rgba(5,150,105,0.8);"></div>
+      </div>`,
+      iconSize: [0, 0]
+    });
+    const loftMarker = window.L.marker(loftLatLng, { icon: loftPinIcon, draggable: true }).addTo(overlayGroup);
+    loftMarker.on('dragend', (ev) => {
+      const pos = ev.target.getLatLng();
+      this.applyLatLonSelectionToSmartRace(pos.lat, pos.lng, 'arrival');
+    });
+
+    // 5. Seçili Salım ve Varış İllerinin Diğer İlçelerini de Haritada Hızlı Seçim Noktası Olarak Göster
+    const relDists = this.getDistrictsForProvince(this.state.smartRaceReleaseCityId || r.relNode.id);
+    const loftDists = this.getDistrictsForProvince(this.state.smartRaceLoftCityId || r.loftNode.id);
+    [
+      ...relDists.map(d => ({ ...d, cityId: this.state.smartRaceReleaseCityId || r.relNode.id, role: 'release' })),
+      ...loftDists.map(d => ({ ...d, cityId: this.state.smartRaceLoftCityId || r.loftNode.id, role: 'arrival' }))
+    ].forEach(d => {
+      const isCur = (d.role === 'release' && d.id === this.state.smartRaceReleaseDistrictId) ||
+                    (d.role === 'arrival' && d.id === this.state.smartRaceLoftDistrictId);
+      if (isCur) return;
+      const dot = window.L.circleMarker([d.lat, d.lon], {
+        radius: 5,
+        fillColor: d.role === 'release' ? '#fb7185' : '#34d399',
+        color: '#0f172a',
+        weight: 1.5,
+        fillOpacity: 0.9
+      }).addTo(overlayGroup);
+      dot.bindTooltip(`${d.role === 'release' ? '🔴' : '🟢'} ${d.name} (${d.altM}m) — Seçmek için dokunun`, { direction: 'top' });
+      dot.on('click', (ev) => {
+        if (ev && ev.originalEvent) ev.originalEvent.stopPropagation();
+        this.state.smartRaceMapClickTarget = d.role;
+        this.selectDistrictFromTurkeyMap(d.cityId, d.id, ev?.originalEvent);
+      });
+    });
+
+    // 6. Harita Üzerinde Herhangi Bir Yere Tıklandığında En Yakın İl/İlçeyi veya Özel Koordinatı Seç
+    map.on('click', (ev) => {
+      if (!ev || !ev.latlng) return;
+      const role = this.state.smartRaceMapClickTarget === 'arrival' ? 'arrival' : 'release';
+      this.applyLatLonSelectionToSmartRace(ev.latlng.lat, ev.latlng.lng, role);
+    });
+
+    // Eğer ilk kez açılıyorsa rotayı ekrana sığdır
+    if (!this._leafletLastCenter) {
+      try {
+        const bounds = window.L.latLngBounds([relLatLng, loftLatLng]);
+        map.fitBounds(bounds, { padding: [42, 42], maxZoom: 9 });
+      } catch (e) {}
+    }
+    setTimeout(() => {
+      if (this._leafletMapInstance) {
+        try { this._leafletMapInstance.invalidateSize(); } catch (e) {}
+      }
+    }, 80);
+  },
+
+  applyLatLonSelectionToSmartRace(lat, lon, targetRole) {
+    const nearest = this.findNearestGeoNode(lat, lon);
+    const distKm = this.computeRawHaversineKm(lat, lon, nearest.lat, nearest.lon);
+    const dists = this.getDistrictsForProvince(nearest.id);
+    let nearestDist = dists[0];
+    let nearestDistKm = 999999;
+    dists.forEach(d => {
+      const dk = this.computeRawHaversineKm(lat, lon, d.lat, d.lon);
+      if (dk < nearestDistKm) {
+        nearestDistKm = dk;
+        nearestDist = d;
+      }
+    });
+
+    this.state.smartRaceEventId = 'custom';
+    this.state.smartRaceManualKm = 0;
+    this.state.smartRaceLiveRouteData = null;
+
+    if (nearestDist && nearestDistKm <= 16) {
+      if (targetRole === 'arrival') {
+        this.state.smartRaceLoftCityId = nearest.id;
+        this.state.smartRaceLoftDistrictId = nearestDist.id;
+        this.state.smartRaceCustomLoftCoord = null;
+      } else {
+        this.state.smartRaceReleaseCityId = nearest.id;
+        this.state.smartRaceReleaseDistrictId = nearestDist.id;
+        this.state.smartRaceCustomReleaseCoord = null;
+      }
+    } else {
+      const provShort = nearest.name.replace(/^\d{2}\s*-\s*/, '').split(' (')[0];
+      const customNode = {
+        id: 'custom_coord',
+        name: `${provShort} / ${nearestDist ? nearestDist.name.split(' (')[0] : 'Mevki'} (${lat.toFixed(3)}°K, ${lon.toFixed(3)}°D)`,
+        lat: Number(lat.toFixed(4)),
+        lon: Number(lon.toFixed(4)),
+        altM: nearestDist?.altM || nearest.altM || 750,
+        region: nearest.region || 'Türkiye',
+        terrain: `${nearest.terrain}`
+      };
+      if (targetRole === 'arrival') {
+        this.state.smartRaceLoftCityId = nearest.id;
+        this.state.smartRaceCustomLoftCoord = customNode;
+      } else {
+        this.state.smartRaceReleaseCityId = nearest.id;
+        this.state.smartRaceCustomReleaseCoord = customNode;
+      }
+    }
+
+    this.invalidateEngineCache();
+    this.saveState();
+    this.renderGenesisReportOnly();
+  },
+
   zoomSmartRaceMap(delta, evt) {
     if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
-    const cur = Number(this.state.smartRaceMapZoom) || 1.0;
-    const next = Math.max(1.0, Math.min(2.6, Number((cur + delta).toFixed(2))));
-    this.state.smartRaceMapZoom = next;
-    if (next === 1.0) {
-      this.state.smartRaceMapPanX = 0;
-      this.state.smartRaceMapPanY = 0;
+    if (this._leafletMapInstance && this.state.smartRaceTileLayerType !== 'vector_offline') {
+      const zDelta = delta > 0 ? 1 : -1;
+      this._leafletMapInstance.setZoom(this._leafletMapInstance.getZoom() + zDelta);
+      return;
     }
+    const cur = Number(this.state.smartRaceMapZoom) || 1.0;
+    const next = Math.max(1.0, Math.min(2.8, Number((cur + delta).toFixed(2))));
+    this.state.smartRaceMapZoom = next;
     this.saveState();
     this.renderGenesisReportOnly();
   },
 
   panSmartRaceMap(dx, dy, evt) {
     if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
-    this.state.smartRaceMapPanX = Math.max(-220, Math.min(220, (Number(this.state.smartRaceMapPanX) || 0) + dx));
-    this.state.smartRaceMapPanY = Math.max(-110, Math.min(110, (Number(this.state.smartRaceMapPanY) || 0) + dy));
+    if (this._leafletMapInstance && this.state.smartRaceTileLayerType !== 'vector_offline') {
+      this._leafletMapInstance.panBy([dx * 2.2, dy * 2.2], { animate: true });
+      return;
+    }
+    this.state.smartRaceMapPanX = Math.max(-240, Math.min(240, (Number(this.state.smartRaceMapPanX) || 0) + dx));
+    this.state.smartRaceMapPanY = Math.max(-120, Math.min(120, (Number(this.state.smartRaceMapPanY) || 0) + dy));
     this.saveState();
     this.renderGenesisReportOnly();
   },
@@ -2216,6 +3001,14 @@ const AvigenGenesisAI = {
   focusSmartRaceMapOnRoute(evt) {
     if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
     const sr = this.analyzeSmartRaceManagement();
+    if (this._leafletMapInstance && this.state.smartRaceTileLayerType !== 'vector_offline' && typeof window.L !== 'undefined') {
+      const b = window.L.latLngBounds([
+        [sr.route.relNode.lat, sr.route.relNode.lon],
+        [sr.route.loftNode.lat, sr.route.loftNode.lon]
+      ]);
+      this._leafletMapInstance.fitBounds(b, { padding: [38, 38], maxZoom: 11 });
+      return;
+    }
     const p1 = this.projectLatLonToTurkeySvg(sr.route.relNode.lat, sr.route.relNode.lon);
     const p2 = this.projectLatLonToTurkeySvg(sr.route.loftNode.lat, sr.route.loftNode.lon);
     const midX = (p1.x + p2.x) / 2;
@@ -2229,6 +3022,12 @@ const AvigenGenesisAI = {
 
   resetSmartRaceMapView(evt) {
     if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+    this._leafletLastCenter = [39.05, 35.25];
+    this._leafletLastZoom = 6;
+    if (this._leafletMapInstance && this.state.smartRaceTileLayerType !== 'vector_offline') {
+      this._leafletMapInstance.setView([39.05, 35.25], 6);
+      return;
+    }
     this.state.smartRaceMapZoom = 1.0;
     this.state.smartRaceMapPanX = 0;
     this.state.smartRaceMapPanY = 0;
@@ -2242,12 +3041,17 @@ const AvigenGenesisAI = {
     this.state.smartRaceReleaseCityId = this.state.smartRaceLoftCityId;
     this.state.smartRaceLoftCityId = tmpId;
 
+    const tmpDist = this.state.smartRaceReleaseDistrictId;
+    this.state.smartRaceReleaseDistrictId = this.state.smartRaceLoftDistrictId;
+    this.state.smartRaceLoftDistrictId = tmpDist;
+
     const tmpCoord = this.state.smartRaceCustomReleaseCoord;
     this.state.smartRaceCustomReleaseCoord = this.state.smartRaceCustomLoftCoord;
     this.state.smartRaceCustomLoftCoord = tmpCoord;
 
     this.state.smartRaceEventId = 'custom';
     this.state.smartRaceManualKm = 0;
+    this._leafletLastCenter = null;
     this.invalidateEngineCache();
     this.saveState();
     this.renderGenesisReportOnly();
@@ -2263,6 +3067,7 @@ const AvigenGenesisAI = {
     this.state.smartRaceEventId = 'custom';
     this.state.smartRaceManualKm = 0;
     this.state.smartRaceLiveRouteData = null;
+    this._leafletLastCenter = null;
 
     if (String(found.id).startsWith('coord_')) {
       if (targetRole === 'arrival') {
@@ -2271,11 +3076,14 @@ const AvigenGenesisAI = {
         this.state.smartRaceCustomReleaseCoord = found;
       }
     } else {
+      const distId = found.districtId || (this.getDistrictsForProvince(found.id)[0]?.id || 'merkez');
       if (targetRole === 'arrival') {
         this.state.smartRaceLoftCityId = found.id;
+        this.state.smartRaceLoftDistrictId = distId;
         this.state.smartRaceCustomLoftCoord = null;
       } else {
         this.state.smartRaceReleaseCityId = found.id;
+        this.state.smartRaceReleaseDistrictId = distId;
         this.state.smartRaceCustomReleaseCoord = null;
       }
     }
@@ -2326,16 +3134,20 @@ const AvigenGenesisAI = {
     const dateEl = document.getElementById('srReleaseDate');
     const timeEl = document.getElementById('srReleaseTime');
     const relSel = document.getElementById('srReleaseCitySelect');
+    const relDistSel = document.getElementById('srReleaseDistrictSelect');
     const loftSel = document.getElementById('srLoftCitySelect');
+    const loftDistSel = document.getElementById('srLoftDistrictSelect');
 
     if (nameEl) this.state.smartRaceCustomTitle = nameEl.value.trim();
     if (dateEl && dateEl.value) this.state.smartRaceDate = dateEl.value;
     if (timeEl && timeEl.value) this.state.smartRaceReleaseTime = timeEl.value;
     if (relSel && !this.state.smartRaceCustomReleaseCoord) this.state.smartRaceReleaseCityId = relSel.value;
+    if (relDistSel && !this.state.smartRaceCustomReleaseCoord) this.state.smartRaceReleaseDistrictId = relDistSel.value;
     if (loftSel && !this.state.smartRaceCustomLoftCoord) this.state.smartRaceLoftCityId = loftSel.value;
+    if (loftDistSel && !this.state.smartRaceCustomLoftCoord) this.state.smartRaceLoftDistrictId = loftDistSel.value;
 
-    const relNode = this.state.smartRaceCustomReleaseCoord || this.findGeoNodeByNameOrId(this.state.smartRaceReleaseCityId, 'ankara');
-    const loftNode = this.state.smartRaceCustomLoftCoord || this.findGeoNodeByNameOrId(this.state.smartRaceLoftCityId, 'bursa');
+    const relNode = this.resolveProvinceAndDistrictNode(this.state.smartRaceReleaseCityId, this.state.smartRaceReleaseDistrictId, this.state.smartRaceCustomReleaseCoord, 'ankara');
+    const loftNode = this.resolveProvinceAndDistrictNode(this.state.smartRaceLoftCityId, this.state.smartRaceLoftDistrictId, this.state.smartRaceCustomLoftCoord, 'bursa');
     if (this.computeRawHaversineKm(relNode.lat, relNode.lon, loftNode.lat, loftNode.lon) < 8) {
       alert('⚠️ Salım noktası ile varış (kümes) noktası aynı konum olamaz. Lütfen haritadan veya listeden farklı bir salım/varış noktası seçin.');
       return;
@@ -2459,7 +3271,7 @@ const AvigenGenesisAI = {
     const relShort = String(r.relNode.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0];
     const loftShort = String(r.loftNode.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0];
     const raceTitle = this.state.smartRaceCustomTitle || (sr.selectedEvent ? sr.selectedEvent.codeTitle : `${relShort.toUpperCase()} – ${loftShort.toUpperCase()} Etabı`);
-    const dedupKey = `${r.relNode.id}__${r.loftNode.id}__${sr.releaseDate}__${sr.releaseTime}`;
+    const dedupKey = `${r.relNode.id}__${r.relNode.districtId || 'm'}__${r.loftNode.id}__${r.loftNode.districtId || 'm'}__${sr.releaseDate}__${sr.releaseTime}`;
     this.state.smartRaceSavedSimulations = this.state.smartRaceSavedSimulations.filter(s => s.dedupKey !== dedupKey);
 
     this.state.smartRaceSavedSimulations.unshift({
@@ -2468,7 +3280,9 @@ const AvigenGenesisAI = {
       savedAt: new Date().toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
       raceTitle,
       releaseCityId: this.state.smartRaceReleaseCityId,
+      releaseDistrictId: this.state.smartRaceReleaseDistrictId,
       loftCityId: this.state.smartRaceLoftCityId,
+      loftDistrictId: this.state.smartRaceLoftDistrictId,
       customReleaseCoord: this.state.smartRaceCustomReleaseCoord,
       customLoftCoord: this.state.smartRaceCustomLoftCoord,
       releaseName: r.relNode.name,
@@ -2494,7 +3308,9 @@ const AvigenGenesisAI = {
 
     this.state.smartRaceCustomTitle = found.raceTitle || '';
     this.state.smartRaceReleaseCityId = found.releaseCityId || 'ankara';
+    this.state.smartRaceReleaseDistrictId = found.releaseDistrictId || (this.getDistrictsForProvince(found.releaseCityId || 'ankara')[0]?.id || 'merkez');
     this.state.smartRaceLoftCityId = found.loftCityId || 'bursa';
+    this.state.smartRaceLoftDistrictId = found.loftDistrictId || (this.getDistrictsForProvince(found.loftCityId || 'bursa')[0]?.id || 'merkez');
     this.state.smartRaceCustomReleaseCoord = found.customReleaseCoord || null;
     this.state.smartRaceCustomLoftCoord = found.customLoftCoord || null;
     this.state.smartRaceDate = found.releaseDate || '2026-11-22';
@@ -2510,10 +3326,14 @@ const AvigenGenesisAI = {
 
   pinCurrentLoftLocation() {
     const loftSel = document.getElementById('srLoftCitySelect');
+    const loftDistSel = document.getElementById('srLoftDistrictSelect');
     if (loftSel && !this.state.smartRaceCustomLoftCoord) {
       this.state.smartRaceLoftCityId = loftSel.value;
     }
-    const node = this.state.smartRaceCustomLoftCoord || this.findGeoNodeByNameOrId(this.state.smartRaceLoftCityId, 'bursa');
+    if (loftDistSel && !this.state.smartRaceCustomLoftCoord) {
+      this.state.smartRaceLoftDistrictId = loftDistSel.value;
+    }
+    const node = this.resolveProvinceAndDistrictNode(this.state.smartRaceLoftCityId, this.state.smartRaceLoftDistrictId, this.state.smartRaceCustomLoftCoord, 'bursa');
     if (typeof AvigenLiveWeather !== 'undefined' && AvigenLiveWeather.state && !String(node.id).startsWith('coord_')) {
       AvigenLiveWeather.state.cityId = node.id;
       AvigenLiveWeather.state.cityName = node.name;
@@ -2851,7 +3671,9 @@ const AvigenGenesisAI = {
   onSmartRaceControlChange(changedField) {
     const evSel = document.getElementById('srEventSelect');
     const relSel = document.getElementById('srReleaseCitySelect');
+    const relDistSel = document.getElementById('srReleaseDistrictSelect');
     const loftSel = document.getElementById('srLoftCitySelect');
+    const loftDistSel = document.getElementById('srLoftDistrictSelect');
     const dateEl = document.getElementById('srReleaseDate');
     const timeEl = document.getElementById('srReleaseTime');
     const kmEl = document.getElementById('srManualKm');
@@ -2873,6 +3695,7 @@ const AvigenGenesisAI = {
         if (chosenEv) {
           const matchedRel = this.findGeoNodeByNameOrId(chosenEv.releasePoint || chosenEv.codeTitle, 'ankara');
           this.state.smartRaceReleaseCityId = matchedRel.id;
+          this.state.smartRaceReleaseDistrictId = matchedRel.districtId || (this.getDistrictsForProvince(matchedRel.id)[0]?.id || 'merkez');
           this.state.smartRaceDate = chosenEv.releaseDate || '2026-11-22';
           this.state.smartRaceReleaseTime = chosenEv.releaseTime || '06:45';
           this.state.smartRaceManualKm = Number(chosenEv.distanceKm) || 0;
@@ -2894,15 +3717,40 @@ const AvigenGenesisAI = {
       }
     }
 
-    if (relSel) this.state.smartRaceReleaseCityId = relSel.value;
-    if (loftSel) this.state.smartRaceLoftCityId = loftSel.value;
+    if (relSel) {
+      const prevRelCity = this.state.smartRaceReleaseCityId;
+      this.state.smartRaceReleaseCityId = relSel.value;
+      if (changedField === 'release_city' || prevRelCity !== relSel.value) {
+        const dists = this.getDistrictsForProvince(relSel.value);
+        this.state.smartRaceReleaseDistrictId = dists[0] ? dists[0].id : 'merkez';
+      } else if (relDistSel) {
+        this.state.smartRaceReleaseDistrictId = relDistSel.value;
+      }
+    } else if (relDistSel) {
+      this.state.smartRaceReleaseDistrictId = relDistSel.value;
+    }
+
+    if (loftSel) {
+      const prevLoftCity = this.state.smartRaceLoftCityId;
+      this.state.smartRaceLoftCityId = loftSel.value;
+      if (changedField === 'loft_city' || prevLoftCity !== loftSel.value) {
+        const dists = this.getDistrictsForProvince(loftSel.value);
+        this.state.smartRaceLoftDistrictId = dists[0] ? dists[0].id : 'merkez';
+      } else if (loftDistSel) {
+        this.state.smartRaceLoftDistrictId = loftDistSel.value;
+      }
+    } else if (loftDistSel) {
+      this.state.smartRaceLoftDistrictId = loftDistSel.value;
+    }
+
     if (dateEl && dateEl.value) this.state.smartRaceDate = dateEl.value;
     if (timeEl && timeEl.value) this.state.smartRaceReleaseTime = timeEl.value;
 
-    if (changedField === 'city') {
-      // Şehir değiştiğinde manuel km'yi sıfırla ki yeni Haversine kuş uçuşu mesafesi otomatik hesaplansın
+    if (['city', 'release_city', 'release_district', 'loft_city', 'loft_district'].includes(changedField)) {
+      // İl veya ilçe değiştiğinde manuel km'yi sıfırla ve haritayı yeni rotaya otomatik odakla
       this.state.smartRaceManualKm = 0;
       this.state.smartRaceLiveRouteData = null;
+      this._leafletLastCenter = null;
       if (kmEl) kmEl.value = '';
     } else if (kmEl) {
       this.state.smartRaceManualKm = Math.max(0, parseInt(kmEl.value, 10) || 0);
@@ -2948,9 +3796,9 @@ const AvigenGenesisAI = {
 
     const relNode = selectedEvent && this.state.smartRaceEventId !== 'custom'
       ? this.findGeoNodeByNameOrId(selectedEvent.releasePoint || selectedEvent.codeTitle, this.state.smartRaceReleaseCityId || 'ankara')
-      : (this.state.smartRaceCustomReleaseCoord || this.findGeoNodeByNameOrId(this.state.smartRaceReleaseCityId, 'ankara'));
+      : this.resolveProvinceAndDistrictNode(this.state.smartRaceReleaseCityId, this.state.smartRaceReleaseDistrictId, this.state.smartRaceCustomReleaseCoord, 'ankara');
 
-    const loftNode = this.state.smartRaceCustomLoftCoord || this.findGeoNodeByNameOrId(this.state.smartRaceLoftCityId || liveWeatherCityId, 'bursa');
+    const loftNode = this.resolveProvinceAndDistrictNode(this.state.smartRaceLoftCityId || liveWeatherCityId, this.state.smartRaceLoftDistrictId, this.state.smartRaceCustomLoftCoord, 'bursa');
 
     const releaseDate = selectedEvent && this.state.smartRaceEventId !== 'custom'
       ? (selectedEvent.releaseDate || this.state.smartRaceDate || '2026-11-22')
@@ -3647,31 +4495,48 @@ const AvigenGenesisAI = {
       y: Math.round((pRel.y + pLoft.y) / 2)
     };
 
-    // Yakınlaştırma (Zoom) ve Kaydırma (Pan) için dinamik SVG viewBox
-    const zoom = Math.max(1.0, Math.min(2.6, Number(this.state.smartRaceMapZoom) || 1.0));
+    // Yakınlaştırma (Zoom) ve Sağa-Sola / Yukarı-Aşağı Kaydırma (Pan) için dinamik SVG viewBox
+    const zoom = Math.max(1.0, Math.min(2.8, Number(this.state.smartRaceMapZoom) || 1.0));
     const panX = Number(this.state.smartRaceMapPanX) || 0;
     const panY = Number(this.state.smartRaceMapPanY) || 0;
     const vbW = Math.round(720 / zoom);
     const vbH = Math.round(320 / zoom);
-    const vbX = Math.max(0, Math.min(720 - vbW, Math.round((720 - vbW) / 2 + panX)));
-    const vbY = Math.max(0, Math.min(320 - vbH, Math.round((320 - vbH) / 2 + panY)));
+    const vbX = Math.max(-95, Math.min(720 - vbW + 95, Math.round((720 - vbW) / 2 + panX)));
+    const vbY = Math.max(-40, Math.min(320 - vbH + 40, Math.round((320 - vbH) / 2 + panY)));
 
-    // Türkiye (Anadolu + Trakya) WGS84 Sınır Poligonları
+    // Yüksek Detaylı Türkiye (Anadolu + Trakya + Kıbrıs + Göller + Dağ Geçitleri) WGS84 Sınır Poligonları
     const anatoliaBoundaryCoords = [
-      [40.05, 26.20], [40.38, 27.85], [40.42, 28.95], [40.75, 29.35], [41.22, 29.15],
-      [41.18, 30.15], [41.32, 31.40], [41.75, 32.40], [41.95, 33.40], [42.08, 35.15],
-      [41.65, 35.95], [41.30, 36.45], [41.12, 37.30], [41.05, 38.40], [41.02, 39.75],
-      [41.45, 41.55], [41.50, 42.80], [41.05, 43.45], [40.05, 43.70], [39.65, 44.65],
-      [38.30, 44.35], [37.25, 44.65], [37.15, 43.10], [37.10, 42.10], [37.08, 40.65],
-      [36.75, 38.95], [36.68, 37.10], [36.82, 36.60], [35.90, 36.05], [36.25, 35.80],
-      [36.80, 35.40], [36.65, 34.30], [36.05, 32.85], [36.55, 32.00], [36.88, 30.72],
-      [36.22, 30.35], [36.20, 29.35], [36.70, 28.60], [36.68, 27.45], [37.05, 27.25],
-      [37.55, 27.15], [38.30, 26.30], [38.65, 26.75], [39.25, 26.65], [39.55, 26.08]
+      [40.04, 26.18], [40.25, 26.68], [40.38, 27.32], [40.46, 27.95], [40.38, 28.40],
+      [40.43, 28.92], [40.38, 29.15], [40.66, 29.28], [40.74, 29.92], [40.82, 29.38],
+      [41.02, 29.02], [41.23, 29.12], [41.15, 29.62], [41.18, 30.15], [41.10, 30.72],
+      [41.32, 31.40], [41.48, 31.80], [41.78, 32.45], [41.98, 33.42], [42.02, 34.15],
+      [42.08, 35.15], [41.68, 35.92], [41.30, 36.35], [41.22, 36.95], [41.10, 37.55],
+      [40.98, 38.38], [41.04, 39.20], [41.02, 39.75], [41.05, 40.55], [41.45, 41.55],
+      [41.52, 42.65], [41.15, 43.35], [40.55, 43.62], [40.05, 43.75], [39.95, 44.52],
+      [39.65, 44.78], [38.95, 44.30], [38.28, 44.42], [37.35, 44.75], [37.15, 43.70],
+      [37.25, 42.80], [37.10, 42.15], [37.08, 41.20], [37.08, 40.40], [36.82, 39.50],
+      [36.72, 38.40], [36.68, 37.10], [36.82, 36.65], [36.35, 36.52], [35.90, 36.02],
+      [36.32, 35.78], [36.78, 35.90], [36.82, 35.42], [36.68, 34.55], [36.28, 33.85],
+      [36.02, 32.85], [36.55, 32.00], [36.78, 31.40], [36.88, 30.72], [36.58, 30.55],
+      [36.22, 30.35], [36.20, 29.35], [36.65, 29.05], [36.72, 28.25], [36.68, 27.42],
+      [37.03, 27.25], [37.35, 27.55], [37.55, 27.15], [37.95, 27.25], [38.22, 26.75],
+      [38.32, 26.28], [38.65, 26.78], [38.95, 26.92], [39.32, 26.65], [39.52, 26.08]
     ];
     const thraceBoundaryCoords = [
-      [40.70, 26.05], [41.35, 26.55], [41.72, 26.55], [41.98, 27.20], [41.95, 28.02],
-      [41.50, 28.45], [41.25, 28.98], [41.00, 28.95], [40.98, 27.95], [40.82, 27.30],
-      [40.40, 26.68], [40.15, 26.25]
+      [40.70, 26.05], [41.15, 26.32], [41.38, 26.58], [41.72, 26.52], [41.95, 27.15],
+      [41.98, 28.02], [41.52, 28.42], [41.26, 28.98], [41.00, 28.96], [40.98, 28.35],
+      [40.98, 27.55], [40.72, 27.15], [40.40, 26.68], [40.08, 26.22]
+    ];
+    const cyprusCoords = [
+      [35.15, 32.35], [35.35, 33.05], [35.42, 33.85], [35.65, 34.55],
+      [35.02, 34.05], [34.68, 33.02], [34.78, 32.42]
+    ];
+    const lakeVanCoords = [
+      [38.42, 42.25], [38.75, 42.65], [38.98, 43.35], [38.68, 43.52],
+      [38.35, 43.15], [38.32, 42.55]
+    ];
+    const lakeTuzCoords = [
+      [39.05, 33.25], [39.02, 33.52], [38.55, 33.62], [38.45, 33.32], [38.75, 33.18]
     ];
 
     const toSvgPoints = (coords) => coords.map(([lat, lon]) => {
@@ -3679,79 +4544,132 @@ const AvigenGenesisAI = {
       return `${p.x},${p.y}`;
     }).join(' ');
 
+    const toSvgPolyline = (coords) => coords.map(([lat, lon]) => {
+      const p = this.projectLatLonToTurkeySvg(lat, lon);
+      return `${p.x},${p.y}`;
+    }).join(' ');
+
     const anatoliaPts = toSvgPoints(anatoliaBoundaryCoords);
     const thracePts = toSvgPoints(thraceBoundaryCoords);
+    const cyprusPts = toSvgPoints(cyprusCoords);
+    const lakeVanPts = toSvgPoints(lakeVanCoords);
+    const lakeTuzPts = toSvgPoints(lakeTuzCoords);
+
+    // Ana Uçuş & Otoyol Koridorları ve Dağ Sırtları
+    const highwayE80Pts = toSvgPolyline([[41.67, 26.55], [41.15, 27.80], [41.00, 28.97], [40.76, 30.38], [40.73, 31.60], [39.93, 32.85], [39.84, 33.51], [39.75, 37.01], [39.75, 39.50], [39.90, 41.26], [39.72, 43.05]]);
+    const highwaySouthPts = toSvgPolyline([[38.42, 27.14], [38.75, 30.55], [37.87, 32.49], [37.00, 35.32], [37.06, 37.38], [37.16, 38.79], [37.91, 40.23]]);
+    const highwayMarmaraAnkaraPts = toSvgPolyline([[40.18, 29.06], [39.90, 30.03], [39.77, 30.52], [39.58, 32.14], [39.93, 32.85]]);
 
     const trCities = this.SMART_RACE_GEO_NODES.filter(n => !n.isEurope);
     const clickTarget = this.state.smartRaceMapClickTarget || 'release';
     const hasElevatedRisk = rep.riskPoints >= 18;
 
+    // Seçili Salım ve Varış İllerinin İlçelerini Harita Üzerinde Detaylı Göster
+    const relDistricts = this.getDistrictsForProvince(this.state.smartRaceReleaseCityId || r.relNode.id);
+    const loftDistricts = this.getDistrictsForProvince(this.state.smartRaceLoftCityId || r.loftNode.id);
+
     // SVG kenar taşmasını ve iki yakın noktada etiket çakışmasını önle
-    const clampX = (xVal, halfW = 58) => Math.max(halfW + 4, Math.min(720 - halfW - 4, xVal));
-    const relBoxDx = clampX(pRel.x, 58) - pRel.x;
-    const loftBoxDx = clampX(pLoft.x, 58) - pLoft.x;
+    const clampX = (xVal, halfW = 64) => Math.max(halfW + 4, Math.min(720 - halfW - 4, xVal));
+    const relBoxDx = clampX(pRel.x, 64) - pRel.x;
+    const loftBoxDx = clampX(pLoft.x, 64) - pLoft.x;
     const midBoxX = clampX(pMid.x, 56);
     const markersClose = Math.hypot(pRel.x - pLoft.x, pRel.y - pLoft.y) < 85;
     const relBoxY = (pRel.y < 34 && !markersClose) ? 12 : -27;
     const relTxtY = (pRel.y < 34 && !markersClose) ? 23 : -16;
     const loftBoxY = (pLoft.y > 286 && !markersClose) ? -27 : 12;
     const loftTxtY = (pLoft.y > 286 && !markersClose) ? -16 : 23;
+    const curTileType = this.state.smartRaceTileLayerType || 'google_hybrid';
+
+    setTimeout(() => {
+      try { this.mountSmartRaceLeafletMap(); } catch (e) {}
+    }, 30);
 
     return `
       <div class="sr-map-card">
-        <!-- ÜST HARİTA BAŞLIĞI VE ETKİLEŞİMLİ KONTROL ÇUBUĞU -->
-        <div class="sr-map-header">
-          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            <span style="font-size:11px; font-weight:900; color:#f8fafc; letter-spacing:0.2px;">
-              🗺️ TÜRKİYE YARIŞ GÜZERGÂH HARİTASI
-            </span>
-            <span style="font-size:9px; color:#93c5fd; font-weight:700;">
-              (🔴 Salım: ${escapeHtml(r.relNode.name)} → 🟢 Varış: ${escapeHtml(r.loftNode.name)} • <strong>${r.crowFliesKm} km</strong>)
-            </span>
+        <!-- ÜST HARİTA BAŞLIĞI VE ROTA ÖZETİ -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
+          <div style="min-width:0;">
+            <div style="font-size:10.8px; font-weight:900; color:#f8fafc; letter-spacing:0.2px;">
+              🗺️ TÜRKİYE YARIŞ GÜZERGÂH HARİTASI (${r.crowFliesKm} KM)
+            </div>
+            <div style="font-size:8.8px; color:#93c5fd; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              🔴 ${escapeHtml(r.relNode.name)} → 🟢 ${escapeHtml(r.loftNode.name)}
+            </div>
           </div>
 
-          <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
-            ${!isResultView ? `
-              <button type="button" class="sr-map-mode-pill mode-release ${clickTarget === 'release' ? 'active' : ''}" onclick="AvigenGenesisAI.setSmartRaceMapClickTarget('release', event)" title="Haritada tıkladığınız noktayı Kırmızı Salım Noktası olarak seçer">
-                🔴 Haritadan Salım Seç
-              </button>
-              <button type="button" class="sr-map-mode-pill mode-arrival ${clickTarget === 'arrival' ? 'active' : ''}" onclick="AvigenGenesisAI.setSmartRaceMapClickTarget('arrival', event)" title="Haritada tıkladığınız noktayı Yeşil Varış Noktası olarak seçer">
-                🟢 Haritadan Varış Seç
-              </button>
-              <button type="button" class="sr-map-mode-pill" onclick="AvigenGenesisAI.swapSmartRaceLocations(event)" title="Salım ve Varış noktalarını yer değiştir">
-                ⇄ Yön Değiştir
-              </button>
-            ` : ''}
-
-            <div class="sr-map-zoom-group">
-              <button type="button" class="sr-map-zoom-btn" onclick="AvigenGenesisAI.zoomSmartRaceMap(0.35, event)" title="Haritayı Yakınlaştır">+</button>
-              <button type="button" class="sr-map-zoom-btn" onclick="AvigenGenesisAI.zoomSmartRaceMap(-0.35, event)" title="Haritayı Uzaklaştır">−</button>
-              <button type="button" class="sr-map-zoom-btn" style="width:auto; padding:0 7px; font-size:9.5px;" onclick="AvigenGenesisAI.focusSmartRaceMapOnRoute(event)" title="Rotaya Yakınlaş">🎯 Rota</button>
-              <button type="button" class="sr-map-zoom-btn" style="width:auto; padding:0 7px; font-size:9.5px;" onclick="AvigenGenesisAI.resetSmartRaceMapView(event)" title="Tüm Türkiye Görünümüne Sıfırla">⟲ Tümü</button>
-            </div>
+          <!-- HARİTA KAYDIRMA (SAĞA-SOLA / YUKARI-AŞAĞI) VE YAKINLAŞTIRMA BUTONLARI -->
+          <div class="sr-map-zoom-group" style="flex-wrap:wrap;">
+            <button type="button" class="sr-map-zoom-btn" onclick="AvigenGenesisAI.panSmartRaceMap(-65, 0, event)" title="Sola Kaydır (Batı)">◀</button>
+            <button type="button" class="sr-map-zoom-btn" onclick="AvigenGenesisAI.panSmartRaceMap(0, -45, event)" title="Yukarı Kaydır (Kuzey)">▲</button>
+            <button type="button" class="sr-map-zoom-btn" onclick="AvigenGenesisAI.panSmartRaceMap(0, 45, event)" title="Aşağı Kaydır (Güney)">▼</button>
+            <button type="button" class="sr-map-zoom-btn" onclick="AvigenGenesisAI.panSmartRaceMap(65, 0, event)" title="Sağa Kaydır (Doğu)">▶</button>
+            <button type="button" class="sr-map-zoom-btn" onclick="AvigenGenesisAI.zoomSmartRaceMap(0.35, event)" title="Yakınlaştır">+</button>
+            <button type="button" class="sr-map-zoom-btn" onclick="AvigenGenesisAI.zoomSmartRaceMap(-0.35, event)" title="Uzaklaştır">−</button>
+            <button type="button" class="sr-map-zoom-btn" style="width:auto; padding:0 6px; font-size:8.8px;" onclick="AvigenGenesisAI.focusSmartRaceMapOnRoute(event)" title="Rotaya Yakınlaş">🎯 Rota</button>
+            <button type="button" class="sr-map-zoom-btn" style="width:auto; padding:0 6px; font-size:8.8px;" onclick="AvigenGenesisAI.resetSmartRaceMapView(event)" title="Tüm Türkiye Görünümü">⟲ Tümü</button>
           </div>
         </div>
 
+        <!-- HARİTA KATMAN SEÇİCİ (4 EŞİT SÜTUN - YATAY TAŞMA YOK) -->
+        <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:4px; margin-bottom:6px;">
+          <button type="button" class="sr-map-mode-pill ${curTileType === 'google_hybrid' ? 'mode-arrival active' : ''}" style="padding:4px 3px; font-size:8.4px; justify-content:center;" onclick="AvigenGenesisAI.setSmartRaceTileLayerType('google_hybrid', event)">
+            🛰️ Uydu+Yol
+          </button>
+          <button type="button" class="sr-map-mode-pill ${curTileType === 'google_road' ? 'mode-arrival active' : ''}" style="padding:4px 3px; font-size:8.4px; justify-content:center;" onclick="AvigenGenesisAI.setSmartRaceTileLayerType('google_road', event)">
+            🗺️ İl/İlçe
+          </button>
+          <button type="button" class="sr-map-mode-pill ${curTileType === 'google_terrain' ? 'mode-arrival active' : ''}" style="padding:4px 3px; font-size:8.4px; justify-content:center;" onclick="AvigenGenesisAI.setSmartRaceTileLayerType('google_terrain', event)">
+            ⛰️ Arazi/Dağ
+          </button>
+          <button type="button" class="sr-map-mode-pill ${curTileType === 'vector_offline' ? 'mode-arrival active' : ''}" style="padding:4px 3px; font-size:8.4px; justify-content:center;" onclick="AvigenGenesisAI.setSmartRaceTileLayerType('vector_offline', event)">
+            🧭 Vektör
+          </button>
+        </div>
+
         ${!isResultView ? `
-          <!-- ŞEHİR, İLÇE VEYA KOORDİNAT ARAMA ÇUBUĞU -->
-          <div style="display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:5px; margin-bottom:8px;">
-            <input type="text" id="srLocationSearchInput" class="sr-field-input" style="height:31px; background:#1e293b; border-color:#334155; color:#f8fafc; font-size:10px;" placeholder="🔍 Şehir, ilçe veya koordinat ara (Örn: Sivas, Polatlı, Karacabey, Gerede veya 39.93, 32.85)..." value="${escapeHtml(this.state.smartRaceSearchQuery || '')}" onkeydown="if(event.key==='Enter'){event.preventDefault(); AvigenGenesisAI.applySmartRaceLocationSearch('${clickTarget}');}" />
-            <button type="button" class="sr-map-mode-pill mode-release active" style="padding:4px 9px;" onclick="AvigenGenesisAI.applySmartRaceLocationSearch('release')">
-              🔴 Salım Yap
+          <!-- HARİTADAN TIKLAMA HEDEFİ SEÇİCİ (3 EŞİT SÜTUN) -->
+          <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:4px; margin-bottom:6px;">
+            <button type="button" class="sr-map-mode-pill mode-release ${clickTarget === 'release' ? 'active' : ''}" style="padding:4px 6px; font-size:8.8px; justify-content:center;" onclick="AvigenGenesisAI.setSmartRaceMapClickTarget('release', event)">
+              🔴 Haritadan Salım Seç
             </button>
-            <button type="button" class="sr-map-mode-pill mode-arrival active" style="padding:4px 9px;" onclick="AvigenGenesisAI.applySmartRaceLocationSearch('arrival')">
-              🟢 Varış Yap
+            <button type="button" class="sr-map-mode-pill mode-arrival ${clickTarget === 'arrival' ? 'active' : ''}" style="padding:4px 6px; font-size:8.8px; justify-content:center;" onclick="AvigenGenesisAI.setSmartRaceMapClickTarget('arrival', event)">
+              🟢 Haritadan Varış Seç
+            </button>
+            <button type="button" class="sr-map-mode-pill" style="padding:4px 8px; font-size:8.8px; justify-content:center;" onclick="AvigenGenesisAI.swapSmartRaceLocations(event)" title="Salım ve Varış noktalarını yer değiştir">
+              ⇄ Değiştir
+            </button>
+          </div>
+
+          <!-- ŞEHİR, İLÇE VEYA KOORDİNAT ARAMA ÇUBUĞU -->
+          <div style="display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:4px; margin-bottom:7px;">
+            <input type="text" id="srLocationSearchInput" class="sr-field-input" style="height:30px; background:#1e293b; border-color:#334155; color:#f8fafc; font-size:9.8px; padding:4px 8px;" placeholder="🔍 İl, ilçe veya mevki ara (Örn: Polatlı, Karacabey)..." value="${escapeHtml(this.state.smartRaceSearchQuery || '')}" onkeydown="if(event.key==='Enter'){event.preventDefault(); AvigenGenesisAI.applySmartRaceLocationSearch('${clickTarget}');}" />
+            <button type="button" class="sr-map-mode-pill mode-release active" style="padding:4px 7px; font-size:8.6px;" onclick="AvigenGenesisAI.applySmartRaceLocationSearch('release')">
+              🔴 Salım
+            </button>
+            <button type="button" class="sr-map-mode-pill mode-arrival active" style="padding:4px 7px; font-size:8.6px;" onclick="AvigenGenesisAI.applySmartRaceLocationSearch('arrival')">
+              🟢 Varış
             </button>
           </div>
         ` : ''}
 
-        <!-- İNTERAKTİF TÜRKİYE SVG HARİTASI -->
-        <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid #1e293b;">
-          <svg id="avigenInteractiveTurkeySvg" viewBox="${vbX} ${vbY} ${vbW} ${vbH}" onclick="AvigenGenesisAI.onTurkeyMapCanvasClick(event)" style="width:100%; height:auto; display:block; cursor:crosshair; background:radial-gradient(circle at 50% 45%, #0f2547 0%, #09152b 75%, #060d1c 100%); user-select:none;">
+        <!-- 1. CANLI GOOGLE HARİTASI (UYDU / KARAYOLU / ARAZİ - SOKAK & İLÇE DETAYINDA KAYDIRILABİLİR) -->
+        <div id="avigenGoogleLeafletMap" style="width:100%; height:255px; border-radius:10px; overflow:hidden; border:1.5px solid #334155; background:#09152b; position:relative; z-index:1; display:${curTileType === 'vector_offline' ? 'none' : 'block'};"></div>
+
+        <!-- 2. ÇEVRİMDIŞI VEKTÖR TÜRKİYE HARİTASI (İNTERNET YOKSA VEYA VEKTÖR MODU SEÇİLİYSE) -->
+        <div id="avigenOfflineVectorMapWrap" style="position:relative; border-radius:10px; overflow:hidden; border:1px solid #1e293b; display:${curTileType === 'vector_offline' ? 'block' : 'none'};"
+             onmousedown="AvigenGenesisAI.startTurkeyMapDrag(event)"
+             onmousemove="AvigenGenesisAI.moveTurkeyMapDrag(event)"
+             onmouseup="AvigenGenesisAI.endTurkeyMapDrag(event)"
+             onmouseleave="AvigenGenesisAI.endTurkeyMapDrag(event)"
+             ontouchstart="AvigenGenesisAI.startTurkeyMapDrag(event)"
+             ontouchmove="AvigenGenesisAI.moveTurkeyMapDrag(event)"
+             ontouchend="AvigenGenesisAI.endTurkeyMapDrag(event)">
+          <svg id="avigenInteractiveTurkeySvg" viewBox="${vbX} ${vbY} ${vbW} ${vbH}" onclick="AvigenGenesisAI.onTurkeyMapCanvasClick(event)" style="width:100%; height:auto; display:block; cursor:grab; background:radial-gradient(circle at 50% 45%, #0f284d 0%, #09162e 72%, #050c1a 100%); user-select:none; touch-action:none;">
             <defs>
               <linearGradient id="trLandGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#1e3a5f"/>
-                <stop offset="100%" stop-color="#152844"/>
+                <stop offset="0%" stop-color="#1e3f66"/>
+                <stop offset="55%" stop-color="#173152"/>
+                <stop offset="100%" stop-color="#122540"/>
               </linearGradient>
               <filter id="routeGlow" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="2.2" result="blur"/>
@@ -3763,38 +4681,81 @@ const AvigenGenesisAI = {
             </defs>
 
             <!-- Coğrafi Enlem ve Boylam Kılavuz Çizgileri -->
-            <g stroke="#1e293b" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.7">
-              <line x1="120" y1="15" x2="120" y2="305"/>
-              <line x1="240" y1="15" x2="240" y2="305"/>
-              <line x1="360" y1="15" x2="360" y2="305"/>
-              <line x1="480" y1="15" x2="480" y2="305"/>
-              <line x1="600" y1="15" x2="600" y2="305"/>
-              <line x1="15" y1="80" x2="705" y2="80"/>
-              <line x1="15" y1="160" x2="705" y2="160"/>
-              <line x1="15" y1="240" x2="705" y2="240"/>
+            <g stroke="#1e293b" stroke-width="0.7" stroke-dasharray="3 3" opacity="0.75">
+              <line x1="120" y1="10" x2="120" y2="310"/>
+              <line x1="240" y1="10" x2="240" y2="310"/>
+              <line x1="360" y1="10" x2="360" y2="310"/>
+              <line x1="480" y1="10" x2="480" y2="310"/>
+              <line x1="600" y1="10" x2="600" y2="310"/>
+              <line x1="10" y1="80" x2="710" y2="80"/>
+              <line x1="10" y1="160" x2="710" y2="160"/>
+              <line x1="10" y1="240" x2="710" y2="240"/>
             </g>
 
             <!-- Deniz İsimleri -->
-            <text x="350" y="24" fill="#38bdf8" opacity="0.45" font-size="9" font-weight="800" letter-spacing="2" text-anchor="middle">KARADENİZ</text>
-            <text x="55" y="185" fill="#38bdf8" opacity="0.45" font-size="8.5" font-weight="800" letter-spacing="1.5" text-anchor="middle">EGE DENİZİ</text>
-            <text x="275" y="302" fill="#38bdf8" opacity="0.45" font-size="9" font-weight="800" letter-spacing="2" text-anchor="middle">AKDENİZ</text>
+            <text x="350" y="22" fill="#38bdf8" opacity="0.45" font-size="8.5" font-weight="800" letter-spacing="2" text-anchor="middle">KARADENİZ</text>
+            <text x="128" y="88" fill="#38bdf8" opacity="0.42" font-size="6.4" font-weight="800" letter-spacing="0.8" text-anchor="middle">MARMARA</text>
+            <text x="48" y="185" fill="#38bdf8" opacity="0.45" font-size="8" font-weight="800" letter-spacing="1.5" text-anchor="middle">EGE DENİZİ</text>
+            <text x="255" y="304" fill="#38bdf8" opacity="0.45" font-size="8.5" font-weight="800" letter-spacing="2" text-anchor="middle">AKDENİZ</text>
 
-            <!-- Türkiye Kara Sınırları (Anadolu + Trakya) -->
-            <polygon points="${anatoliaPts}" fill="url(#trLandGrad)" stroke="#3b82f6" stroke-width="1.4" stroke-linejoin="round" opacity="0.95"/>
-            <polygon points="${thracePts}" fill="url(#trLandGrad)" stroke="#3b82f6" stroke-width="1.4" stroke-linejoin="round" opacity="0.95"/>
+            <!-- Türkiye Kara Sınırları (Anadolu + Trakya + Kıbrıs) -->
+            <polygon points="${anatoliaPts}" fill="url(#trLandGrad)" stroke="#38bdf8" stroke-width="1.3" stroke-linejoin="round" opacity="0.96"/>
+            <polygon points="${thracePts}" fill="url(#trLandGrad)" stroke="#38bdf8" stroke-width="1.3" stroke-linejoin="round" opacity="0.96"/>
+            <polygon points="${cyprusPts}" fill="url(#trLandGrad)" stroke="#38bdf8" stroke-width="1" stroke-linejoin="round" opacity="0.75"/>
 
-            <!-- Tüm Türkiye Şehir Noktaları ve Şehir İsimleri -->
+            <!-- Büyük İç Göller (Van Gölü & Tuz Gölü) -->
+            <polygon points="${lakeVanPts}" fill="#091933" stroke="#38bdf8" stroke-width="0.8" opacity="0.9"/>
+            <polygon points="${lakeTuzPts}" fill="#091933" stroke="#38bdf8" stroke-width="0.7" opacity="0.85"/>
+
+            <!-- Ana Uçuş / Otoyol Vadi Koridorları (Arka Plan Kılavuz Hatları) -->
+            <polyline points="${highwayE80Pts}" fill="none" stroke="#334155" stroke-width="1.1" stroke-dasharray="2 2" opacity="0.75" style="pointer-events:none;"/>
+            <polyline points="${highwaySouthPts}" fill="none" stroke="#334155" stroke-width="1.1" stroke-dasharray="2 2" opacity="0.75" style="pointer-events:none;"/>
+            <polyline points="${highwayMarmaraAnkaraPts}" fill="none" stroke="#475569" stroke-width="1.2" stroke-dasharray="2 2" opacity="0.85" style="pointer-events:none;"/>
+
+            <!-- Kritik Coğrafi Dağ Geçitleri (Kuş Uçuş Engelleri) -->
+            <g opacity="0.55" style="pointer-events:none;">
+              <text x="235" y="96" fill="#94a3b8" font-size="6.3" font-weight="700" text-anchor="middle">⛰️ Bolu-Köroğlu (1450m)</text>
+              <text x="190" y="130" fill="#94a3b8" font-size="6.1" font-weight="700" text-anchor="middle">⛰️ Bozüyük (740m)</text>
+              <text x="415" y="134" fill="#94a3b8" font-size="6.3" font-weight="700" text-anchor="middle">⛰️ Çamlıbel (1650m)</text>
+              <text x="348" y="232" fill="#94a3b8" font-size="6.3" font-weight="700" text-anchor="middle">⛰️ Toroslar / Gülek (1050m)</text>
+            </g>
+
+            <!-- Tüm 81 Türkiye İl Noktaları ve İl İsimleri -->
             ${trCities.map(city => {
               const pt = this.projectLatLonToTurkeySvg(city.lat, city.lon);
-              const isRel = city.id === r.relNode.id;
-              const isLoft = city.id === r.loftNode.id;
+              const isRelCity = city.id === (this.state.smartRaceReleaseCityId || r.relNode.id);
+              const isLoftCity = city.id === (this.state.smartRaceLoftCityId || r.loftNode.id);
               const shortCityName = String(city.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0];
-              const showText = city.showLabel || isRel || isLoft || zoom >= 1.35;
+              const plateCode = String(city.name || '').slice(0, 2);
+              const showText = city.showLabel || isRelCity || isLoftCity || zoom >= 1.25;
               return `
                 <g style="cursor:pointer;" onclick="AvigenGenesisAI.selectCityFromTurkeyMap('${city.id}', event)">
-                  <circle cx="${pt.x}" cy="${pt.y}" r="${isRel || isLoft ? 5 : 3.2}" fill="${isRel ? '#ef4444' : (isLoft ? '#10b981' : '#94a3b8')}" stroke="#0f172a" stroke-width="1"/>
-                  ${showText && !isRel && !isLoft ? `
-                    <text x="${pt.x}" y="${pt.y - 5}" fill="#cbd5e1" font-size="7.8" font-weight="700" text-anchor="middle" style="pointer-events:none;">${escapeHtml(shortCityName)}</text>
+                  <circle cx="${pt.x}" cy="${pt.y}" r="${isRelCity || isLoftCity ? 4.5 : 2.8}" fill="${isRelCity ? '#fca5a5' : (isLoftCity ? '#6ee7b7' : '#94a3b8')}" stroke="#0f172a" stroke-width="0.9"/>
+                  ${showText ? `
+                    <text x="${pt.x}" y="${pt.y - 4.5}" fill="${isRelCity ? '#fecaca' : (isLoftCity ? '#a7f3d0' : '#cbd5e1')}" font-size="${zoom >= 1.5 ? '7.2' : '7.4'}" font-weight="700" text-anchor="middle" style="pointer-events:none;">
+                      ${zoom >= 1.55 ? `${plateCode} ${escapeHtml(shortCityName)}` : escapeHtml(shortCityName)}
+                    </text>
+                  ` : ''}
+                </g>
+              `;
+            }).join('')}
+
+            <!-- Seçili Salım ve Varış İllerinin İlçeleri (Harita Üzerinde Tıklanabilir Alt Noktalar) -->
+            ${[
+              ...relDistricts.map(d => ({ ...d, cityId: this.state.smartRaceReleaseCityId || r.relNode.id, role: 'release' })),
+              ...loftDistricts.map(d => ({ ...d, cityId: this.state.smartRaceLoftCityId || r.loftNode.id, role: 'arrival' }))
+            ].filter(d => d.id !== 'merkez').map(d => {
+              const pt = this.projectLatLonToTurkeySvg(d.lat, d.lon);
+              const isSelectedDist = (d.role === 'release' && d.id === this.state.smartRaceReleaseDistrictId) ||
+                                     (d.role === 'arrival' && d.id === this.state.smartRaceLoftDistrictId);
+              const dShort = String(d.name || '').split(' (')[0];
+              return `
+                <g style="cursor:pointer;" onclick="AvigenGenesisAI.selectDistrictFromTurkeyMap('${d.cityId}', '${d.id}', event)">
+                  <circle cx="${pt.x}" cy="${pt.y}" r="${isSelectedDist ? 3.8 : 2.3}" fill="${d.role === 'release' ? '#fb7185' : '#34d399'}" stroke="#0f172a" stroke-width="0.8"/>
+                  ${(zoom >= 1.2 || isSelectedDist) ? `
+                    <text x="${pt.x}" y="${pt.y + 8.5}" fill="${d.role === 'release' ? '#fda4af' : '#6ee7b7'}" font-size="6.4" font-weight="800" text-anchor="middle" style="pointer-events:none;">
+                      • ${escapeHtml(dShort)}
+                    </text>
                   ` : ''}
                 </g>
               `;
@@ -3828,9 +4789,9 @@ const AvigenGenesisAI = {
               <circle cx="0" cy="0" r="12" fill="#ef4444" fill-opacity="0.28"/>
               <circle cx="0" cy="0" r="7" fill="#dc2626" stroke="#ffffff" stroke-width="2"/>
               <circle cx="0" cy="0" r="2.5" fill="#ffffff"/>
-              <rect x="${-58 + relBoxDx}" y="${relBoxY}" width="116" height="16" rx="5" fill="#991b1b" stroke="#fca5a5" stroke-width="1"/>
-              <text x="${relBoxDx}" y="${relTxtY}" fill="#ffffff" font-size="8.2" font-weight="900" text-anchor="middle">
-                🔴 SALIM: ${escapeHtml(String(r.relNode.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0].slice(0, 14))}
+              <rect x="${-64 + relBoxDx}" y="${relBoxY}" width="128" height="16" rx="5" fill="#991b1b" stroke="#fca5a5" stroke-width="1"/>
+              <text x="${relBoxDx}" y="${relTxtY}" fill="#ffffff" font-size="7.9" font-weight="900" text-anchor="middle">
+                🔴 SALIM: ${escapeHtml(String(r.relNode.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0].slice(0, 17))}
               </text>
             </g>
 
@@ -3839,21 +4800,21 @@ const AvigenGenesisAI = {
               <circle cx="0" cy="0" r="12" fill="#10b981" fill-opacity="0.28"/>
               <circle cx="0" cy="0" r="7" fill="#059669" stroke="#ffffff" stroke-width="2"/>
               <circle cx="0" cy="0" r="2.5" fill="#ffffff"/>
-              <rect x="${-58 + loftBoxDx}" y="${loftBoxY}" width="116" height="16" rx="5" fill="#065f46" stroke="#6ee7b7" stroke-width="1"/>
-              <text x="${loftBoxDx}" y="${loftTxtY}" fill="#ffffff" font-size="8.2" font-weight="900" text-anchor="middle">
-                🟢 VARIŞ: ${escapeHtml(String(r.loftNode.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0].slice(0, 14))}
+              <rect x="${-64 + loftBoxDx}" y="${loftBoxY}" width="128" height="16" rx="5" fill="#065f46" stroke="#6ee7b7" stroke-width="1"/>
+              <text x="${loftBoxDx}" y="${loftTxtY}" fill="#ffffff" font-size="7.9" font-weight="900" text-anchor="middle">
+                🟢 VARIŞ: ${escapeHtml(String(r.loftNode.name || '').replace(/^\d{2}\s*-\s*/, '').split(' (')[0].slice(0, 17))}
               </text>
             </g>
           </svg>
         </div>
 
-        <!-- HARİTA ALT BİLGİ VE LİSANS ŞERİDİ -->
+        <!-- HARİTA ALT BİLGİ VE KAYDIRMA İPUCU ŞERİDİ -->
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-top:6px; font-size:8.5px; color:#94a3b8;">
           <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             <span>🔴 <strong style="color:#fca5a5;">Salım:</strong> ${escapeHtml(r.relNode.name)} (${r.relNode.lat.toFixed(2)}°K, ${r.relNode.lon.toFixed(2)}°D • ${r.relNode.altM}m)</span>
             <span>🟢 <strong style="color:#6ee7b7;">Varış:</strong> ${escapeHtml(r.loftNode.name)} (${r.loftNode.lat.toFixed(2)}°K, ${r.loftNode.lon.toFixed(2)}°D • ${r.loftNode.altM}m)</span>
           </div>
-          <span>Harita Lisansı: WGS84 &amp; OpenStreetMap / Natural Earth Açık Coğrafi Veri (ODbL)</span>
+          <span style="color:#cbd5e1;">✋ Haritayı parmağınızla/fareyle sağa-sola sürükleyebilir veya ◀ ▲ ▼ ▶ tuşlarıyla kaydırabilirsiniz</span>
         </div>
       </div>
     `;
@@ -3966,6 +4927,13 @@ const AvigenGenesisAI = {
   // ==========================================================================
   // ANA SAYFA İÇİN KOMPAKT AKILLI ANALİZ VİTRİN & 3 ANA MODÜL KARTLARI
   // ==========================================================================
+  openGenesisHubFromAnywhere(evt) {
+    if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+    this.state.viewStage = 'launcher';
+    this.saveState();
+    openIosTab('breeding', document.querySelectorAll('.ios-tab-btn')[2], true);
+  },
+
   openModuleDirectlyFromHome(modeId, evt) {
     if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
     let resolvedMode = 'breeding';
@@ -3974,7 +4942,30 @@ const AvigenGenesisAI = {
     this.state.activeMode = resolvedMode;
     this.state.viewStage = 'tool';
     this.saveState();
-    openIosTab('breeding', document.querySelectorAll('.ios-tab-btn')[2]);
+    openIosTab('breeding', document.querySelectorAll('.ios-tab-btn')[2], false);
+  },
+
+  async askGenesisFromHomeScreen(quickPromptText, topicKey) {
+    const inputEl = document.getElementById('homeGenesisAskInput');
+    const qText = (quickPromptText !== undefined && quickPromptText !== null)
+      ? String(quickPromptText).trim()
+      : (inputEl ? String(inputEl.value || '').trim() : '');
+    const finalQuestion = qText || 'Kümesimdeki en uyumlu damızlık çiftleri, COI akrabalık durumunu ve bugünkü yarış/yem önerisini özetle.';
+    if (inputEl) inputEl.value = '';
+
+    const ansBox = document.getElementById('homeGenesisQuickAnswerBox');
+    if (ansBox) {
+      ansBox.style.display = 'block';
+      ansBox.innerHTML = `
+        <div style="display:flex; align-items:center; gap:7px; padding:5px 4px; font-size:9.8px; font-weight:800; color:#4c1d95;">
+          <span>🧬</span>
+          <span>GENESIS AI kümes verilerinizi analiz ediyor...</span>
+        </div>
+      `;
+    }
+
+    await this.askGeminiAdvisor(finalQuestion, topicKey);
+    this.renderHomeTeaserCard();
   },
 
   renderCyberPigeonHeroSvg() {
@@ -3989,8 +4980,6 @@ const AvigenGenesisAI = {
     const alertBox = document.getElementById('homeGenesisDynamicAlertCard');
     if (!box) return;
 
-    // Ana sayfada hiçbir teknik detay, modül butonu veya analiz sonucu gösterilmez;
-    // yalnızca merak uyandıran ve keşfetme/aktif etme isteği yaratan tanıtım kartı yer alır.
     if (gridBox) {
       gridBox.style.display = 'none';
       gridBox.innerHTML = '';
@@ -4001,28 +4990,68 @@ const AvigenGenesisAI = {
     }
 
     const isFreeTier = typeof AvigenUxManager !== 'undefined' && AvigenUxManager.getCurrentTier().id === 'FREE';
-    const ctaText = isFreeTier ? "✨ GENESIS AI'ı Aktif Et →" : "🧬 GENESIS AI'ı Keşfet →";
+    const ctaText = isFreeTier ? "✨ GENESIS AI'ı Aktif Et →" : "🧬 GENESIS AI'ı Aç →";
+    const latestChat = Array.isArray(this.state.geminiChatHistory) && this.state.geminiChatHistory.length > 0
+      ? this.state.geminiChatHistory[0]
+      : null;
 
     box.innerHTML = `
-      <div class="cyber-genesis-hero-card" style="padding:11px 13px; min-height:118px;" onclick="AvigenGenesisAI.backToGenesisLauncher(); openIosTab('breeding', document.querySelectorAll('.ios-tab-btn')[2])">
-        <div class="cyber-hero-left" style="max-width:58%;">
-          <div class="cyber-hero-brand-top">
-            <span class="cyber-ai-chip-box">AI</span>
-            <span class="cyber-avigen-lbl">GENESIS AI</span>
-            <span class="gene-badge gene-purple" style="font-size:8px; padding:1px 6px;">YENİ NESİL</span>
+      <div class="ios-card" style="padding:0; overflow:hidden; border:1.5px solid rgba(124,58,237,0.45);">
+        <!-- ÜST VİTRİN BÖLÜMÜ (TIKLAYINCA GENESIS AI ANA EKRANINI AÇAR) -->
+        <div class="cyber-genesis-hero-card" style="padding:8px 11px; min-height:84px; border:none; border-radius:0; margin:0;" onclick="AvigenGenesisAI.openGenesisHubFromAnywhere(event)">
+          <div class="cyber-hero-left" style="max-width:60%;">
+            <div class="cyber-hero-brand-top">
+              <span class="cyber-ai-chip-box">AI</span>
+              <span class="cyber-avigen-lbl">GENESIS AI</span>
+              <span class="gene-badge gene-purple" style="font-size:7.6px; padding:1px 5px;">CANLI DANIŞMAN</span>
+            </div>
+            <div style="font-size:12px; font-weight:900; color:var(--ios-text); line-height:1.2; margin-top:3px;">
+              Hangi Çiftinizden Şampiyon Doğacak?
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; margin-top:5px;">
+              <button type="button" class="cyber-gold-cta-btn" style="padding:4px 9px; font-size:9.5px;" onclick="AvigenGenesisAI.openGenesisHubFromAnywhere(event)">
+                <span>${ctaText}</span>
+              </button>
+            </div>
           </div>
-          <div style="font-size:13px; font-weight:900; color:var(--ios-text); line-height:1.22; margin-top:4px;">
-            Hangi Çiftinizden Şampiyon Doğacak?
+          <div class="cyber-hero-right" style="right:0; top:0; bottom:0; width:42%;">
+            ${this.renderCyberPigeonHeroSvg()}
           </div>
-          <div style="font-size:9.5px; font-weight:600; color:var(--ios-subtext); line-height:1.35; margin-top:3px;">
-            5 nesil soy uyumunu, en iyi damızlık çiftleri ve akıllı yem/maliyet hesabını keşfedin.
-          </div>
-          <button type="button" class="cyber-gold-cta-btn" style="margin-top:7px; padding:5px 11px; font-size:10px;">
-            <span>${ctaText}</span>
-          </button>
         </div>
-        <div class="cyber-hero-right" style="right:0; top:0; bottom:0; width:45%;">
-          ${this.renderCyberPigeonHeroSvg()}
+
+        <!-- ALT TEK SATIR "🧬 GENESIS AI'YA SOR" ÇUBUĞU (TEK EKRANA SIĞAN KOMPAKT YAPI) -->
+        <div style="padding:6px 9px; background:var(--ios-card-alt); border-top:1px solid var(--ios-border);" onclick="event.stopPropagation()">
+          <div style="display:flex; gap:5px; align-items:center;">
+            <input type="text" id="homeGenesisAskInput" class="ios-input" style="flex:1; padding:5px 8px; font-size:10.5px; font-weight:700;" placeholder="🧬 GENESIS AI'ya Sor (Örn: En iyi çiftim, yarış, yem, halka no...)" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.askGenesisFromHomeScreen();}" />
+            <button type="button" class="ai-send-btn" style="padding:5px 10px; font-size:10px; flex-shrink:0;" onclick="AvigenGenesisAI.askGenesisFromHomeScreen()">
+              Sor →
+            </button>
+          </div>
+
+          <!-- Yanıt Kutusu (Sadece Soru Sorulduğunda Açılır, Kapatılabilir) -->
+          <div id="homeGenesisQuickAnswerBox" style="display:${latestChat ? 'block' : 'none'}; margin-top:5px;">
+            ${latestChat ? `
+              <div style="background:var(--ios-card); border:1px solid #c4b5fd; border-left:3.5px solid #7c3aed; border-radius:7px; padding:6px 8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:5px; margin-bottom:3px;">
+                  <span style="font-size:9px; font-weight:900; color:#4c1d95;">🧬 GENESIS AI Yanıtı (${escapeHtml(latestChat.time)})</span>
+                  <div style="display:flex; gap:4px;">
+                    <button type="button" class="ios-btn ios-btn-outline" style="padding:1px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.openModuleDirectlyFromHome('breeding', event)">
+                      Detay →
+                    </button>
+                    <button type="button" class="ios-btn ios-btn-outline" style="padding:1px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.clearGeminiChatHistory()">
+                      ✕ Kapat
+                    </button>
+                  </div>
+                </div>
+                <div style="font-size:8.8px; font-weight:800; color:#0369a1; margin-bottom:3px;">
+                  Soru: ${escapeHtml(latestChat.question)}
+                </div>
+                <div style="font-size:9.3px; color:var(--ios-text); line-height:1.38; max-height:130px; overflow-y:auto;">
+                  ${latestChat.answerHtml}
+                </div>
+              </div>
+            ` : ''}
+          </div>
         </div>
       </div>
     `;
@@ -4435,42 +5464,78 @@ const AvigenGenesisAI = {
     }
 
     // ========================================================================
-    // GÖRÜNÜM 1: AVIGEN GENESIS AI — 2 ÇEKİRDEK MOTOR BAŞLATICI EKRANI
+    // GÖRÜNÜM 1: AVIGEN GENESIS AI — 3 ÇEKİRDEK MOTOR BAŞLATICI EKRANI
     // ========================================================================
     if (this.state.viewStage !== 'tool') {
-      const tierName = typeof AvigenUxManager !== 'undefined' ? AvigenUxManager.getCurrentTier().name : 'AVIGEN GENESIS AI';
+      const latestChat = Array.isArray(this.state.geminiChatHistory) && this.state.geminiChatHistory.length > 0
+        ? this.state.geminiChatHistory[0]
+        : null;
 
       container.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:8px; height:100%; overflow-y:auto; padding-bottom:6px;">
-          <!-- ÜST KOMUTA BAŞLIĞI -->
-          <div class="genesis-launcher-hero">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-              <div style="display:flex; align-items:center; gap:9px; min-width:0;">
-                <div style="width:38px; height:38px; border-radius:11px; background:#ffffff; padding:4px; flex-shrink:0;">
-                  <img src="avigen-logo.svg" alt="GENESIS AI" style="width:100%; height:100%; object-fit:contain;" />
-                </div>
-                <div style="min-width:0;">
-                  <div style="display:flex; align-items:center; gap:5px;">
-                    <span style="font-size:13.5px; font-weight:900; color:#ffffff; letter-spacing:0.3px;">AVIGEN GENESIS AI</span>
-                    <span class="gene-badge gene-green" style="font-size:8px; padding:1px 5px;">v3.0</span>
-                  </div>
-                  <div style="font-size:9.3px; font-weight:700; color:#dbeafe; margin-top:1px;">
-                    Akıllı Eşleştirme • Haritalı Yarış Simülasyonu • Akıllı Yem &amp; Maliyet
-                  </div>
-                </div>
+          <!-- ÜST KOMUTA BAŞLIĞI (ANA SAYFADAKİ GÖRSELİN MİNİMAL & FERAH HALİ) -->
+          <div class="genesis-launcher-hero" style="position:relative; overflow:hidden; padding:10px 12px; min-height:76px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="position:relative; z-index:2; display:flex; flex-direction:column; gap:4px; max-width:66%;">
+              <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+                <span class="cyber-ai-chip-box" style="font-size:8.5px; padding:1px 5px;">AI</span>
+                <span style="font-size:13.5px; font-weight:900; color:var(--ios-text, #0f172a); letter-spacing:0.3px;">AVIGEN GENESIS AI</span>
+                <span class="gene-badge gene-purple" style="font-size:7.8px; padding:1px 5px;">v5.0</span>
               </div>
-              <div style="display:flex; gap:4px; flex-shrink:0;">
-                <button class="ios-btn ios-btn-outline" style="padding:5px 7px; font-size:9.5px; background:rgba(255,255,255,0.14); color:#fff; border-color:rgba(255,255,255,0.3);" onclick="AvigenGenesisAI.openHistoryView()" title="Kaydedilen Geçmiş Analizleri Gör">
+              <div style="font-size:9.3px; font-weight:700; color:var(--ios-subtext, #334155); line-height:1.3;">
+                Akıllı Eşleştirme &amp; Soy Danışmanı • Haritalı Yarış • Akıllı Yem
+              </div>
+              <div style="display:flex; gap:5px; align-items:center; margin-top:2px;">
+                <button class="ios-btn ios-btn-outline" style="padding:4px 8px; font-size:9.2px; font-weight:800; background:var(--ios-card, #ffffff); color:#0052cc; border-color:#93c5fd;" onclick="AvigenGenesisAI.openHistoryView()" title="Kaydedilen Geçmiş Analizleri Gör">
                   🕒 Geçmiş (${this.analysisHistory.length})
                 </button>
-                <button class="ios-btn ios-btn-outline" style="padding:5px 7px; font-size:9.5px; background:rgba(255,255,255,0.12); color:#fff; border-color:rgba(255,255,255,0.25);" onclick="if(typeof AvigenScientificLibrary!=='undefined') AvigenScientificLibrary.openLibraryFromAnywhere()" title="Bilimsel Bilgi Bankası">
-                  📚
+                <button class="ios-btn ios-btn-outline" style="padding:4px 8px; font-size:9.2px; font-weight:800; background:var(--ios-card, #ffffff); color:#5b21b6; border-color:#c4b5fd;" onclick="if(typeof AvigenScientificLibrary!=='undefined') AvigenScientificLibrary.openLibraryFromAnywhere()" title="Bilimsel Bilgi Bankası">
+                  📚 Bilimsel Kütüphane
                 </button>
               </div>
             </div>
+            <div style="position:absolute; right:0; top:0; bottom:0; width:38%; pointer-events:none; display:flex; align-items:center; justify-content:flex-end;">
+              ${this.renderCyberPigeonHeroSvg()}
+            </div>
           </div>
 
-          <!-- 4 ÇEKİRDEK MOTOR KARTI -->
+          <!-- DOĞRUDAN GENESIS AI'YA SOR KUTUSU -->
+          <div class="ios-card" style="padding:8px 10px; border:1.5px solid #7c3aed; background:linear-gradient(135deg, rgba(124,58,237,0.08), rgba(2,132,199,0.06), var(--ios-card));">
+            <div style="display:flex; gap:5px; align-items:center; margin-bottom:5px;">
+              <input type="text" id="launcherGenesisAskInput" class="ios-input" style="flex:1; padding:6px 9px; font-size:10.8px; font-weight:700;" placeholder="🧬 GENESIS AI'ya Sor (Örn: En iyi 3 çiftim, COI, yarış, yem, halka no...)" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.askGeminiAdvisor(this.value);}" />
+              <button type="button" class="ai-send-btn" style="padding:6px 11px; font-size:10.3px; flex-shrink:0;" onclick="AvigenGenesisAI.askGeminiAdvisor(document.getElementById('launcherGenesisAskInput')?.value)">
+                Sor →
+              </button>
+            </div>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:8.6px; font-weight:800;" onclick="AvigenGenesisAI.askGeminiAdvisor('Kümesimdeki en uyumlu 3 damızlık çift hangileri ve COI akrabalık riskleri nedir?', 'breeding_advice')">
+                💞 En İyi 3 Çiftim
+              </button>
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:8.6px; font-weight:800;" onclick="AvigenGenesisAI.askGeminiAdvisor('Bu haftaki yarış rotamda rüzgâr riskine göre hangi kuşlarımı sepetlemeliyim?', 'race_strategy')">
+                🗺️ Yarış &amp; Sepetleme
+              </button>
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:8.6px; font-weight:800;" onclick="AvigenGenesisAI.askGeminiAdvisor('Bugünkü hava sıcaklığına ve kümesimdeki kuş sayısına göre kaç gram yem ve sulukta ne vermeliyim?', 'nutrition_advice')">
+                🌾 Bugünkü Yem &amp; Suluk
+              </button>
+            </div>
+            ${this.state.geminiIsLoading ? `
+              <div style="margin-top:6px; padding:6px 8px; font-size:10px; font-weight:800; color:#4c1d95;">
+                🧬 GENESIS AI kümes verilerinizi analiz ediyor...
+              </div>
+            ` : (latestChat ? `
+              <div style="margin-top:6px; background:var(--ios-card); border:1px solid #c4b5fd; border-left:3.5px solid #7c3aed; border-radius:7px; padding:6px 8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:5px; margin-bottom:3px;">
+                  <span style="font-size:9px; font-weight:900; color:#4c1d95;">🧬 GENESIS AI Yanıtı (${escapeHtml(latestChat.time)})</span>
+                  <button type="button" class="ios-btn ios-btn-outline" style="padding:1px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.clearGeminiChatHistory()">
+                    ✕ Kapat
+                  </button>
+                </div>
+                <div style="font-size:8.8px; font-weight:800; color:#0369a1; margin-bottom:3px;">Soru: ${escapeHtml(latestChat.question)}</div>
+                <div style="font-size:9.3px; color:var(--ios-text); line-height:1.4; max-height:150px; overflow-y:auto;">${latestChat.answerHtml}</div>
+              </div>
+            ` : '')}
+          </div>
+
+          <!-- 3 ÇEKİRDEK MOTOR KARTI -->
           <div style="display:flex; flex-direction:column; gap:8px;">
             ${this.MAIN_MODULES.map(m => `
               <div class="genesis-3main-card" onclick="AvigenGenesisAI.switchGenesisMode('${m.defaultSubMode}')">
@@ -4492,17 +5557,6 @@ const AvigenGenesisAI = {
                     Aç →
                   </span>
                 </div>
-
-                ${m.subFunctions && m.subFunctions.length > 0 ? `
-                  <div style="margin-top:6px; padding-top:6px; border-top:1px dashed var(--ios-border); display:flex; align-items:center; justify-content:space-between; gap:6px;" onclick="event.stopPropagation()">
-                    <span style="font-size:9.3px; font-weight:800; color:var(--ios-subtext);">Alt Araç Seçin:</span>
-                    <select class="ios-select" style="flex:1; padding:4px 8px; font-size:10.3px; font-weight:800; color:#4c1d95;" onchange="AvigenGenesisAI.switchGenesisMode(this.value, event)">
-                      ${m.subFunctions.map(sf => `
-                        <option value="${sf.id}" ${this.state.activeMode === sf.id ? 'selected' : ''}>${sf.label}</option>
-                      `).join('')}
-                    </select>
-                  </div>
-                ` : ''}
               </div>
             `).join('')}
           </div>
@@ -4515,13 +5569,16 @@ const AvigenGenesisAI = {
     // GÖRÜNÜM 2: SEÇİLEN ANA MOTORUN ÇALIŞMA EKRANI
     // ========================================================================
     const activeMainModule = this.getMainModuleForMode(this.state.activeMode);
+    const latestChat = Array.isArray(this.state.geminiChatHistory) && this.state.geminiChatHistory.length > 0
+      ? this.state.geminiChatHistory[0]
+      : null;
 
     let controlsHtml = '';
     if (this.state.activeMode === 'breeding') {
       const topLoftPairs = this.getTopLoftBreedingPairs(5);
       controlsHtml = `
-        <div class="genesis-tool-controls">
-          <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:6px; align-items:end; margin-bottom:6px;">
+        <div class="genesis-tool-controls" style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:6px; align-items:end;">
             <div style="min-width:0;">
               <label style="font-size:9.5px; font-weight:800; color:#0284c7;">1. ♂ Erkek Kuş Seçimi (${males.length} Aday)</label>
               <select id="genesisSireSelect" class="ios-select" style="width:100%; font-size:11px; font-weight:800; padding:6px;" onchange="AvigenGenesisAI.onGenesisSelectionChange()">
@@ -4563,6 +5620,46 @@ const AvigenGenesisAI = {
               </div>
             </details>
           ` : ''}
+
+          <!-- BİRLEŞİK "🧬 GENESIS AI'YA SOR" CANLI KÜMES & SOY DANIŞMANI -->
+          <div style="background:linear-gradient(135deg, rgba(124,58,237,0.08), rgba(2,132,199,0.07)); border:1px solid #c4b5fd; border-radius:8px; padding:6px 8px;">
+            <div style="display:flex; gap:5px; align-items:center; margin-bottom:4px;">
+              <input type="text" id="geminiPromptInput" class="ios-input" style="flex:1; padding:5px 8px; font-size:10.5px; font-weight:700;" placeholder="🧬 GENESIS AI'ya Sor (Örn: Bu çiftin COI riski, en iyi 3 çiftim, halka no...)" value="${escapeHtml(this.state.geminiDraftPrompt || '')}" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.askGeminiAdvisor();}" />
+              <button type="button" class="ai-send-btn" style="padding:5px 10px; font-size:10px; flex-shrink:0;" onclick="AvigenGenesisAI.askGeminiAdvisor()">
+                Sor →
+              </button>
+            </div>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 6px; font-size:8.4px; font-weight:800;" onclick="AvigenGenesisAI.askGeminiAdvisor('Seçili erkek ve dişi kuşumun 5 nesil soyağacını, ortak atalarını ve doğacak yavru potansiyelini yorumla.', 'pair_deep')">
+                🧬 Seçili Çifti Yorumla
+              </button>
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 6px; font-size:8.4px; font-weight:800;" onclick="AvigenGenesisAI.askGeminiAdvisor('Kümesimdeki en uyumlu 3 damızlık çift hangileri ve COI akrabalık riskleri nedir?', 'breeding_advice')">
+                💞 En İyi 3 Çiftim
+              </button>
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 6px; font-size:8.4px; font-weight:800;" onclick="AvigenGenesisAI.askGeminiAdvisor('Bu haftaki yarış rotamda rüzgâr riskine göre hangi kuşlarımı sepetlemeliyim?', 'race_strategy')">
+                🗺️ Yarış Stratejim
+              </button>
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 6px; font-size:8.4px; font-weight:800;" onclick="AvigenGenesisAI.askGeminiAdvisor('Bugünkü hava sıcaklığına ve kümesimdeki kuş sayısına göre kaç gram yem ve sulukta ne vermeliyim?', 'nutrition_advice')">
+                🌾 Bugünkü Yem
+              </button>
+            </div>
+            ${this.state.geminiIsLoading ? `
+              <div style="margin-top:5px; padding:5px 7px; font-size:9.8px; font-weight:800; color:#4c1d95;">
+                🧬 GENESIS AI kümes verilerinizi analiz ediyor...
+              </div>
+            ` : (latestChat ? `
+              <div style="margin-top:6px; background:var(--ios-card); border:1px solid #c4b5fd; border-left:3.5px solid #7c3aed; border-radius:7px; padding:6px 8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:5px; margin-bottom:3px;">
+                  <span style="font-size:9px; font-weight:900; color:#4c1d95;">🧬 GENESIS AI Yanıtı (${escapeHtml(latestChat.time)})</span>
+                  <button type="button" class="ios-btn ios-btn-outline" style="padding:1px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.clearGeminiChatHistory()">
+                    ✕ Kapat
+                  </button>
+                </div>
+                <div style="font-size:8.8px; font-weight:800; color:#0369a1; margin-bottom:3px;">Soru: ${escapeHtml(latestChat.question)}</div>
+                <div style="font-size:9.3px; color:var(--ios-text); line-height:1.4; max-height:150px; overflow-y:auto;">${latestChat.answerHtml}</div>
+              </div>
+            ` : '')}
+          </div>
         </div>
       `;
     } else if (this.state.activeMode === 'smart_race') {
@@ -4647,19 +5744,21 @@ const AvigenGenesisAI = {
     container.innerHTML = `
       <div class="genesis-shell-card" style="display:flex; flex-direction:column; height:100%; overflow:hidden;">
         <!-- Üst Navigasyon Barı: ← Geri + Aktif Ana Modül Başlığı + Geçmiş -->
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--ios-border); flex-shrink:0;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:5px; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--ios-border); flex-shrink:0;">
           <button type="button" class="genesis-back-pill" onclick="AvigenGenesisAI.backToGenesisLauncher()">
             ← Geri
           </button>
           <div style="display:flex; align-items:center; gap:5px; min-width:0;">
             <span style="font-size:13px;">${activeMainModule.icon}</span>
-            <span style="font-size:11.5px; font-weight:900; color:#4c1d95; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            <span style="font-size:11.2px; font-weight:900; color:#4c1d95; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
               ${activeMainModule.num}. ${activeMainModule.title}
             </span>
           </div>
-          <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:9px; flex-shrink:0;" onclick="AvigenGenesisAI.openHistoryView()" title="Kaydedilen Geçmiş Analizler">
-            🕒 Geçmiş (${this.analysisHistory.length})
-          </button>
+          <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+            <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:8.8px;" onclick="AvigenGenesisAI.openHistoryView()" title="Kaydedilen Geçmiş Analizler">
+              🕒 Geçmiş (${this.analysisHistory.length})
+            </button>
+          </div>
         </div>
 
         <div style="flex-shrink:0;">
@@ -5148,46 +6247,76 @@ const AvigenGenesisAI = {
 
                 <!-- Hesaplanan Mesafe (Gerçek Koordinatlardan Otomatik) -->
                 <div class="sr-field-box">
-                  <label class="sr-field-label">Hesaplanan Mesafe (Otomatik Koordinat Hesabı)</label>
-                  <div class="sr-distance-badge-box">
-                    <span>📏 ${r.crowFliesKm} km Kuş Uçuşu</span>
-                    <span style="font-size:9px; font-weight:700; color:#6d28d9;">Koridor: ${r.actualCorridorMinKm}–${r.actualCorridorMaxKm} km</span>
+                  <label class="sr-field-label">Hesaplanan Mesafe (Otomatik)</label>
+                  <div class="sr-distance-badge-box" style="font-size:10.5px; padding:0 8px;">
+                    <span>📏 ${r.crowFliesKm} km</span>
+                    <span style="font-size:8.6px; font-weight:700; color:#6d28d9;">Koridor: ${r.actualCorridorMinKm}–${r.actualCorridorMaxKm} km</span>
                   </div>
                 </div>
 
-                <!-- Salım Noktası (Kırmızı İşaretçi) -->
-                <div class="sr-field-box">
-                  <label class="sr-field-label" style="color:#dc2626;">🔴 Salım Noktası (Haritadan veya Listeden)</label>
-                  <select id="srReleaseCitySelect" class="sr-field-select" onchange="AvigenGenesisAI.state.smartRaceEventId='custom'; AvigenGenesisAI.state.smartRaceCustomReleaseCoord=null; AvigenGenesisAI.onSmartRaceControlChange('city')">
-                    ${this.state.smartRaceCustomReleaseCoord ? `
-                      <option value="${r.relNode.id}" selected>🔴 ${escapeHtml(this.state.smartRaceCustomReleaseCoord.name)}</option>
-                    ` : ''}
-                    ${this.SMART_RACE_GEO_NODES.map(n => `
-                      <option value="${n.id}" ${(!this.state.smartRaceCustomReleaseCoord && n.id === r.relNode.id) ? 'selected' : ''}>
-                        ${escapeHtml(n.name)} (${n.altM}m)
-                      </option>
-                    `).join('')}
-                  </select>
+                <!-- Salım Noktası (Tam Genişlik Satır • İl + İlçe Seçimi • Kırmızı İşaretçi) -->
+                <div class="sr-field-box" style="grid-column: 1 / -1; background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.25); border-radius:9px; padding:8px 9px;">
+                  <label class="sr-field-label" style="color:#dc2626; margin-bottom:2px;">🔴 Salım Noktası (İl ve İlçe Seçimi)</label>
+                  <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px;">
+                    <div style="min-width:0;">
+                      <span style="font-size:8.4px; font-weight:800; color:var(--ios-subtext); display:block; margin-bottom:2px;">Salım İli (81 İl)</span>
+                      <select id="srReleaseCitySelect" class="sr-field-select" style="height:33px; font-size:10.5px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceEventId='custom'; AvigenGenesisAI.state.smartRaceCustomReleaseCoord=null; AvigenGenesisAI.onSmartRaceControlChange('release_city')">
+                        ${this.SMART_RACE_GEO_NODES.map(n => `
+                          <option value="${n.id}" ${(n.id === (this.state.smartRaceReleaseCityId || r.relNode.id)) ? 'selected' : ''}>
+                            ${escapeHtml(n.name.split(' (')[0])}
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                    <div style="min-width:0;">
+                      <span style="font-size:8.4px; font-weight:800; color:var(--ios-subtext); display:block; margin-bottom:2px;">Salım İlçesi / Mevki</span>
+                      <select id="srReleaseDistrictSelect" class="sr-field-select" style="height:33px; font-size:10.5px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceEventId='custom'; AvigenGenesisAI.state.smartRaceCustomReleaseCoord=null; AvigenGenesisAI.onSmartRaceControlChange('release_district')">
+                        ${this.state.smartRaceCustomReleaseCoord ? `
+                          <option value="custom_coord" selected>📍 ${escapeHtml(this.state.smartRaceCustomReleaseCoord.name)}</option>
+                        ` : ''}
+                        ${this.getDistrictsForProvince(this.state.smartRaceReleaseCityId || r.relNode.id).map(d => `
+                          <option value="${d.id}" ${(!this.state.smartRaceCustomReleaseCoord && d.id === (this.state.smartRaceReleaseDistrictId || r.relNode.districtId)) ? 'selected' : ''}>
+                            ${escapeHtml(d.name)} (${d.altM}m)
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
-                <!-- Varış Noktası / Kümes (Yeşil İşaretçi + Kümesim Olarak Sabitle) -->
-                <div class="sr-field-box">
-                  <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
-                    <label class="sr-field-label" style="color:#059669; margin:0;">🟢 Varış Noktası (Kümes Konumunuz)</label>
-                    <button type="button" class="ios-btn ios-btn-outline" style="padding:1px 6px; font-size:8px; color:#059669; border-color:#a7f3d0;" onclick="AvigenGenesisAI.pinCurrentLoftLocation()" title="Bu şehri kalıcı kümes konumunuz olarak kaydet">
+                <!-- Varış Noktası / Kümes (Tam Genişlik Satır • İl + İlçe Seçimi • Yeşil İşaretçi + Kümesimi Sabitle) -->
+                <div class="sr-field-box" style="grid-column: 1 / -1; background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.26); border-radius:9px; padding:8px 9px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:4px; margin-bottom:2px;">
+                    <label class="sr-field-label" style="color:#059669; margin:0;">🟢 Varış Noktası (Kümes İli ve İlçesi)</label>
+                    <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.2px; color:#059669; border-color:#a7f3d0;" onclick="AvigenGenesisAI.pinCurrentLoftLocation()" title="Bu il ve ilçeyi kalıcı kümes konumunuz olarak kaydet">
                       🏠 Kümesimi Sabitle
                     </button>
                   </div>
-                  <select id="srLoftCitySelect" class="sr-field-select" onchange="AvigenGenesisAI.state.smartRaceCustomLoftCoord=null; AvigenGenesisAI.onSmartRaceControlChange('city')">
-                    ${this.state.smartRaceCustomLoftCoord ? `
-                      <option value="${r.loftNode.id}" selected>🟢 ${escapeHtml(this.state.smartRaceCustomLoftCoord.name)}</option>
-                    ` : ''}
-                    ${this.SMART_RACE_GEO_NODES.map(n => `
-                      <option value="${n.id}" ${(!this.state.smartRaceCustomLoftCoord && n.id === r.loftNode.id) ? 'selected' : ''}>
-                        ${escapeHtml(n.name)} (${n.altM}m)
-                      </option>
-                    `).join('')}
-                  </select>
+                  <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px;">
+                    <div style="min-width:0;">
+                      <span style="font-size:8.4px; font-weight:800; color:var(--ios-subtext); display:block; margin-bottom:2px;">Kümes İli (81 İl)</span>
+                      <select id="srLoftCitySelect" class="sr-field-select" style="height:33px; font-size:10.5px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceCustomLoftCoord=null; AvigenGenesisAI.onSmartRaceControlChange('loft_city')">
+                        ${this.SMART_RACE_GEO_NODES.map(n => `
+                          <option value="${n.id}" ${(n.id === (this.state.smartRaceLoftCityId || r.loftNode.id)) ? 'selected' : ''}>
+                            ${escapeHtml(n.name.split(' (')[0])}
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                    <div style="min-width:0;">
+                      <span style="font-size:8.4px; font-weight:800; color:var(--ios-subtext); display:block; margin-bottom:2px;">Kümes İlçesi / Mevki</span>
+                      <select id="srLoftDistrictSelect" class="sr-field-select" style="height:33px; font-size:10.5px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceCustomLoftCoord=null; AvigenGenesisAI.onSmartRaceControlChange('loft_district')">
+                        ${this.state.smartRaceCustomLoftCoord ? `
+                          <option value="custom_coord" selected>📍 ${escapeHtml(this.state.smartRaceCustomLoftCoord.name)}</option>
+                        ` : ''}
+                        ${this.getDistrictsForProvince(this.state.smartRaceLoftCityId || r.loftNode.id).map(d => `
+                          <option value="${d.id}" ${(!this.state.smartRaceCustomLoftCoord && d.id === (this.state.smartRaceLoftDistrictId || r.loftNode.districtId)) ? 'selected' : ''}>
+                            ${escapeHtml(d.name)} (${d.altM}m)
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Yarış Tarihi -->
@@ -5233,13 +6362,17 @@ const AvigenGenesisAI = {
                   <summary style="cursor:pointer; font-weight:800; color:#0052cc; outline:none;">
                     ▾ Katılacak Kuş Listesini Düzenle (${displayBirds.length} / ${sr.birdEvaluations.length} Kuş)
                   </summary>
-                  <div style="max-height:155px; overflow-y:auto; display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:5px; margin-top:7px; padding-top:6px; border-top:1px dashed var(--ios-border);">
+                  <div style="max-height:175px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-top:7px; padding-top:6px; border-top:1px dashed var(--ios-border);">
                     ${sr.birdEvaluations.map(b => `
-                      <label style="display:flex; align-items:center; gap:6px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:7px; padding:5px 7px; cursor:pointer; font-size:9px;">
-                        <input type="checkbox" ${b.isInSelectedRace ? 'checked' : ''} onchange="AvigenGenesisAI.toggleSmartRaceBirdSelection('${escapeHtml(b.ring)}', this.checked)" style="accent-color:#0052cc;" />
-                        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                          <strong>${b.flag} ${escapeHtml(b.ring)}</strong> (${escapeHtml(b.name)})
-                          ${b.hasSufficientIndividualData ? `<span style="color:#059669; font-weight:800;">• ${b.totalProvenRaceRecords} Yarış</span>` : `<span style="color:#d97706;">• Kayıtsız</span>`}
+                      <label style="display:flex; align-items:center; justify-content:space-between; gap:6px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:7px; padding:5px 8px; cursor:pointer; font-size:9.3px;">
+                        <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                          <input type="checkbox" ${b.isInSelectedRace ? 'checked' : ''} onchange="AvigenGenesisAI.toggleSmartRaceBirdSelection('${escapeHtml(b.ring)}', this.checked)" style="accent-color:#0052cc; width:14px; height:14px; flex-shrink:0;" />
+                          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            <strong>${b.flag} ${escapeHtml(b.ring)}</strong> (${escapeHtml(b.name)})
+                          </span>
+                        </div>
+                        <span style="font-size:8.4px; font-weight:800; flex-shrink:0; color:${b.hasSufficientIndividualData ? '#059669' : '#d97706'};">
+                          ${b.hasSufficientIndividualData ? `${b.totalProvenRaceRecords} Yarış` : 'Genel Tahmin'}
                         </span>
                       </label>
                     `).join('')}
@@ -5289,160 +6422,179 @@ const AvigenGenesisAI = {
       }
 
       // ======================================================================
-      // AŞAMA 2: NİHAİ SONUÇ ÖZETİ (TEK BAKIŞTA ÖZET KARTLARI + HARİTA + KUŞ TABLOSU)
+      // AŞAMA 2: NİHAİ SONUÇ ÖZETİ (YATAY KAYDIRMA OLMAYAN MOBİL KART MİMARİSİ)
       // ======================================================================
       if (curStage === 'summary') {
         const z1 = sr.zoneWeather[0];
         const z2 = sr.zoneWeather[1];
         const z3 = sr.zoneWeather[2];
 
+        const renderBirdSummaryCard = (b, idx) => {
+          const p = b.prediction;
+          const hasScore = b.suitabilityScore !== null;
+          const defaultBasketChecked = !hasScore || b.suitabilityScore >= 60;
+          const borderCol = hasScore ? (b.suitabilityScore >= 80 ? '#059669' : (b.suitabilityScore >= 65 ? '#0066ff' : '#d97706')) : '#94a3b8';
+          const shortVerdict = hasScore
+            ? `${b.suitabilityScore}/100 • ${b.suitabilityScore >= 80 ? 'Çok Uygun' : (b.suitabilityScore >= 65 ? 'Uygun' : 'Yedek/Dikkat')}`
+            : 'Genel Tahmin';
+
+          return `
+            <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-left:4px solid ${borderCol}; border-radius:9px; padding:7px 9px; display:flex; flex-direction:column; gap:5px;">
+              <!-- Üst Satır: Seçim Kutusu + Kuş Kimliği + Uygunluk Rozeti -->
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                <div style="display:flex; align-items:center; gap:7px; min-width:0; flex:1;">
+                  <input type="checkbox" class="sr-sim-basket-chk" value="${escapeHtml(b.ring)}" data-name="${escapeHtml(b.name)}" data-flag="${b.flag || '🇹🇷'}" data-score="${hasScore ? b.suitabilityScore : 70}" ${defaultBasketChecked ? 'checked' : ''} style="width:16px; height:16px; accent-color:#059669; cursor:pointer; flex-shrink:0;" />
+                  <div style="min-width:0; cursor:pointer;" onclick="if(typeof AvigenPerformanceEngine!=='undefined') AvigenPerformanceEngine.openProfileModal('${escapeHtml(b.ring)}');">
+                    <div style="font-size:10.3px; font-weight:900; color:var(--ios-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                      ${idx + 1}. ${b.flag} ${escapeHtml(b.ring)} <span style="font-weight:700; color:var(--ios-subtext);">(${escapeHtml(b.name)})</span>
+                    </div>
+                  </div>
+                </div>
+                <span class="gene-badge ${b.suitabilityBadgeClass}" style="font-size:8px; padding:2px 6px; flex-shrink:0;">
+                  ${escapeHtml(shortVerdict)}
+                </span>
+              </div>
+
+              <!-- Alt Satır: 3 Eşit Sütunlu Tahmini Dönüş, Hız ve Güven Şeridi (Yatay Kaydırma Sıfır!) -->
+              <div style="display:grid; grid-template-columns:1.15fr 0.95fr 1fr; gap:4px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:7px; padding:4px 6px; font-size:8.6px;">
+                <div style="min-width:0;">
+                  <div style="font-size:7.6px; font-weight:800; color:var(--ios-subtext);">🎯 OLASI DÖNÜŞ</div>
+                  <div style="font-size:10px; font-weight:900; color:#0052cc; white-space:nowrap;">${escapeHtml(p.likelyWindowLabel)}</div>
+                </div>
+                <div style="min-width:0; border-left:1px solid var(--ios-border); padding-left:5px;">
+                  <div style="font-size:7.6px; font-weight:800; color:var(--ios-subtext);">⚡ HIZ &amp; TECRÜBE</div>
+                  <div style="font-size:9.3px; font-weight:900; color:var(--ios-text); white-space:nowrap;">~${p.expectedBirdSpeedMpm} m/dk <span style="font-size:7.8px; color:var(--ios-subtext);">(${b.totalProvenRaceRecords}Y)</span></div>
+                </div>
+                <div style="min-width:0; border-left:1px solid var(--ios-border); padding-left:5px;">
+                  <div style="font-size:7.6px; font-weight:800; color:var(--ios-subtext);">⏱️ ERKEN / GEÇ</div>
+                  <div style="font-size:8.8px; font-weight:900; white-space:nowrap;">
+                    <span style="color:#059669;">${escapeHtml(p.earliestTimeLabel)}</span> / <span style="color:#b45309;">${escapeHtml(p.lateLimitTimeLabel)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        };
+
         out.innerHTML = `
           <div class="sr-sim-container">
             <!-- ÜST BAŞLIK VE HIZLI GEÇİŞ ÇUBUĞU -->
-            <div class="sr-form-card" style="padding:10px 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div>
-                <div style="font-size:12.5px; font-weight:900; color:var(--ios-text);">
-                  🏁 ${escapeHtml(defaultRaceTitle)} — Simülasyon Sonuç Özeti
+            <div class="sr-form-card" style="padding:9px 11px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+              <div style="min-width:0;">
+                <div style="font-size:11.8px; font-weight:900; color:var(--ios-text);">
+                  🏁 ${escapeHtml(defaultRaceTitle)} (${r.crowFliesKm} km)
                 </div>
-                <div style="font-size:9.3px; color:var(--ios-subtext);">
-                  🔴 Salım: <strong>${escapeHtml(r.relNode.name)}</strong> → 🟢 Varış: <strong>${escapeHtml(r.loftNode.name)}</strong> • 📅 ${escapeHtml(sr.releaseDate)} Saat ${escapeHtml(sr.releaseTime)}
+                <div style="font-size:8.9px; color:var(--ios-subtext);">
+                  🔴 <strong>${escapeHtml(r.relNode.name)}</strong> → 🟢 <strong>${escapeHtml(r.loftNode.name)}</strong> • 📅 ${escapeHtml(sr.releaseDate)} (${escapeHtml(sr.releaseTime)})
                 </div>
               </div>
-              <div style="display:flex; gap:6px;">
-                <button type="button" class="ios-btn ios-btn-outline" style="padding:6px 10px; font-size:9.5px;" onclick="AvigenGenesisAI.setSmartRaceStage('setup')">
+              <div style="display:flex; gap:5px; width:100%;">
+                <button type="button" class="ios-btn ios-btn-outline" style="flex:1; padding:6px 8px; font-size:9.3px;" onclick="AvigenGenesisAI.setSmartRaceStage('setup')">
                   ✏️ Rotayı Düzenle
                 </button>
-                <button type="button" class="ios-btn ios-btn-primary" style="padding:6px 11px; font-size:9.8px;" onclick="AvigenGenesisAI.setSmartRaceStage('detail')">
-                  🔬 Detaylı Bilimsel Analiz →
+                <button type="button" class="ios-btn ios-btn-primary" style="flex:1.2; padding:6px 8px; font-size:9.3px;" onclick="AvigenGenesisAI.setSmartRaceStage('detail')">
+                  🔬 Detaylı Rapor →
                 </button>
               </div>
             </div>
 
-            <!-- 6 TEMEL SONUÇ ÖZETİ KARTI (TEK BAKIŞTA) -->
-            <div class="sr-summary-grid-6">
-              <div class="sr-kpi-card" style="border-top:3px solid #0052cc;">
-                <div class="sr-kpi-label">Toplam Yarış Mesafesi</div>
-                <div class="sr-kpi-val" style="color:#0052cc;">${r.crowFliesKm} km Kuş Uçuşu</div>
-                <div class="sr-kpi-sub">Gerçek Koridor: ${r.actualCorridorMinKm}–${r.actualCorridorMaxKm} km</div>
+            <!-- 6 TEMEL SONUÇ ÖZETİ KARTI (2x3 FERAH MOBİL IZGARA - YATAY SIKIŞMA YOK) -->
+            <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px;">
+              <div class="sr-kpi-card" style="border-top:3px solid #0052cc; padding:7px 9px;">
+                <div class="sr-kpi-label">Yarış Mesafesi</div>
+                <div class="sr-kpi-val" style="color:#0052cc; font-size:12px;">${r.crowFliesKm} km Kuş Uçuşu</div>
+                <div class="sr-kpi-sub">Koridor: ${r.actualCorridorMinKm}–${r.actualCorridorMaxKm} km</div>
               </div>
 
-              <div class="sr-kpi-card" style="border-top:3px solid #0284c7;">
-                <div class="sr-kpi-label">Genel Meteorolojik Koşullar</div>
-                <div class="sr-kpi-val">${z1.tempC}°C • ${z2.windSpeedKmh} km/s</div>
-                <div class="sr-kpi-sub">${escapeHtml(z2.windEffectLabel)} • Görüş ${z2.visKm} km</div>
+              <div class="sr-kpi-card" style="border-top:3px solid #059669; padding:7px 9px;">
+                <div class="sr-kpi-label">En Olası Dönüş Saati</div>
+                <div class="sr-kpi-val" style="color:#059669; font-size:12px;">${escapeHtml(sr.fleetReturnEstimate.likelyWindowClock)}</div>
+                <div class="sr-kpi-sub">Erken: ${escapeHtml(sr.fleetReturnEstimate.earliestClock)} • Geç: ${escapeHtml(sr.fleetReturnEstimate.lateLimitClock)}</div>
               </div>
 
-              <div class="sr-kpi-card" style="border-top:3px solid ${sr.overallRiskColor};">
-                <div class="sr-kpi-label">Genel Uçuş Riski</div>
-                <div class="sr-kpi-val" style="color:${sr.overallRiskColor};">${escapeHtml(sr.overallRiskLevel)}</div>
-                <div class="sr-kpi-sub">${escapeHtml(sr.riskFindings[0]?.factor || 'Normal Koşullar')}</div>
+              <div class="sr-kpi-card" style="border-top:3px solid #0284c7; padding:7px 9px;">
+                <div class="sr-kpi-label">Hava &amp; Rüzgâr</div>
+                <div class="sr-kpi-val" style="font-size:12px;">${z1.tempC}°C • ${z2.windSpeedKmh} km/s</div>
+                <div class="sr-kpi-sub">${escapeHtml(z2.windEffectLabel)}</div>
               </div>
 
-              <div class="sr-kpi-card" style="border-top:3px solid #7c3aed;">
-                <div class="sr-kpi-label">Rota Değerlendirmesi</div>
-                <div class="sr-kpi-val" style="color:#6d28d9;">${r.bearingDeg}° ${escapeHtml(r.compassLabel.split(' ')[0])}</div>
-                <div class="sr-kpi-sub">${r.relNode.altM}m → Tepe ~${r.midPassAltM}m → ${r.loftNode.altM}m</div>
+              <div class="sr-kpi-card" style="border-top:3px solid ${sr.overallRiskColor}; padding:7px 9px;">
+                <div class="sr-kpi-label">Güzergâh Uçuş Riski</div>
+                <div class="sr-kpi-val" style="color:${sr.overallRiskColor}; font-size:12px;">${escapeHtml(sr.overallRiskLevel)}</div>
+                <div class="sr-kpi-sub">Beklenen Hız: ~${sr.fleetReturnEstimate.expectedSpeedMpm} m/dk</div>
               </div>
 
-              <div class="sr-kpi-card" style="border-top:3px solid #059669;">
-                <div class="sr-kpi-label">Tahmini Dönüş Zaman Aralığı</div>
-                <div class="sr-kpi-val" style="color:#059669;">${escapeHtml(sr.fleetReturnEstimate.likelyWindowClock)}</div>
-                <div class="sr-kpi-sub">En Erken: ${escapeHtml(sr.fleetReturnEstimate.earliestClock)} • Geç: ${escapeHtml(sr.fleetReturnEstimate.lateLimitClock)}</div>
+              <div class="sr-kpi-card" style="border-top:3px solid #7c3aed; padding:7px 9px;">
+                <div class="sr-kpi-label">Rota &amp; İrtifa</div>
+                <div class="sr-kpi-val" style="color:#6d28d9; font-size:11.5px;">Tepe ~${r.midPassAltM}m (${r.bearingDeg}°)</div>
+                <div class="sr-kpi-sub">${r.relNode.altM}m → ${r.loftNode.altM}m</div>
               </div>
 
-              <div class="sr-kpi-card" style="border-top:3px solid ${relMeta.color};">
-                <div class="sr-kpi-label">Tahmin Güvenilirliği</div>
-                <div class="sr-kpi-val" style="color:${relMeta.color};">%${sr.reliabilityPct} (${escapeHtml(relMeta.label)})</div>
-                <div class="sr-kpi-sub">${sr.dataSourceInfo.isRealTimeMeasured ? 'Canlı Atmosferik Ölçüm' : 'Kayıtlı / Senaryo Verisi'}</div>
+              <div class="sr-kpi-card" style="border-top:3px solid ${relMeta.color}; padding:7px 9px;">
+                <div class="sr-kpi-label">Tahmin Güveni</div>
+                <div class="sr-kpi-val" style="color:${relMeta.color}; font-size:11.5px;">%${sr.reliabilityPct} (${escapeHtml(relMeta.label)})</div>
+                <div class="sr-kpi-sub">${provenBirds.length} Kanıtlı • ${unprovenBirds.length} Genel</div>
               </div>
             </div>
 
             <!-- TÜRKİYE ROTA VE RİSK HARİTASI -->
             ${this.renderInteractiveTurkeyMap(sr, true)}
 
-            <!-- GENESIS AI KISA VE ANLAŞILIR GENEL DEĞERLENDİRMESİ -->
-            <div class="sr-form-card" style="border-left:4px solid ${sr.overallRiskColor}; padding:10px 12px;">
-              <div style="font-size:11px; font-weight:900; color:var(--ios-text); margin-bottom:4px;">
-                🧬 GENESIS AI Genel Yarış Değerlendirmesi
+            <!-- YARIŞA KATILAN KUŞLARIN UYGUNLUĞU VE TAHMİNİ DÖNÜŞ ARALIKLARI (DİKEY MOBİL KARTLAR - YATAY KAYDIRMA SIFIR!) -->
+            <div class="sr-form-card" style="padding:10px 11px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
+                <div>
+                  <div style="font-size:11.2px; font-weight:900; color:var(--ios-text);">
+                    🕊️ Kuşların Uygunluğu &amp; Dönüş Saatleri (${displayBirds.length} Kuş)
+                  </div>
+                  <div style="font-size:8.6px; color:var(--ios-subtext);">
+                    Sepetlenecek kuşları seçip aşağıdaki yeşil butonla doğrudan yarışı başlatın.
+                  </div>
+                </div>
               </div>
-              <div style="font-size:10px; color:var(--ios-text); line-height:1.45;">
-                <strong>${escapeHtml(r.relNode.name)} → ${escapeHtml(r.loftNode.name)}</strong> arasındaki <strong>${r.crowFliesKm} km</strong> kuş uçuşu (arazi ve rüzgâr sapmasıyla <strong>${r.actualCorridorMinKm}–${r.actualCorridorMaxKm} km</strong>) güzergâhında genel uçuş riski <strong style="color:${sr.overallRiskColor};">${escapeHtml(sr.overallRiskLevel)}</strong> olarak hesaplanmıştır.
-                Orta geçit bölgesinde (<strong>~${r.midPassAltM}m</strong>) <strong>${escapeHtml(z2.windEffectLabel)} (${z2.windSpeedKmh} km/s)</strong> nedeniyle beklenen filo hızı <strong>~${sr.fleetReturnEstimate.expectedSpeedMpm} m/dk</strong> olup, saat <strong>${escapeHtml(sr.releaseTime)}</strong> salımına göre en olası dönüşlerin <strong>${escapeHtml(sr.fleetReturnEstimate.likelyWindowClock)}</strong> aralığında gerçekleşmesi öngörülmektedir.
+
+              <!-- Hızlı Seçim ve Tek Tuşla Sepetleme Barı -->
+              <div style="display:flex; gap:5px; flex-wrap:wrap; margin-bottom:7px;">
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:4px 8px; font-size:8.6px; font-weight:800;" onclick="document.querySelectorAll('.sr-sim-basket-chk').forEach(c => c.checked = true)">
+                  ✅ Tümünü Seç
+                </button>
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:4px 8px; font-size:8.6px; font-weight:800; color:#059669; border-color:#a7f3d0;" onclick="document.querySelectorAll('.sr-sim-basket-chk').forEach(c => c.checked = Number(c.getAttribute('data-score')||70) >= 65)">
+                  ⭐ En Uygunları Seç
+                </button>
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:4px 8px; font-size:8.6px; font-weight:800;" onclick="document.querySelectorAll('.sr-sim-basket-chk').forEach(c => c.checked = false)">
+                  🧹 Temizle
+                </button>
               </div>
+
+              <button type="button" class="ios-btn ios-btn-green" style="width:100%; padding:9px 12px; font-size:10.5px; font-weight:900; margin-bottom:8px;" onclick="AvigenGenesisAI.createOfficialRaceFromSimulation()">
+                🏁 İşaretli Kadroyla Yarışı Başlat (Sepetle) →
+              </button>
+
+              <!-- DİKEY KUŞ KARTLARI LİSTESİ (EKRANA %100 SIĞAR, SAĞA-SOLA KAYDIRMA YOK) -->
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                ${displayBirds.slice(0, 12).map((b, idx) => renderBirdSummaryCard(b, idx)).join('')}
+              </div>
+
+              ${displayBirds.length > 12 ? `
+                <details style="margin-top:7px; background:var(--ios-card); border:1px solid var(--ios-border); border-radius:8px; padding:6px 9px;">
+                  <summary style="cursor:pointer; font-size:9.3px; font-weight:900; color:#0052cc; outline:none;">
+                    ▾ Diğer ${displayBirds.length - 12} Kuşu Göster (${displayBirds.length} Toplam Kuş)
+                  </summary>
+                  <div style="display:flex; flex-direction:column; gap:6px; margin-top:7px;">
+                    ${displayBirds.slice(12).map((b, idx) => renderBirdSummaryCard(b, idx + 12)).join('')}
+                  </div>
+                </details>
+              ` : ''}
             </div>
 
-            <!-- YARIŞA KATILAN KUŞLARIN UYGUNLUĞU VE TAHMİNİ DÖNÜŞ ARALIKLARI + TEK TUŞLA SEPETLEME -->
-            <div class="sr-form-card" style="padding:10px 12px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-                <div>
-                  <div style="font-size:11px; font-weight:900; color:var(--ios-text);">
-                    🕊️ Kuşların Yarış Uygunluğu ve Tahmini Dönüş Aralıkları (${displayBirds.length} Kuş)
-                  </div>
-                  <div style="font-size:8.8px; color:var(--ios-subtext);">
-                    Sepetlemek istediğiniz kuşları işaretleyip sağdaki butonla doğrudan gerçek yarış kaydı olarak başlatabilirsiniz.
-                  </div>
-                </div>
-                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                  <span class="gene-badge gene-purple" style="font-size:8.4px;">
-                    ${provenBirds.length} Kanıtlı Performans • ${unprovenBirds.length} Genel Tahmin
-                  </span>
-                  <button type="button" class="ios-btn ios-btn-green" style="padding:6px 10px; font-size:9.5px; font-weight:900;" onclick="AvigenGenesisAI.createOfficialRaceFromSimulation()">
-                    🏁 İşaretli Kadroyla Yarışı Başlat (Sepetle) →
-                  </button>
-                </div>
+            <!-- GENESIS AI KISA VE ANLAŞILIR GENEL DEĞERLENDİRMESİ -->
+            <div class="sr-form-card" style="border-left:4px solid ${sr.overallRiskColor}; padding:9px 11px;">
+              <div style="font-size:10.5px; font-weight:900; color:var(--ios-text); margin-bottom:3px;">
+                🧬 GENESIS AI Genel Yarış Değerlendirmesi
               </div>
-
-              <div style="overflow-x:auto;">
-                <table class="sr-clean-table">
-                  <thead>
-                    <tr>
-                      <th style="width:28px; text-align:center;">
-                        <input type="checkbox" checked onchange="document.querySelectorAll('.sr-sim-basket-chk').forEach(c => c.checked = this.checked)" title="Tümünü Seç / Kaldır" style="accent-color:#059669;" />
-                      </th>
-                      <th>Kuş (Halka &amp; İsim)</th>
-                      <th>Yarış Uygunluğu</th>
-                      <th>Tahmini Dönüş Aralığı</th>
-                      <th>En Erken / Geç Sınır</th>
-                      <th>Tahmin Güveni</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${displayBirds.slice(0, 15).map((b, idx) => {
-                      const p = b.prediction;
-                      const defaultBasketChecked = b.suitabilityScore === null || b.suitabilityScore >= 60;
-                      return `
-                        <tr>
-                          <td style="text-align:center;">
-                            <input type="checkbox" class="sr-sim-basket-chk" value="${escapeHtml(b.ring)}" data-name="${escapeHtml(b.name)}" data-flag="${b.flag || '🇹🇷'}" ${defaultBasketChecked ? 'checked' : ''} style="width:14px; height:14px; accent-color:#059669; cursor:pointer;" />
-                          </td>
-                          <td>
-                            <div style="font-weight:900; color:var(--ios-text); cursor:pointer;" onclick="if(typeof AvigenPerformanceEngine!=='undefined') AvigenPerformanceEngine.openProfileModal('${escapeHtml(b.ring)}');">
-                              ${idx + 1}. ${b.flag} ${escapeHtml(b.ring)}
-                            </div>
-                            <div style="font-size:8.6px; color:var(--ios-subtext);">${escapeHtml(b.name)} (${b.totalProvenRaceRecords} Yarış)</div>
-                          </td>
-                          <td>
-                            <span class="gene-badge ${b.suitabilityBadgeClass}" style="font-size:8px;">
-                              ${b.suitabilityScore !== null ? `${b.suitabilityScore}/100 • ${escapeHtml(b.suitabilityVerdict)}` : 'Yetersiz Veri (Kesin Puan Yok)'}
-                            </span>
-                          </td>
-                          <td>
-                            <div style="font-weight:900; color:#0052cc; font-size:10.5px;">${escapeHtml(p.likelyWindowLabel)}</div>
-                            <div style="font-size:8.2px; color:var(--ios-subtext);">${p.isIndividualPrediction ? 'Bireysel Hız Modeli' : 'Genel Filo Tahmini'} (~${p.expectedBirdSpeedMpm} m/dk)</div>
-                          </td>
-                          <td>
-                            <div style="font-size:8.8px;"><strong style="color:#059669;">${escapeHtml(p.earliestTimeLabel)}</strong> / <strong style="color:#b45309;">${escapeHtml(p.lateLimitTimeLabel)}</strong></div>
-                          </td>
-                          <td>
-                            <span class="gene-badge ${p.reliabilityMeta.badgeClass}" style="font-size:8px;">
-                              %${p.reliabilityPct} (${escapeHtml(p.reliabilityMeta.label)})
-                            </span>
-                          </td>
-                        </tr>
-                      `;
-                    }).join('')}
-                  </tbody>
-                </table>
+              <div style="font-size:9.5px; color:var(--ios-text); line-height:1.42;">
+                <strong>${escapeHtml(r.relNode.name)} → ${escapeHtml(r.loftNode.name)}</strong> arasındaki <strong>${r.crowFliesKm} km</strong> kuş uçuşu (koridor: <strong>${r.actualCorridorMinKm}–${r.actualCorridorMaxKm} km</strong>) güzergâhında uçuş riski <strong style="color:${sr.overallRiskColor};">${escapeHtml(sr.overallRiskLevel)}</strong> olarak hesaplanmıştır.
+                Orta geçit bölgesinde (<strong>~${r.midPassAltM}m</strong>) <strong>${escapeHtml(z2.windEffectLabel)} (${z2.windSpeedKmh} km/s)</strong> nedeniyle beklenen filo hızı <strong>~${sr.fleetReturnEstimate.expectedSpeedMpm} m/dk</strong> olup, saat <strong>${escapeHtml(sr.releaseTime)}</strong> salımına göre en olası dönüşlerin <strong>${escapeHtml(sr.fleetReturnEstimate.likelyWindowClock)}</strong> aralığında gerçekleşmesi öngörülmektedir.
               </div>
             </div>
 
@@ -5471,11 +6623,11 @@ const AvigenGenesisAI = {
                 Sonuç özeti ile aynı simülasyon kaydı (${escapeHtml(r.relNode.name)} → ${escapeHtml(r.loftNode.name)} • ${escapeHtml(sr.releaseDate)} ${escapeHtml(sr.releaseTime)}) kullanılmaktadır.
               </div>
             </div>
-            <div style="display:flex; gap:5px;">
-              <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 9px; font-size:9px;" onclick="AvigenGenesisAI.setSmartRaceStage('summary')">
+            <div style="display:flex; gap:5px; width:100%;">
+              <button type="button" class="ios-btn ios-btn-outline" style="flex:1; padding:5px 9px; font-size:9px;" onclick="AvigenGenesisAI.setSmartRaceStage('summary')">
                 ← Sonuç Özetine Dön
               </button>
-              <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 9px; font-size:9px;" onclick="AvigenGenesisAI.setSmartRaceStage('setup')">
+              <button type="button" class="ios-btn ios-btn-outline" style="flex:1; padding:5px 9px; font-size:9px;" onclick="AvigenGenesisAI.setSmartRaceStage('setup')">
                 ✏️ Kuruluma Dön
               </button>
             </div>
@@ -5489,30 +6641,30 @@ const AvigenGenesisAI = {
               <div style="font-size:11.5px; font-weight:900; color:var(--ios-text);">
                 1. YARIŞ VE ROTA ÖZETİ (${escapeHtml(r.relNode.name)} → ${escapeHtml(r.loftNode.name)})
               </div>
-              <div style="display:flex; align-items:center; gap:5px;">
-                <span class="gene-badge gene-blue" style="font-size:8.8px;">${escapeHtml(sr.raceCategoryLabel)}</span>
-                <span class="gene-badge ${relMeta.badgeClass}" style="font-size:8.8px;">Güven: %${sr.reliabilityPct} (${relMeta.label})</span>
+              <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+                <span class="gene-badge gene-blue" style="font-size:8.5px;">${escapeHtml(sr.raceCategoryLabel)}</span>
+                <span class="gene-badge ${relMeta.badgeClass}" style="font-size:8.5px;">Güven: %${sr.reliabilityPct} (${relMeta.label})</span>
               </div>
             </div>
 
-            <!-- 4 Temel Rota & Mesafe Kartı (Kuş Uçuşu vs Gerçek Uçuş Koridoru Ayrımı) -->
-            <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:5px; text-align:center; margin-bottom:7px;">
-              <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-top:3px solid #0066ff; border-radius:7px; padding:5px 4px;">
+            <!-- 4 Temel Rota & Mesafe Kartı (2x2 Mobil Izgara - Yatay Taşma Yok) -->
+            <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:5px; text-align:center; margin-bottom:7px;">
+              <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-top:3px solid #0066ff; border-radius:7px; padding:6px 5px;">
                 <div style="font-size:7.8px; font-weight:800; color:var(--ios-subtext);">KUŞ UÇUŞ MESAFESİ</div>
                 <div style="font-size:12.5px; font-weight:900; color:#0052cc;">${r.crowFliesKm} km</div>
                 <div style="font-size:7.8px; color:var(--ios-subtext);">Haversine Düz Hat</div>
               </div>
-              <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-top:3px solid #7c3aed; border-radius:7px; padding:5px 4px;">
+              <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-top:3px solid #7c3aed; border-radius:7px; padding:6px 5px;">
                 <div style="font-size:7.8px; font-weight:800; color:var(--ios-subtext);">TAHMİNİ GERÇEK MESAFE</div>
                 <div style="font-size:12px; font-weight:900; color:#6d28d9;">${r.actualCorridorMinKm}–${r.actualCorridorMaxKm} km</div>
                 <div style="font-size:7.8px; color:var(--ios-subtext);">+%${r.minDeviationPct}..%${r.maxDeviationPct} Koridor Sapması</div>
               </div>
-              <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-top:3px solid #059669; border-radius:7px; padding:5px 4px;">
+              <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-top:3px solid #059669; border-radius:7px; padding:6px 5px;">
                 <div style="font-size:7.8px; font-weight:800; color:var(--ios-subtext);">SALIM TARİHİ &amp; SAATİ</div>
-                <div style="font-size:11px; font-weight:900; color:#047857;">${escapeHtml(sr.releaseDate)}</div>
-                <div style="font-size:8.5px; font-weight:800; color:var(--ios-text);">Saat ${escapeHtml(sr.releaseTime)}</div>
+                <div style="font-size:11px; font-weight:900; color:#047857;">${escapeHtml(sr.releaseDate)} • ${escapeHtml(sr.releaseTime)}</div>
+                <div style="font-size:7.8px; color:var(--ios-subtext);">Planlanan Salım</div>
               </div>
-              <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-top:3px solid #d97706; border-radius:7px; padding:5px 4px;">
+              <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-top:3px solid #d97706; border-radius:7px; padding:6px 5px;">
                 <div style="font-size:7.8px; font-weight:800; color:var(--ios-subtext);">RAKIM &amp; YÖNELİM</div>
                 <div style="font-size:11px; font-weight:900; color:#b45309;">${r.relNode.altM}m → ${r.loftNode.altM}m</div>
                 <div style="font-size:7.8px; color:var(--ios-subtext);">Tepe: ~${r.midPassAltM}m (${r.bearingDeg}°)</div>
@@ -5528,7 +6680,7 @@ const AvigenGenesisAI = {
             </div>
 
             <!-- Güzergâhın 3 Bölümü ve Coğrafi Engeller -->
-            <div style="margin-top:7px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px; font-size:9.2px;">
+            <div style="margin-top:7px; display:flex; flex-direction:column; gap:6px; font-size:9.2px;">
               <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-left:3px solid #0066ff; border-radius:7px; padding:6px 8px;">
                 <strong style="color:#0052cc;">📍 Güzergâhın 3 Bölümü Analizi:</strong>
                 ${r.segments.map(seg => `
@@ -5557,7 +6709,7 @@ const AvigenGenesisAI = {
           <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:4px solid #0284c7; border-radius:10px; padding:8px 10px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:5px;">
               <div style="font-size:11px; font-weight:900; color:#0369a1;">
-                2. METEOROLOJİK DEĞERLENDİRME (SALIM, ORTA GEÇİT VE KÜMES BÖLGELERİ)
+                2. METEOROLOJİK DEĞERLENDİRME (3 GÜZERGÂH BÖLGESİ)
               </div>
               <span class="gene-badge ${sr.dataSourceInfo.isRealTimeMeasured ? 'gene-green' : 'gene-purple'}" style="font-size:8.2px;">
                 ${sr.dataSourceInfo.isRealTimeMeasured ? '🟢 Gerçek Zamanlı Ölçüm + Model' : '📋 Tahmin / Senaryo Verisi'}
@@ -5569,20 +6721,24 @@ const AvigenGenesisAI = {
               <div><strong>📡 Veri Kaynağı:</strong> ${escapeHtml(sr.dataSourceInfo.sourceProvider)}</div>
               <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-top:2px; color:var(--ios-subtext);">
                 <span><strong>Veri Niteliği:</strong> ${escapeHtml(sr.dataSourceInfo.sourceTypeLabel)}</span>
-                <span><strong>Son Güncellenme Zamanı:</strong> ${escapeHtml(sr.dataSourceInfo.lastUpdated)}</span>
+                <span><strong>Son Güncellenme:</strong> ${escapeHtml(sr.dataSourceInfo.lastUpdated)}</span>
               </div>
             </div>
 
-            <!-- Güzergâh Boyunca 3 Bölgenin Hava Tablosu -->
-            <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:5px; font-size:9px;">
+            <!-- Güzergâh Boyunca 3 Bölgenin Hava Kartları (Tam Genişlik Dikey - Sıkışma Yok) -->
+            <div style="display:flex; flex-direction:column; gap:5px; font-size:9px;">
               ${sr.zoneWeather.map(zw => `
-                <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-top:3px solid #0284c7; border-radius:7px; padding:6px 7px;">
-                  <div style="font-weight:900; color:#0f172a; font-size:9.3px;">${escapeHtml(zw.zoneTitle)}</div>
-                  <div style="font-size:8px; color:#6d28d9; font-weight:800; margin-bottom:3px;">[${escapeHtml(zw.dataNature)}]</div>
-                  <div>🌡️ <strong>Sıcaklık &amp; Nem:</strong> ${zw.tempC}°C • %${zw.humPct}</div>
-                  <div>💨 <strong>Rüzgâr Hızı:</strong> ${zw.windSpeedKmh} km/s</div>
-                  <div>🧭 <strong>Rüzgâr Etkisi:</strong> ${escapeHtml(zw.windEffectLabel)}</div>
-                  <div>🌧️ <strong>Yağış &amp; Görüş:</strong> ${zw.precipMm} mm • ${zw.visKm} km</div>
+                <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-left:3.5px solid #0284c7; border-radius:7px; padding:6px 8px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:3px;">
+                    <strong style="color:var(--ios-text); font-size:9.6px;">${escapeHtml(zw.zoneTitle)}</strong>
+                    <span style="font-size:8px; color:#6d28d9; font-weight:800;">[${escapeHtml(zw.dataNature)}]</span>
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px 8px;">
+                    <div>🌡️ <strong>Sıcaklık &amp; Nem:</strong> ${zw.tempC}°C • %${zw.humPct}</div>
+                    <div>💨 <strong>Rüzgâr Hızı:</strong> ${zw.windSpeedKmh} km/s</div>
+                    <div>🧭 <strong>Rüzgâr Etkisi:</strong> ${escapeHtml(zw.windEffectLabel)}</div>
+                    <div>🌧️ <strong>Yağış &amp; Görüş:</strong> ${zw.precipMm} mm • ${zw.visKm} km</div>
+                  </div>
                 </div>
               `).join('')}
             </div>
@@ -5600,17 +6756,17 @@ const AvigenGenesisAI = {
               <div style="font-size:11px; font-weight:900; color:${sr.overallRiskColor};">
                 3. RİSK ANALİZİ VE GÜZERGÂH RİSK TESPİTİ
               </div>
-              <span class="gene-badge ${sr.overallRiskBadge}" style="font-size:9.2px; padding:2px 9px; font-weight:900;">
-                GENEL RİSK SINIFI: ${escapeHtml(sr.overallRiskLevel)}
+              <span class="gene-badge ${sr.overallRiskBadge}" style="font-size:9px; padding:2px 8px; font-weight:900;">
+                GENEL RİSK: ${escapeHtml(sr.overallRiskLevel)}
               </span>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:5px; font-size:9.3px;">
               ${sr.riskFindings.map(rf => `
                 <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-left:3.5px solid ${rf.level === 'KRİTİK RİSK' || rf.level === 'YÜKSEK RİSK' ? '#dc2626' : (rf.level === 'ORTA RİSK' ? '#d97706' : '#059669')}; border-radius:7px; padding:6px 8px;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:2px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:2px;">
                     <strong style="color:var(--ios-text);">${escapeHtml(rf.factor)}</strong>
-                    <span class="gene-badge ${rf.badgeClass}" style="font-size:8px; flex-shrink:0;">${escapeHtml(rf.level)} • ${escapeHtml(rf.segment)}</span>
+                    <span class="gene-badge ${rf.badgeClass}" style="font-size:8px;">${escapeHtml(rf.level)} • ${escapeHtml(rf.segment)}</span>
                   </div>
                   <div style="color:var(--ios-subtext); font-size:8.9px;">
                     ↳ <strong>Risk Nedeni ve Etkisi:</strong> ${escapeHtml(rf.reason)}
@@ -5647,20 +6803,19 @@ const AvigenGenesisAI = {
                   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:3px;">
                     <div style="font-weight:900; color:var(--ios-text); font-size:9.8px; cursor:pointer;" onclick="if(typeof AvigenPerformanceEngine!=='undefined') AvigenPerformanceEngine.openProfileModal('${escapeHtml(b.ring)}');">
                       ${idx + 1}. ${b.flag} ${escapeHtml(b.ring)} — ${escapeHtml(b.name)}
-                      ${b.isInSelectedRace ? `<span class="gene-badge gene-blue" style="font-size:7.8px; margin-left:4px;">Seçili Yarış Kadrosunda</span>` : ''}
                     </div>
-                    <span class="gene-badge ${b.suitabilityBadgeClass}" style="font-size:8.2px;">
-                      ${b.suitabilityScore !== null ? `Uygunluk: ${b.suitabilityScore}/100 • ${escapeHtml(b.suitabilityVerdict)}` : escapeHtml(b.suitabilityVerdict)}
+                    <span class="gene-badge ${b.suitabilityBadgeClass}" style="font-size:8px;">
+                      ${b.suitabilityScore !== null ? `${b.suitabilityScore}/100 • ${escapeHtml(b.suitabilityVerdict)}` : escapeHtml(b.suitabilityVerdict)}
                     </span>
                   </div>
 
                   <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px 8px; font-size:8.7px; color:var(--ios-subtext); margin-bottom:3px;">
-                    <div>🏁 <strong>Yarış Tecrübesi:</strong> ${b.totalProvenRaceRecords} doğrulanmış yarış/derece kaydı</div>
-                    <div>📏 <strong>Başarılı Mesafeler:</strong> ${escapeHtml(b.successfulDistLabel)}</div>
-                    <div>⚡ <strong>Geçmiş Ort. Uçuş Hızı:</strong> ${b.avgPastSpeedMpm ? `${b.avgPastSpeedMpm} m/dk` : 'Kayıtlı Hız Verisi Yok'}</div>
-                    <div>📊 <strong>Yarış İstikrarı:</strong> ${escapeHtml(b.consistencyText)}</div>
-                    <div>🫀 <strong>Dayanıklılık Göstergesi:</strong> ${escapeHtml(b.enduranceText)}</div>
-                    <div>🌤️ <strong>Hava Koşulu Tepkisi:</strong> ${escapeHtml(b.weatherResponseText)}</div>
+                    <div>🏁 <strong>Tecrübe:</strong> ${b.totalProvenRaceRecords} yarış kaydı</div>
+                    <div>📏 <strong>Mesafeler:</strong> ${escapeHtml(b.successfulDistLabel)}</div>
+                    <div>⚡ <strong>Ort. Hız:</strong> ${b.avgPastSpeedMpm ? `${b.avgPastSpeedMpm} m/dk` : 'Kayıt Yok'}</div>
+                    <div>📊 <strong>İstikrar:</strong> ${escapeHtml(b.consistencyText)}</div>
+                    <div>🫀 <strong>Dayanıklılık:</strong> ${escapeHtml(b.enduranceText)}</div>
+                    <div>🌤️ <strong>Hava Tepkisi:</strong> ${escapeHtml(b.weatherResponseText)}</div>
                   </div>
 
                   <div style="background:var(--ios-card-alt); border-radius:6px; padding:4px 6px; font-size:8.8px; color:var(--ios-text);">
@@ -5676,10 +6831,10 @@ const AvigenGenesisAI = {
                   </summary>
                   <div style="margin-top:5px; display:flex; flex-direction:column; gap:4px;">
                     ${sr.birdEvaluations.slice(10).map((b, idx) => `
-                      <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; border-bottom:1px dashed var(--ios-border); padding:3px 0; font-size:8.7px;">
-                        <span><strong>${idx + 11}. ${b.flag} ${escapeHtml(b.ring)} (${escapeHtml(b.name)})</strong> — ${b.totalProvenRaceRecords} Yarış Kaydı</span>
+                      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; border-bottom:1px dashed var(--ios-border); padding:3px 0; font-size:8.7px;">
+                        <span><strong>${idx + 11}. ${b.flag} ${escapeHtml(b.ring)} (${escapeHtml(b.name)})</strong> — ${b.totalProvenRaceRecords} Yarış</span>
                         <span class="gene-badge ${b.suitabilityBadgeClass}" style="font-size:7.8px;">
-                          ${b.suitabilityScore !== null ? `${b.suitabilityScore}/100 • ${escapeHtml(b.suitabilityVerdict)}` : 'Yetersiz Veri (Kesin Puan Yok)'}
+                          ${b.suitabilityScore !== null ? `${b.suitabilityScore}/100` : 'Genel Tahmin'}
                         </span>
                       </div>
                     `).join('')}
@@ -5695,13 +6850,13 @@ const AvigenGenesisAI = {
           <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:4px solid #059669; border-radius:10px; padding:8px 10px;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:5px;">
               <div style="font-size:11px; font-weight:900; color:#047857;">
-                5. TAHMİNİ DÖNÜŞ ZAMANLARI (SALIM SAATİ: ${escapeHtml(sr.releaseTime)} • ${sr.distKm} KM)
+                5. TAHMİNİ DÖNÜŞ ZAMANLARI (SALIM: ${escapeHtml(sr.releaseTime)} • ${sr.distKm} KM)
               </div>
               <span class="gene-badge gene-green" style="font-size:8.3px;">Olasılıksal Varış Pencereleri</span>
             </div>
 
-            <!-- Genel Filo Dönüş Özeti -->
-            <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:5px; text-align:center; margin-bottom:6px;">
+            <!-- Genel Filo Dönüş Özeti (2x2 Mobil Izgara) -->
+            <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:5px; text-align:center; margin-bottom:6px;">
               <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-top:3px solid #059669; border-radius:7px; padding:5px 4px;">
                 <div style="font-size:7.6px; font-weight:800; color:var(--ios-subtext);">TAHMİNİ EN ERKEN DÖNÜŞ</div>
                 <div style="font-size:12px; font-weight:900; color:#059669;">${escapeHtml(sr.fleetReturnEstimate.earliestClock)}</div>
@@ -5724,13 +6879,13 @@ const AvigenGenesisAI = {
               </div>
             </div>
 
-            <!-- Kuş Bazlı Bireysel vs Genel Tahmin Tablosu -->
-            <div style="display:flex; flex-direction:column; gap:4px; font-size:8.9px;">
+            <!-- Kuş Bazlı Bireysel vs Genel Tahmin Tablosu (2x2 İç Izgaralı Kartlar) -->
+            <div style="display:flex; flex-direction:column; gap:5px; font-size:8.9px;">
               ${sr.birdEvaluations.slice(0, 8).map(b => {
                 const p = b.prediction;
                 return `
-                  <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-left:3px solid ${p.isIndividualPrediction ? '#059669' : '#94a3b8'}; border-radius:7px; padding:5px 7px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                  <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-left:3px solid ${p.isIndividualPrediction ? '#059669' : '#94a3b8'}; border-radius:7px; padding:6px 8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:3px;">
                       <div>
                         <strong>${b.flag} ${escapeHtml(b.ring)} (${escapeHtml(b.name)})</strong>
                         <span style="font-size:8px; color:${p.isIndividualPrediction ? '#047857' : '#64748b'}; font-weight:800; margin-left:4px;">
@@ -5738,14 +6893,14 @@ const AvigenGenesisAI = {
                         </span>
                       </div>
                       <span class="gene-badge ${p.reliabilityMeta.badgeClass}" style="font-size:7.8px;">
-                        Tahmin Güveni: %${p.reliabilityPct} (${p.reliabilityMeta.label})
+                        Güven: %${p.reliabilityPct}
                       </span>
                     </div>
-                    <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:4px; margin-top:3px; font-size:8.5px; color:var(--ios-subtext);">
+                    <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:3px 8px; font-size:8.5px; color:var(--ios-subtext);">
+                      <div>🎯 <strong>En Olası:</strong> <strong style="color:#0052cc;">${escapeHtml(p.likelyWindowLabel)}</strong></div>
                       <div>⚡ <strong>Tahmini Hız:</strong> ~${p.expectedBirdSpeedMpm} m/dk</div>
                       <div>🟢 <strong>En Erken:</strong> <strong style="color:#059669;">${escapeHtml(p.earliestTimeLabel)}</strong> (${escapeHtml(p.earliestDurLabel)})</div>
-                      <div>🎯 <strong>En Olası Aralık:</strong> <strong style="color:#0052cc;">${escapeHtml(p.likelyWindowLabel)}</strong></div>
-                      <div>⚠️ <strong>Geç Dönüş Sınırı:</strong> <strong style="color:#b45309;">${escapeHtml(p.lateLimitTimeLabel)}</strong></div>
+                      <div>⚠️ <strong>Geç Sınır:</strong> <strong style="color:#b45309;">${escapeHtml(p.lateLimitTimeLabel)}</strong></div>
                     </div>
                   </div>
                 `;
@@ -6113,6 +7268,561 @@ const AvigenGenesisAI = {
       });
       return;
     }
+
+    // ------------------------------------------------------------------------
+    // 4. ANA MODÜL: GOOGLE GEMINI AI – CANLI KÜMES, SOY & YARIŞ DANIŞMANI (ÜCRETSİZ)
+    // ------------------------------------------------------------------------
+    if (this.state.activeMode === 'gemini_chat') {
+      out.innerHTML = this.renderGeminiAdvisorChatHtml();
+      return;
+    }
+  },
+
+  // ==========================================================================
+  // GOOGLE GEMINI ÜCRETSİZ YAPAY ZEKÂ (GEMINI 2.0 FLASH) & YERLEŞİK BİLİMSEL MOTOR
+  // ==========================================================================
+  getGeminiApiKey() {
+    try {
+      return (localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim();
+    } catch (e) {
+      return '';
+    }
+  },
+
+  saveGeminiApiKeyFromInput(inputId) {
+    const el = document.getElementById(inputId || 'genesisGeminiApiKeyInput');
+    if (!el) return;
+    const raw = (el.value || '').trim();
+    try {
+      if (raw) {
+        localStorage.setItem('avigen_gemini_free_api_key_v1', raw);
+        alert('✅ GENESIS AI Bulut Sinir Ağı anahtarınız kaydedildi!\n\nArtık tüm sorularınız GENESIS AI tarafından canlı kümes verileriniz üzerinden yanıtlanacaktır.');
+      } else {
+        localStorage.removeItem('avigen_gemini_free_api_key_v1');
+        alert('ℹ️ Bulut motor anahtarı kaldırıldı. GENESIS AI yerleşik bilimsel kümes motoruyla çalışmaya devam edecektir.');
+      }
+    } catch (e) {}
+    this.renderGenesisModuleUI();
+    if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+  },
+
+  clearGeminiChatHistory() {
+    this.state.geminiChatHistory = [];
+    this.saveState();
+    this.renderGenesisModuleUI();
+    this.renderHomeTeaserCard();
+  },
+
+  formatGeminiMarkdownToSafeHtml(rawText) {
+    const safe = escapeHtml(String(rawText || '').trim());
+    return safe
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/^\s*[-•*]\s+(.+)$/gm, '<div style="margin:2px 0 2px 6px;">• $1</div>')
+      .replace(/\n{2,}/g, '<br><br>')
+      .replace(/\n/g, '<br>');
+  },
+
+  buildLiveLoftContextSummary() {
+    try {
+      const allBirds = typeof collectUniqueLoftBirds === 'function' ? collectUniqueLoftBirds() : [];
+      const activeBirds = allBirds.filter(b => b.isActiveLoftBird);
+      const males = activeBirds.filter(b => b.sex === 'M');
+      const females = activeBirds.filter(b => b.sex === 'F');
+      const topPairs = this.getTopLoftBreedingPairs(3) || [];
+      const rep = this.analyzeBreedingIntelligence(this.state.selectedSireRef, this.state.selectedDamRef, true);
+      const sr = this.analyzeSmartRaceManagement();
+      const nut = this.calculateSmartNutritionPlan(this.state.nutritionPhase, this.state.nutritionGroup, this.state.nutritionBirdCount);
+      const activeNestsCount = typeof activePairsList !== 'undefined' && Array.isArray(activePairsList) ? activePairsList.length : 0;
+
+      const topPairsSummary = topPairs.map((tp, idx) =>
+        `${idx + 1}) ♂ ${tp.sire?.ring || ''} (${tp.sire?.name || ''}) x ♀ ${tp.dam?.ring || ''} (${tp.dam?.name || ''}) -> Uyum: ${tp.score}/100, Strateji: ${tp.summary || ''} (${tp.compLabel || ''})`
+      ).join('\n');
+
+      const z0 = (sr.zoneWeather && sr.zoneWeather[0]) ? sr.zoneWeather[0] : { tempC: 20, windSpeedKmh: 14, windEffectLabel: 'Normal' };
+      const relName = sr.route?.relNode?.name || 'Salım Noktası';
+      const loftName = sr.route?.loftNode?.name || 'Kümes';
+
+      const topRacersSummary = (sr.birdEvaluations || []).slice(0, 5).map((b, idx) =>
+        `${idx + 1}) ${b.ring} (${b.name}) -> Uygunluk: ${b.suitabilityScore}/100 (${b.suitabilityClassLabel || ''}), Tahmini Hız: ~${b.prediction?.expectedBirdSpeedMpm || 1200} m/dk, En Olası Dönüş: ${b.prediction?.likelyWindowLabel || '-'}`
+      ).join('\n');
+
+      const commonAncStr = Array.isArray(rep.commonAncestors) && rep.commonAncestors.length
+        ? rep.commonAncestors.map(a => typeof a === 'string' ? a : `${a.ring || ''} (${a.name || ''})`).join(', ')
+        : 'Yok (Outcross)';
+
+      return [
+        `KÜMES ÖZETİ: Toplam ${activeBirds.length} aktif güvercin (${males.length} Erkek, ${females.length} Dişi, ${activeNestsCount} Aktif Yuva).`,
+        `SEÇİLİ EŞLEŞTİRME ÇİFTİ: ♂ ${rep.sireInfo?.ring || ''} (${rep.sireInfo?.name || ''}) x ♀ ${rep.damInfo?.ring || ''} (${rep.damInfo?.name || ''}) | Uyum Puanı: ${rep.totalScore}/100 (${rep.decisionLabel}) | 5 Kuşak Wright COI: %${Number(rep.coi || 0).toFixed(2)} (${rep.relationSummary || ''}) | Ortak Atalar: ${commonAncStr} | Veri Güvenilirliği: %${rep.dataReliabilityPct}.`,
+        `KÜMESTEKİ EN UYUMLU 3 ÇİFT:\n${topPairsSummary || 'Yeterli aday yok.'}`,
+        `AKTİF YARIŞ SİMÜLASYONU ROTASI: ${relName} -> ${loftName} (${sr.distKm} km, ${sr.raceCategoryLabel || ''}) | Hava & Rüzgar: ${z0.tempC}°C, Rüzgar ${z0.windSpeedKmh} km/sa (${z0.windEffectLabel}), Rota Riski: ${sr.overallRiskLevel || 'ORTA RİSK'} (${sr.riskPoints || 0}/100) | Tahmini Filo Dönüş Aralığı: ${sr.fleetReturnEstimate?.likelyWindowClock || '-'}.`,
+        `BU YARIŞ İÇİN EN UYGUN 5 KUŞ:\n${topRacersSummary || 'Kayıtlı yarışçı yok.'}`,
+        `BUGÜNÜN AKILLI YEM & SULUK PLANI: ${nut.todaySmart?.todayFeedRecommendation || ''} | Suluk: ${nut.todaySmart?.todayLiquidRecommendation || ''} | 1 Aylık Toplam Tüketim: ${nut.monthly?.totalFeedKgLabel || '0'} kg (${nut.cost?.totalMonthlyTlLabel || '0'} TL/ay).`
+      ].join('\n\n');
+    } catch (e) {
+      return 'Kümes verileri yüklendi.';
+    }
+  },
+
+  // Kullanıcının sorusu doğrudan kendi kümesindeki spesifik hesaplamayı mı istiyor kontrol eder
+  isDirectLoftCalculationQuery(qRaw, topicKey) {
+    if (topicKey) return true;
+    const q = String(qRaw || '').toLowerCase().trim();
+    if (!q) return true;
+    const allBirds = typeof collectUniqueLoftBirds === 'function' ? collectUniqueLoftBirds() : [];
+    const cleanQ = q.replace(/[-\s./]+/g, '');
+    const hasBirdRingOrName = allBirds.some(b => {
+      const rLow = (b.ring || '').toLowerCase();
+      const rClean = rLow.replace(/[-\s./]+/g, '');
+      const nLow = (b.name || '').toLowerCase();
+      return (rClean.length >= 4 && cleanQ.includes(rClean.slice(-5))) ||
+             (rLow.length >= 4 && q.includes(rLow)) ||
+             (nLow.length >= 4 && nLow !== 'isimsiz güvercin' && q.includes(nLow));
+    });
+    if (hasBirdRingOrName) return true;
+    if (
+      q.includes('en iyi 3 çift') ||
+      q.includes('en iyi çiftim') ||
+      q.includes('en uyumlu çift') ||
+      q.includes('seçili çift') ||
+      q.includes('hangi kuşlarımı sepet') ||
+      q.includes('hangisini sepet') ||
+      q.includes('bugünkü yem') ||
+      q.includes('bugün kaç gram')
+    ) {
+      return true;
+    }
+    return false;
+  },
+
+  generateLocalScientificFallbackAnswer(userPrompt, topicKey) {
+    try {
+      const qRaw = String(userPrompt || '').trim();
+      const qLower = qRaw.toLowerCase();
+      const allBirds = typeof collectUniqueLoftBirds === 'function' ? collectUniqueLoftBirds() : [];
+      const activeBirds = allBirds.filter(b => b.isActiveLoftBird);
+
+      let _rep = null;
+      const getRep = () => {
+        if (!_rep) {
+          try { _rep = this.analyzeBreedingIntelligence(this.state.selectedSireRef, this.state.selectedDamRef, true); } catch (e) { _rep = {}; }
+        }
+        return _rep || {};
+      };
+
+      let _topPairs = null;
+      const getTopPairs = () => {
+        if (!_topPairs) {
+          try { _topPairs = this.getTopLoftBreedingPairs(3) || []; } catch (e) { _topPairs = []; }
+        }
+        return _topPairs;
+      };
+
+      let _sr = null;
+      const getSr = () => {
+        if (!_sr) {
+          try { _sr = this.analyzeSmartRaceManagement(); } catch (e) { _sr = {}; }
+        }
+        return _sr || {};
+      };
+
+      let _nut = null;
+      const getNut = () => {
+        if (!_nut) {
+          try { _nut = this.calculateSmartNutritionPlan(this.state.nutritionPhase, this.state.nutritionGroup, this.state.nutritionBirdCount); } catch (e) { _nut = {}; }
+        }
+        return _nut || {};
+      };
+
+      // 0. GÜNLÜK SOHBET, SELAMLAŞMA & TANIŞMA SORULARI (Kümes raporu dökmeden doğal sohbet yanıtı verir):
+      if (!topicKey && (
+        /^(merhaba|selam|slm|mrb|günaydın|iyi akşamlar|iyi geceler|iyi günler|nasılsın|naber|ne haber|kimsin|sen kimsin|ne işe yararsın|teşekkür|teşekkürler|sağ ol|sağol|eyvallah|harika|süper|tamam)\b/i.test(qLower) ||
+        qLower === 'merhaba' || qLower === 'selam' || qLower.includes('nasılsın') || qLower.includes('sen kimsin') || qLower.includes('ne sorabilirim')
+      )) {
+        if (qLower.includes('teşekkür') || qLower.includes('sağ ol') || qLower.includes('sağol') || qLower.includes('eyvallah')) {
+          return `Rica ederim! Güvercin bakımı, hastalık/aşı protokolleri, antrenman, tüy dökümü, kan hatları veya kümesinizdeki kuşların eşleşme ve yarış durumu hakkında istediğiniz zaman soru sorabilirsiniz. Bol şampiyonlu sezonlar dilerim! 🕊️`;
+        }
+        return [
+          `**Merhaba! Ben GENESIS AI — Yarış Güvercini Yetiştiriciliği, Genetik ve Performans Danışmanınızım.** 🕊️`,
+          `Bana hem **genel güvercin yetiştiriciliği** hakkında her türlü soruyu hem de **kümesinizdeki kuşlarla ilgili** soruları sorabilirsiniz. Örneğin:`,
+          `- 💬 **Genel Yetiştiricilik:** *"Yavru güvercin antrenmanı nasıl yapılır?"*, *"Tüy dökümünde ne verilmeli?"*, *"Banyo suyu nasıl hazırlanır?"*, *"Janssen ve Vandenabeele soyunun farkı nedir?"*`,
+          `- 💉 **Sağlık & Bakım:** *"Salmonella ve PMV aşısı ne zaman yapılır?"*, *"Pamukçuk (Triko) belirtileri nelerdir?"*, *"Kümes havalandırması nasıl olmalı?"*`,
+          `- 🧬 **Kümesinize Özel:** *"En iyi 3 çiftim hangisi?"*, *"990001 numaralı kuşum kiminle eşleşmeli?"*, *"Bu hafta yarışta hangisini sepetleyeyim?"*`
+        ].join('\n');
+      }
+
+      // 1. KULLANICI BELİRLİ BİR KUŞUN HALKA NUMARASINI VEYA ADINI SORDUYSA:
+      if (qRaw.length >= 3) {
+        const cleanQuery = qLower.replace(/[-\s./]+/g, '');
+        const matchedBird = allBirds.find(b => {
+          const rLow = (b.ring || '').toLowerCase();
+          const rClean = rLow.replace(/[-\s./]+/g, '');
+          const nLow = (b.name || '').toLowerCase();
+          return (rClean.length >= 4 && cleanQuery.includes(rClean.slice(-5))) ||
+                 (rLow.length >= 4 && qLower.includes(rLow)) ||
+                 (nLow.length >= 4 && nLow !== 'isimsiz güvercin' && qLower.includes(nLow));
+        });
+
+        if (matchedBird) {
+          const topPairs = getTopPairs();
+          const sexLbl = matchedBird.sex === 'M' ? '♂ Erkek' : (matchedBird.sex === 'F' ? '♀ Dişi' : '🐣 Genç');
+          const bestPairForBird = topPairs.find(tp =>
+            tp.sire?.ring?.toUpperCase() === matchedBird.ring.toUpperCase() ||
+            tp.dam?.ring?.toUpperCase() === matchedBird.ring.toUpperCase()
+          );
+          const mateAdvice = bestPairForBird
+            ? `Bu kuş için kümesinizdeki en yüksek uyumlu eş adayı **${bestPairForBird.sire.ring.toUpperCase() === matchedBird.ring.toUpperCase() ? '♀ ' + bestPairForBird.dam.ring + ' (' + bestPairForBird.dam.name + ')' : '♂ ' + bestPairForBird.sire.ring + ' (' + bestPairForBird.sire.name + ')'}** (**${bestPairForBird.score}/100 Uyum** • ${bestPairForBird.summary}).`
+            : `Akıllı Eşleştirme ekranından bu kuşu seçerek kümesinizdeki tüm karşı cins adaylarla 5 nesil COI ve yavru uyumunu aşağıdaki raporda inceleyebilirsiniz.`;
+
+          return [
+            `**🕊️ ${matchedBird.flag || '🇹🇷'} ${matchedBird.ring} (${matchedBird.name}) — Bireysel Kuş Analizi**`,
+            `- **Kimlik & Kadro Statüsü:** ${sexLbl} • Tüy: **${matchedBird.color || 'Standart'}** • Kümes Rolü: **${matchedBird.roleCategory === 'BREEDER' ? 'Damızlık' : (matchedBird.roleCategory === 'YOUNG' ? 'Yavru' : 'Yarışçı')}** • Genetik/Performans Endeksi (EBV): **${matchedBird.ebvScore || 75}/99**.`,
+            `- **Anne & Baba Bağlantısı:** ♂ Baba: **${matchedBird.sireRing || 'Kayıtlı Değil'}** × ♀ Anne: **${matchedBird.damRing || 'Kayıtlı Değil'}**.`,
+            `- **En Uygun Eşleştirme Önerisi:** ${mateAdvice}`,
+            `- **Kayıtlı Derece & Soy Notu:** ${matchedBird.notes ? matchedBird.notes : 'Pedigre kutusunda ek yarış veya fenotip notu bulunmuyor.'}`
+          ].join('\n');
+        }
+      }
+
+      // 2. SAĞLIK, AŞI, HASTALIK, KUSMA, İSHAL VEYA KORUYUCU KÜR SORULARI:
+      if (qLower.includes('hastalık') || qLower.includes('aşı') || qLower.includes('salmonella') || qLower.includes('paratifo') || qLower.includes('pmv') || qLower.includes('veba') || qLower.includes('triko') || qLower.includes('pamukçuk') || qLower.includes('ishal') || qLower.includes('kusma') || qLower.includes('kusuyor') || qLower.includes('solunum') || qLower.includes('hırıltı') || qLower.includes('kuruma') || qLower.includes('koksidiyoz') || qLower.includes('adeno') || qLower.includes('çiçek') || qLower.includes('sağlık') || qLower.includes('ilaç')) {
+        if (qLower.includes('adeno') || qLower.includes('kusma') || qLower.includes('kusuyor') || qLower.includes('kursak')) {
+          return [
+            `**🩺 Genç Kuş Hastalığı (Adenovirüs / E.Coli) & Kursak Şişmesi / Kusma Yönetimi**`,
+            `- **Belirti & Neden:** Yemin kursakta sindirilmeden kalması, kusma ve yeşil/sulu dışkı genellikle **Adenovirüs Tip-1 + E.Coli** (Genç Kuş Sendromu) veya **Kursak Mantarı (Candida)** kaynaklıdır.`,
+            `- **Acil Uygulama:** Kusma görülen kuşlarda **24 saat yem tamamen kesilmeli**, yalnızca sulukta **elektrolit + elma sirkesi/organik asit (pH düşürücü) + probiyotik** verilmelidir.`,
+            `- **Toparlanma:** 2. günden itibaren ağır bakliyat (bezelye/mısır) vermeden yalnızca hafif arpa ve darı ile azar azar beslemeye geçilmeli, kümes tabanı kuru tutulmalıdır.`
+          ].join('\n');
+        }
+        if (qLower.includes('triko') || qLower.includes('pamukçuk') || qLower.includes('boğaz') || qLower.includes('peynir')) {
+          return [
+            `**🩺 Trichomoniasis (Pamukçuk / Canker) Koruma ve Kontrolü**`,
+            `- **Klinik Tablo:** Boğazda sarı-beyaz peynirimsi plaklar, yutkunma güçlüğü, uçuş isteksizliği ve kursak sütüyle yavruya bulaşma en tipik belirtilerdir.`,
+            `- **En Doğru Zamanlama:** Damızlıklar **yumurtaya yattıktan 5–7 gün sonra** (yavrular çıkmadan hemen önce) 3–5 günlük kür uygulanması, yavrulara kursak sütüyle Trichomonas geçmesini önler.`,
+            `- **Yarış Dönemi:** Sepetleme stresinden dolayı yarış sezonunda her 2–3 haftada bir yarış dönüşü Pazartesi-Salı günleri koruyucu kontrol önerilir.`
+          ].join('\n');
+        }
+        return [
+          `**💉 Kanatlı Sağlığı, Aşı Takvimi & Biyogüvenlik Rehberi**`,
+          `- **PMV-1 (Paramyxovirus / Yalancı Veba):** Yılda en az 1 kez (yarış veya eşleşmeden **21–28 gün önce**) tüm kümese uygulanması zorunludur. Boyun dönmesi (tortikolis) ve sulu dışkıyı önleyen tek kesin kalkandır.`,
+          `- **Salmonella (Paratifo) & Çiçek (Pox):** Eklem şişliği, kanat tutulması ve boş yumurtaya karşı eşleşme öncesi kış/erken ilkbahar döneminde Salmonella; yaz yarışları öncesi ise Çiçek aşısı planlanmalıdır.`,
+          `- **Doğal Bağırsak Koruma:** Aşı ve ilaç kürlerinden sonra 3 gün boyunca **B-Kompleks vitamin + probiyotik + elektrolit** verilerek karaciğer ve bağırsak florası desteklenmelidir.`
+        ].join('\n');
+      }
+
+      // 3. ANTRENMAN, YAVRU UÇURMA, YÖN BULMA (HOMING) & ATMACA/ŞAHİN SORULARI:
+      if (qLower.includes('antrenman') || qLower.includes('eğitim') || qLower.includes('uçur') || qLower.includes('alıştır') || qLower.includes('atmaca') || qLower.includes('şahin') || qLower.includes('yırtıcı') || qLower.includes('kaybol') || qLower.includes('yön')) {
+        return [
+          `**🦅 Yarış & Yavru Güvercin Antrenman ve Yön Bulma (Homing) Protokolü**`,
+          `- **Kademeli Yol Antrenmanı (Toss):** Kümes etrafında en az **45–60 dakika** grup halinde (bayrak uçuşu) uçmaya başlayan kuşlar sırasıyla **5 km → 10 km → 20 km → 35 km → 55 km** mesafelerden, yarış güzergâhı yönünden salınmalıdır.`,
+          `- **Kümes Giriş Disiplini (Trapping):** Antrenmandan dönen kuşlar kümese girer girmez düdük/ses sinyaliyle hafif tohum ve taze suyla karşılanmalı; tok kuşla asla yol antrenmanı yapılmamalıdır.`,
+          `- **Atmaca & Yırtıcı Koruması:** Sabah erken sisli saatlerde ve orman/vadi kenarlarında atmaca saldırısı en yüksektir; yırtıcı saldırısı sonrası dağılan sürüye 2 gün dinlenme ve elektrolit desteği verilmelidir.`
+        ].join('\n');
+      }
+
+      // 4. TÜY DÖKÜMÜ (MOULTING), BANYO SUYU & DIŞ PARAZİT / BAKIM SORULARI:
+      if (qLower.includes('tüy') || qLower.includes('moulting') || qLower.includes('banyo') || qLower.includes('bit') || qLower.includes('sinek') || qLower.includes('parazit') || qLower.includes('sirke') || qLower.includes('bakım')) {
+        return [
+          `**🪶 Tüy Dökümü (Moulting), Banyo Suyu & Tüy Kalitesi Rehberi**`,
+          `- **Telek Sentezi (Keratin & Metiyonin):** Eylül–Kasım ana tüy dökümü döneminde yeni teleklerin esnek ve kadifemsi olması için rasyonda **keten tohumu, aspir, kenevir (%12–15 yağlı tohum)** ile haftada 2 kez **bira mayası + kükürtlü aminoasit (metiyonin)** şarttır.`,
+          `- **Haftalık Banyo Suyu Tarifi:** Haftada 1 gün (güneşli/ılık öğle saatinde) **10 litre ılık suya 1 yemek kaşığı banyo tuzu (veya kaya tuzu) + 2 yemek kaşığı doğal elma sirkesi** eklenerek banyo verilmesi tüy tozunu (pudrasını) korur ve dış parazitleri uzaklaştırır.`,
+          `- **Kritik Uyarı:** Tüy dökümü sırasında ağır ilaç ve antibiyotik kullanımından kaçınılmalıdır; aksi halde teleklerde yatay stres çizgileri (delik/boğum) oluşur.`
+        ].join('\n');
+      }
+
+      // 5. KÜMES MİMARİSİ, HAVALANDIRMA, NEM & TEMİZLİK SORULARI:
+      if (qLower.includes('havalandırma') || qLower.includes('nem') || qLower.includes('temizlik') || qLower.includes('dezenfektan') || qLower.includes('ızgara') || qLower.includes('cereyan') || qLower.includes('kümes nasıl') || qLower.includes('taban')) {
+        return [
+          `**🏠 İdeal Yarış Kümesi Havalandırması, Nem ve Hijyen Standartları**`,
+          `- **Altın Kural (Temiz Hava, Sıfır Cereyan):** Kümes içinde oksijen bol olmalı ancak kuşların tüylerini kıpırdatacak taban cereyanı (hava akımı) kesinlikle olmamalıdır. Kirli ve sıcak hava tavandaki bacadan tahliye edilmelidir.`,
+          `- **İdeal Nem & Sıcaklık:** Yarış formunun korunması için kümes içi bağıl nem **%55–%65** aralığında ve taban tamamen kuru olmalıdır. %75 üzeri nem solunum yolu (Ornitozis) hastalıklarını tetikler.`,
+          `- **Temizlik:** Kümes tabanı ve tünekler günlük kazınmalı; nemli paspas yerine kuru kazıma ve periyodik pürmüz (alevle dezenfeksiyon) tercih edilmelidir.`
+        ].join('\n');
+      }
+
+      // 6. ÜNLÜ SOY HATLARI & IRKLAR (JANSSEN, VANDENABEELE, KITTEL, HEREMANS, KOOPMAN, AARDEN, PORSCHE 911):
+      if (qLower.includes('janssen') || qLower.includes('vandenabeele') || qLower.includes('kittel') || qLower.includes('heremans') || qLower.includes('koopman') || qLower.includes('aarden') || qLower.includes('porsche') || qLower.includes('romario') || qLower.includes('belçika') || qLower.includes('hollanda') || qLower.includes('soy hattı') || qLower.includes('kan hattı') || qLower.includes('ırk')) {
+        return [
+          `**🧬 Dünya Yarış Güvercini Soy Hatları ve Mesafe Uzmanlıkları**`,
+          `- **Sprint & Hız Hatları (100–350 km):** **Janssen Bros (Arendonk), Leo Heremans (Olympiade 003 / Bolt) ve Dirk Van Dyck (Kannibaal / Kittel)** hatları patlayıcı çıkış hızı, LDHA glikojen metabolizması ve erken olgunlaşma ile öne çıkar.`,
+          `- **Orta & Tek Gün Uzun Mesafe (350–650 km):** **Gaby Vandenabeele (Wittenbuik / Bliksem / Rudy), Gerard Koopman (Kleine Dirk) ve PEC Porsche 911** hatları karşı rüzgârda yüksek seyir hızı ve yön kararlılığı sağlar.`,
+          `- **Maraton & Aşırı Uzun Mesafe (700–1.100+ km):** **Jan Aarden, Van Wanroy ve Jelle Jellema** hatları yüksek kas içi yağ (trigliserid) oksidasyonu ve zorlu hava koşullarında pes etmeyen dayanıklılık karakteri taşır.`
+        ].join('\n');
+      }
+
+      // 7. GENEL BİYOLOJİ (YAŞ, ÖMÜR, CİNSİYET AYRIMI, UÇUŞ HIZI):
+      if (qLower.includes('kaç yıl') || qLower.includes('ömür') || qLower.includes('ömrü') || qLower.includes('yaş') || qLower.includes('cinsiyet') || qLower.includes('erkek dişi') || qLower.includes('kaç km') || qLower.includes('ne kadar hızlı')) {
+        return [
+          `**🕊️ Yarış Güvercini Biyolojisi, Fizyolojisi ve Performans Sınırları**`,
+          `- **Yaşam Süresi & Damızlık Ömrü:** İyi bakılan bir yarış güvercini **12–18 yıl** yaşar. Aktif yarış kariyeri genellikle **1–5 yaş** arası, yüksek verimli damızlık dönemi ise **1–8 yaş** arasıdır.`,
+          `- **Uçuş Hızı & Mesafe:** Sakin havada ortalama **70–85 km/sa (1.150–1.400 m/dk)**, arkadan rüzgârda **110+ km/sa (1.800+ m/dk)** hızla tek günde **100 km'den 1.000+ km'ye** kadar kesintisiz uçabilirler.`,
+          `- **Erkek ve Dişi Ayrımı:** Erkek kuşlar daha iri boyunlu, parlak gerdanlı olup öterek kendi etrafında tam daire döner ve çatal kemikleri daha sıkıdır; dişiler ise daha zarif başlı ve yumurtlama için daha esnek çatal kemik yapısına sahiptir.`
+        ].join('\n');
+      }
+
+      // 8. YUVA, KULUÇKA, YUMURTA VEYA BİLEZİK TAKMA SORULARI:
+      if (qLower.includes('yuva') || qLower.includes('yumurta') || qLower.includes('kuluçka') || qLower.includes('bilezik') || qLower.includes('boncuk') || qLower.includes('kursak sütü')) {
+        const nestsCount = typeof activePairsList !== 'undefined' && Array.isArray(activePairsList) ? activePairsList.length : 0;
+        const firstNest = nestsCount > 0 ? activePairsList[0] : null;
+        return [
+          `**🪺 Yuva, Kuluçka & Yavru Gelişim Analizi (${nestsCount} Aktif Yuva)**`,
+          `- **Aktif Yuva Durumu:** ${firstNest ? `Kümesinizde **${nestsCount} aktif yuva** kayıtlıdır (Örn: **${firstNest.nest}** — ♂ ${firstNest.sire} × ♀ ${firstNest.dam}).` : 'Henüz aktif yuva kaydı açılmamış; Akıllı Eşleştirme ekranından tek tuşla yuva oluşturabilirsiniz.'}`,
+          `- **Biyolojik Takvim:** Eşleşmeden **8–10 gün** sonra yumurtlama, yumurtlamadan **18 gün** sonra yavru çıkışı ve çıkıştan **7–8 gün** sonra resmi bilezik (boncuk) takma evresi gerçekleşir.`,
+          `- **Beslenme Protokolü:** Kuluçkanın 14. gününden yavru 10 günlük olana kadar **Kursak Sütü (Prolaktin)** üretimi için kolay sindirilebilir tohumlar; 10–28. gün arasında ise **%20+ bakliyat (bezelye/maş/fiğ)** ve kalsiyum/grit desteği şarttır.`
+        ].join('\n');
+      }
+
+      // 9. GÖZ İŞARETİ (EYE-SIGN), KANAT, TELEK VEYA FİZİKSEL ÖZELLİK SORULARI:
+      if (qLower.includes('göz') || qLower.includes('iris') || qLower.includes('kanat') || qLower.includes('telek') || qLower.includes('çatal') || qLower.includes('kas') || qLower.includes('fenotip')) {
+        const rep = getRep();
+        return [
+          `**👁️ Fiziksel Fenotip, Kanat & Göz Uyumu Değerlendirmesi**`,
+          `- **Biyomekanik Kural:** Uzun/maraton mesafelerde **esnek göğüs kası, kapalı çatal kemik (pubis) ve son 3 telekte iyi ventilasyon** aranırken; iki adet aşırı açık çatal kemikli veya aynı fiziksel zaafa sahip kuşun birbiriyle eşleştirilmesinden kaçınılmalıdır.`,
+          `- **İris & Göz Çemberi:** Koyu/kalın adaptasyon halkası (koruma çemberi) yüksek damızlık baskınlığına işaret ederken, sarı×beyaz (inci) iris çaprazlamaları dengeli melezleme sağlar.`,
+          `- **Seçili Çiftinizin Fiziksel Tamamlayıcılığı:** ♂ **${rep.sireInfo?.ring || '-'}** × ♀ **${rep.damInfo?.ring || '-'}** eşleşmesinde fenotip ve mesafe tamamlayıcılığı **${rep.complementarityScore100 || 80}/100** (**${rep.complementaritySummary || 'Dengeli fenotip'}**) seviyesindedir.`
+        ].join('\n');
+      }
+
+      // 10. YARIŞ, ROTA, RÜZGÂR VEYA SEPETLEME SORULARI:
+      if (topicKey === 'race_strategy' || qLower.includes('yarış') || qLower.includes('sepet') || qLower.includes('rota') || qLower.includes('rüzg') || qLower.includes('salım') || qLower.includes('dönüş') || qLower.includes('hız')) {
+        const sr = getSr();
+        const relName = sr.route?.relNode?.name || 'Salım Noktası';
+        const loftName = sr.route?.loftNode?.name || 'Kümes';
+        const z0 = (sr.zoneWeather && sr.zoneWeather[0]) ? sr.zoneWeather[0] : { tempC: 20, windSpeedKmh: 15, windEffectLabel: 'Karşı/Yan Rüzgâr' };
+        const top3Birds = (sr.birdEvaluations || []).slice(0, 3);
+        const riskFinding0 = (sr.riskFindings && sr.riskFindings[0]) ? sr.riskFindings[0].action : 'Hız ve dayanıklılık skoru yüksek kuşları sepetleyin.';
+        return [
+          `**🗺️ Yarış & Sepetleme Stratejisi (${relName} → ${loftName} • ${sr.distKm || 300} km)**`,
+          `- **Rota & Meteorolojik Risk:** **${sr.distKm || 300} km (${sr.raceCategoryLabel || 'Etap'})** güzergâhında hava **${z0.tempC}°C**, rüzgâr **${z0.windSpeedKmh} km/sa (${z0.windEffectLabel})** ve rota riski **${sr.overallRiskLevel || 'ORTA RİSK'} (${sr.riskPoints || 0}/100)** seviyesindedir.`,
+          `- **Sepetlenmesi Önerilen İlk 3 Kuşunuz:** ${top3Birds.length ? top3Birds.map(b => `**${b.ring} (${b.name})** [${b.suitabilityScore}/100 • ~${b.prediction?.expectedBirdSpeedMpm || 1200} m/dk]`).join(', ') : 'Kümesinizde uygun aday bulunamadı.'}`,
+          `- **Tahmini Dönüş Penceresi:** Salım saati **${sr.releaseTime || '06:45'}** baz alındığında en erken dönüş **${sr.fleetReturnEstimate?.earliestClock || '-'}**, en olası varış aralığı **${sr.fleetReturnEstimate?.likelyWindowClock || '-'}** olarak hesaplanmıştır.`,
+          `- **Taktik Öneri:** ${riskFinding0}`
+        ].join('\n');
+      }
+
+      // 11. YEM, SULUK, GRAMAJ VEYA AYLIK MALİYET SORULARI:
+      if (topicKey === 'nutrition_advice' || qLower.includes('yem') || qLower.includes('suluk') || qLower.includes('beslen') || qLower.includes('maliyet') || qLower.includes('gram') || qLower.includes('çuval') || qLower.includes('su')) {
+        const nut = getNut();
+        return [
+          `**🌾 Bugünün Bilimsel Yem & Suluk Reçetesi (${nut.todaySmart?.dateLabel || 'Bugün'})**`,
+          `- **Günlük Gramaj & Öğün Dağılımı:** ${nut.todaySmart?.todayFeedRecommendation || ''}`,
+          `- **Suluk & Doğal Takviye Kürü:** ${nut.todaySmart?.todayLiquidRecommendation || ''}`,
+          `- **Makro Besin Dengesi:** Karbonhidrat **%${nut.macros?.carb || 60}**, Ham Protein **%${nut.macros?.protein || 15}**, Ham Yağ **%${nut.macros?.fat || 6}** (${nut.kcalPer100g || 335} kcal/100g).`,
+          `- **30 Günlük Kümes Bütçesi:** **${nut.birdCount || activeBirds.length} güvercin** için aylık toplam **${nut.monthly?.totalFeedKgLabel || '0'} kg yem** (~${nut.monthly?.sacks25KgLabel || '0'} çuval) ve takviyeler dahil toplam **${nut.cost?.totalMonthlyTlLabel || '0'} TL/ay** (kuş başı **${nut.cost?.perBirdMonthlyTlLabel || '0'} TL/ay**).`
+        ].join('\n');
+      }
+
+      // 12. SEÇİLİ ÇİFT, ORTAK ATA, COI VEYA YAVRU POTANSİYELİ SORULARI:
+      if (topicKey === 'pair_deep' || qLower.includes('seçili') || qLower.includes('ortak ata') || qLower.includes('yavru potansiyeli') || qLower.includes('coi') || qLower.includes('akraba') || qLower.includes('bu çift')) {
+        const rep = getRep();
+        const commonList = Array.isArray(rep.commonAncestors) ? rep.commonAncestors : [];
+        const commonStr = commonList.length
+          ? commonList.map(a => typeof a === 'string' ? `**${a}**` : `**${a.ring || ''} (${a.name || ''})**`).join(', ')
+          : '5 nesilde ortak ata bulunmamaktadır (**%0,00 Outcross / Yabancı Kan**)';
+        return [
+          `**🧬 Seçili Çift Bilimsel Soy & Yavru Analizi: ♂ ${rep.sireInfo?.ring || '-'} (${rep.sireInfo?.name || '-'}) × ♀ ${rep.damInfo?.ring || '-'} (${rep.damInfo?.name || '-'})**`,
+          `- **GENESIS Kararı & Uyum Puanı:** **${rep.totalScore || 80}/100 (${rep.decisionLabel || 'Uyumlu'})** — Veri Güvenilirliği: **%${rep.dataReliabilityPct || 75}**.`,
+          `- **Sewall Wright (1922) 5 Nesil COI Akrabalık Katsayısı:** **%${Number(rep.coi || 0).toFixed(2)}** (${rep.relationSummary || 'Soy Analizi'}). Ortak Atalar: ${commonStr}.`,
+          `- **Yavru Mesafe & Performans Uygunluğu:** **${rep.recommendedDistanceSuitability || 'Orta ve Uzun Mesafe'}** — Soy Puanı: **${rep.pedigreeScore100 || 75}/100**, Performans Kanıtı: **${rep.performanceScore100 || 75}/100**.`,
+          `- **Bilimsel Gerekçe:** ${rep.decisionReasonSummary || 'Hız ve dayanıklılık hatları dengeli.'} Detaylı 6 bölümlü analiz **aşağıdaki raporda** yer almaktadır.`
+        ].join('\n');
+      }
+
+      // 13. KÜMESİMDEKİ EN İYİ ÇİFTLER / EŞLEŞTİRME ÖNERİSİ SORULARI:
+      if (topicKey === 'breeding_advice' || qLower.includes('eşleş') || qLower.includes('çift') || qLower.includes('damızlık') || qLower.includes('kümesim') || !qRaw) {
+        const topPairs = getTopPairs();
+        const rep = getRep();
+        const pairsLines = topPairs.length
+          ? topPairs.map((tp, idx) => `- **${idx + 1}. Öneri:** ♂ **${tp.sire?.ring} (${tp.sire?.name})** × ♀ **${tp.dam?.ring} (${tp.dam?.name})** — Uyum: **${tp.score}/100** • ${tp.summary} (${tp.compLabel})`).join('\n')
+          : '- Kümesinizde eşleştirme taraması için en az 1 erkek ve 1 dişi kuş kayıtlı olmalıdır.';
+
+        return [
+          `**💞 Kümesinizdeki En Uyumlu Damızlık Eşleşmeler & GENESIS AI Özeti**`,
+          pairsLines,
+          `- **Seçili Aktif Çiftiniz:** ♂ **${rep.sireInfo?.ring || '-'} (${rep.sireInfo?.name || '-'})** × ♀ **${rep.damInfo?.ring || '-'} (${rep.damInfo?.name || '-'})** çifti **${rep.totalScore || 80}/100 (${rep.decisionLabel || 'Uyumlu'})** uyum ve **%${Number(rep.coi || 0).toFixed(2)} COI** değerine sahiptir. Detaylı kırılım **aşağıdaki raporda** listelenmiştir.`
+        ].join('\n');
+      }
+
+      // 14. BİLİMSEL KÜTÜPHANE TARAMASI & GENEL SERBEST SORU YANITLAYICI (Kümes analizi dökmeden sorulan konuya yanıt verir):
+      if (typeof AvigenScientificLibrary !== 'undefined' && Array.isArray(AvigenScientificLibrary.sources)) {
+        const words = qLower.split(/\s+/).filter(w => w.length >= 4);
+        const matchedSource = AvigenScientificLibrary.sources.find(src => {
+          const hay = `${src.title_tr || ''} ${src.ai_summary || ''} ${(src.tags || []).join(' ')}`.toLowerCase();
+          return words.some(w => hay.includes(w));
+        });
+        if (matchedSource) {
+          return [
+            `**🔬 "${qRaw}" Hakkında Bilimsel Değerlendirme**`,
+            `- **Araştırma Bulgusu (${matchedSource.authors}, ${matchedSource.publication_year}):** ${matchedSource.ai_summary}`,
+            `- **Pratik Yetiştirici Uygulaması:** ${matchedSource.practical_takeaway || 'Bu bulguyu eşleştirme, antrenman ve beslenme kararlarınızda referans olarak kullanabilirsiniz.'}`
+          ].join('\n');
+        }
+      }
+
+      return [
+        `**🧬 "${qRaw}" Sorunuz Hakkında GENESIS AI Yanıtı**`,
+        `- Yarış güvercini yetiştiriciliğinde bu konuda en yüksek başarı; **kanıtlanmış performans soyu (pedigri + gerçek yarış derecesi)**, **düşük/kontrollü akrabalık (COI <%6,25 melezleme veya <%12,50 hat sabitleme)**, **kuru/cereyansız kümes havalandırması** ve **mevsime uygun tohum/elektrolit dengesi** ile sağlanır.`,
+        `- Daha spesifik bir yanıt için sorunuzda merak ettiğiniz konuyu (**aşı/sağlık, antrenman, tüy dökümü, banyo, yuva/kuluçka, yem/suluk, yarış rüzgârı veya bir kuşunuzun halka numarasını**) belirtebilirsiniz.`
+      ].join('\n');
+    } catch (err) {
+      return `**🧬 GENESIS AI:** Sorunuz alındı. Eşleştirme, soyağacı (COI), yarış stratejisi, beslenme veya güvercin sağlığı/antrenmanı hakkında sorunuzu yazabilirsiniz. Seçili çiftinizin detaylı analizi **aşağıdaki raporda** yer almaktadır.`;
+    }
+  },
+
+  async askGeminiAdvisor(quickQuestionText, topicOverride) {
+    const candidateInputs = [
+      document.getElementById('geminiPromptInput'),
+      document.getElementById('launcherGenesisAskInput'),
+      document.getElementById('homeGenesisAskInput')
+    ].filter(Boolean);
+    const inputEl = candidateInputs.find(el => String(el.value || '').trim().length > 0) || candidateInputs[0] || null;
+    const rawPrompt = (quickQuestionText !== undefined && quickQuestionText !== null && String(quickQuestionText).trim() !== '')
+      ? String(quickQuestionText).trim()
+      : (inputEl ? String(inputEl.value || '').trim() : '');
+
+    const promptText = rawPrompt || 'Kümesimdeki en uyumlu damızlık çiftleri, COI akrabalık durumunu ve bugünkü yarış/yem önerisini özetle.';
+    const effectiveTopic = topicOverride || (!rawPrompt ? 'breeding_advice' : undefined);
+    this.state.geminiDraftPrompt = '';
+    candidateInputs.forEach(el => { el.value = ''; });
+
+    this.state.geminiIsLoading = true;
+    this.renderGenesisModuleUI();
+
+    const apiKey = this.getGeminiApiKey();
+    let finalAnswerMarkdown = '';
+    let sourceBadge = '🧬 GENESIS AI';
+
+    if (!this._geminiQueryCache) this._geminiQueryCache = {};
+    const cacheKey = `${this.getDataSignature()}__${promptText.toLowerCase()}`;
+    const isDirectLoftQuery = this.isDirectLoftCalculationQuery(promptText, effectiveTopic);
+
+    if (this._geminiQueryCache[cacheKey]) {
+      finalAnswerMarkdown = this._geminiQueryCache[cacheKey];
+    } else if (!isDirectLoftQuery && typeof fetch === 'function') {
+      const loftContext = this.buildLiveLoftContextSummary();
+      const systemInstructionText = [
+        'Sen AVIGEN GENESIS AI adlı uzman yarış güvercini yetiştiriciliği, genetik (Sewall Wright COI), kanatlı sağlığı ve spor fizyolojisi yapay zekâ danışmanısın.',
+        'Kullanıcı normal bir sohbet sorusu veya genel bir güvercin sorusu sorduğunda (kümes analizi istemiyorsa) doğrudan sorduğu soruya doğal, samimi ve uzman bir dille Türkçe yanıt ver; gereksiz yere kümes eşleştirme raporu dökme.',
+        'Eğer kullanıcı kendi kümesi, kuşları, eşleştirmesi veya yarışı hakkında soru sorarsa aşağıdaki kümes verilerini kullan.',
+        'Yanıtını 3-5 kısa ve net madde veya paragraf halinde Türkçe yaz.'
+      ].join(' ');
+
+      // 1. ÖNCE KULLANICININ KAYITLI BULUT ANAHTARI VARSA ONU KULLAN:
+      if (apiKey) {
+        const fullUserContent = `KULLANICININ SORUSU: ${promptText}\n\n(Gerekirse başvurabileceğin kümes verileri:\n${loftContext})`;
+        const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+
+        for (let i = 0; i < candidateModels.length; i++) {
+          const modelName = candidateModels[i];
+          try {
+            const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            const resp = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: systemInstructionText }] },
+                contents: [{ role: 'user', parts: [{ text: fullUserContent }] }],
+                generationConfig: {
+                  temperature: 0.4,
+                  maxOutputTokens: 450
+                }
+              })
+            });
+            if (resp.ok) {
+              const data = await resp.json();
+              const textOut = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('\n') || '';
+              if (textOut.trim()) {
+                finalAnswerMarkdown = textOut.trim();
+                this._geminiQueryCache[cacheKey] = finalAnswerMarkdown;
+                break;
+              }
+            }
+          } catch (err) {}
+        }
+      }
+
+      // 2. ANAHTAR YOKSA ÜCRETSİZ ANAHTARSIZ BULUT AI MOTORUNU DENE (4 Saniye Zaman Aşımlı):
+      if (!finalAnswerMarkdown) {
+        try {
+          const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+          const timerId = ctrl ? setTimeout(() => ctrl.abort(), 4200) : null;
+          const resp = await fetch('https://text.pollinations.ai/openai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: ctrl ? ctrl.signal : undefined,
+            body: JSON.stringify({
+              model: 'openai',
+              messages: [
+                { role: 'system', content: systemInstructionText },
+                { role: 'user', content: `Soru: ${promptText}\n\n(Not: Sadece soru kümesimle ilgiliyse şu özeti kullan, değilse doğrudan soruya cevap ver: ${loftContext})` }
+              ],
+              temperature: 0.4
+            })
+          });
+          if (timerId) clearTimeout(timerId);
+          if (resp.ok) {
+            const data = await resp.json();
+            const textOut = data?.choices?.[0]?.message?.content || '';
+            if (textOut && textOut.trim().length > 10) {
+              finalAnswerMarkdown = textOut.trim();
+              this._geminiQueryCache[cacheKey] = finalAnswerMarkdown;
+            }
+          }
+        } catch (err) {
+          // Çevrimdışıysa veya zaman aşımı olursa yerleşik 14 kategorili doğal dil motoruna düşer
+        }
+      }
+    }
+
+    if (!finalAnswerMarkdown) {
+      finalAnswerMarkdown = this.generateLocalScientificFallbackAnswer(promptText, effectiveTopic);
+      this._geminiQueryCache[cacheKey] = finalAnswerMarkdown;
+      sourceBadge = '🧬 GENESIS AI';
+    }
+
+    if (!Array.isArray(this.state.geminiChatHistory)) {
+      this.state.geminiChatHistory = [];
+    }
+
+    this.state.geminiChatHistory.unshift({
+      id: 'gem_' + Date.now(),
+      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      question: promptText,
+      answerHtml: this.formatGeminiMarkdownToSafeHtml(finalAnswerMarkdown),
+      sourceBadge
+    });
+    this.state.geminiChatHistory = this.state.geminiChatHistory.slice(0, 15);
+    this.state.geminiIsLoading = false;
+    this.saveState();
+    this.renderGenesisModuleUI();
+    this.renderHomeTeaserCard();
+  },
+
+  askGeminiAboutCurrentReport(reportMode) {
+    let autoQuestion = 'Kümesimdeki en uyumlu damızlık çiftleri ve COI akrabalık durumunu yorumla.';
+    let topic = 'breeding_advice';
+
+    if (reportMode === 'breeding') {
+      const rep = this.analyzeBreedingIntelligence(this.state.selectedSireRef, this.state.selectedDamRef);
+      autoQuestion = `♂ ${rep.sireInfo?.ring} (${rep.sireInfo?.name}) ile ♀ ${rep.damInfo?.ring} (${rep.damInfo?.name}) çiftinin ${rep.totalScore}/100 uyum puanını, %${Number(rep.coi || 0).toFixed(2)} COI akrabalık katsayısını ve yavru potansiyelini detaylı yorumla.`;
+      topic = 'pair_deep';
+    } else if (reportMode === 'smart_race') {
+      const sr = this.analyzeSmartRaceManagement();
+      autoQuestion = `${sr.route?.relNode?.name || 'Salım'} -> ${sr.route?.loftNode?.name || 'Kümes'} (${sr.distKm} km) yarış rotasında rüzgâr riskine göre hangi kuşlarımı sepetlemeliyim ve tahmini dönüş pencereleri nasıldır?`;
+      topic = 'race_strategy';
+    } else if (reportMode === 'nutrition') {
+      autoQuestion = `Bugünkü hava sıcaklığına ve kümesimdeki kuş sayısına göre günlük yem gramajını, tohum oranlarını ve suluk takviyesini yorumla.`;
+      topic = 'nutrition_advice';
+    }
+
+    this.state.activeMode = 'breeding';
+    this.state.viewStage = 'tool';
+    this.saveState();
+    this.renderGenesisModuleUI();
+    this.askGeminiAdvisor(autoQuestion, topic);
+  },
+
+  renderGeminiAdvisorChatHtml() {
+    return '';
   },
 
   selectAlternativePairAndRun(sireId, damId) {
