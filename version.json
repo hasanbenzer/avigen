@@ -1,13 +1,13 @@
 {
-  "version": "5.2.0",
-  "build": 520,
+  "version": "5.3.0",
+  "build": 530,
   "releaseDate": "2026-11-23",
-  "title": "AVIGEN v5.2 — GENESIS AI'ya Sor (Birleşik Yapay Zeka & Kümes Danışmanı), Mobil Ergonomik Haritalı Yarış Simülasyonu & %100 Veri Korumalı Güncelleme",
+  "title": "AVIGEN v5.3 — Sınırsız Ücretsiz Kümes (AVIGEN FREE), Örnek Kuşsuz Temiz Kurulum, 0532 782 03 85 WhatsApp Lisans Hattı & Güncel Kullanım Rehberi",
   "notes": [
-    "GENESIS AI'ya Sor (Birleşik Yapay Zeka & Kümes Danışmanı): Ana ekran ve Akıllı Eşleştirme modülüne entegre doğal dil soru-cevap sistemi, 14 kategorili bilimsel yanıt motoru ve sıfır token israfı sağlayan akıllı önbellek",
-    "Haritalı Akıllı Yarış Simülasyonu (Tam Mobil Kart Ergonomisi): Yatay kaydırmayı tamamen ortadan kaldıran dikey mobil kuş kartları (Olası Dönüş, Hız & Tecrübe, Erken/Geç Aralığı), tam genişlikli İl/İlçe seçiciler ve tek tuşla kadro sepetleme",
-    "Kompakt Tek Ekran Ana Sayfa & Kesintisiz Navigasyon: Tek ekrana sığan sadeleştirilmiş Ana Sayfa ve açık pencerelerden tek dokunuşla GENESIS AI ana komut ekranına dönüş",
-    "%100 Veri Korumalı Canlı Güncelleme (Zero-Data-Loss OTA): Güncelleme sırasında kümes, kuş, 4 kuşak pedigri, yuva, yarış ve lisans verilerini otomatik koruyan güvenlik yedeği mimarisi"
+    "AVIGEN FREE Sınırsız Kuş & Pedigri: Ücretsiz sürümdeki 10 kuş sınırı kaldırıldı; güvercin ekleme, 4 kuşak (31 kutu) pedigri, yuva ve 3 kategorili yarış takibi tamamen sınırsız ve ücretsiz oldu",
+    "GENESIS AI & GENESIS AI'ya Sor Abonelik Mimarisi: Yalnızca GENESIS AI modülü ve bağlantılı yapay zekâ analizleri için cihaza özel lisans aktivasyonu (WhatsApp Lisans Hattı: 0 532 782 03 85) tanımlandı",
+    "Örnek Kuşsuz Temiz Başlangıç & %100 Veri Koruması: Yeni indiren kullanıcılar örnek/demo kuşlar olmadan temiz kümesle başlar; mevcut kullanıcıların girdiği tüm kuş, pedigri, yuva ve yarış verileri güncelleme sonrası %100 korunur",
+    "Güncellenmiş Kullanım Rehberi: Uygulama içi 'Nasıl Kullanılır?' ve 'Neyin Ne İşe Yaradığı' bölümleri tüm yeni özelliklere göre güncellendi"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"

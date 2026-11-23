@@ -4226,10 +4226,44 @@ const AvigenRaceTracker = {
     };
   },
 
-  // YARIŞLAR Sekmesi -> 2. Alt Sekme: "🧬 AI Performans Analizi"
+  // YARIŞLAR Sekmesi -> 2. Alt Sekme: "🧬 AI Performans Analizi" (GENESIS AI Bağlantılı - Abonelik Gerektirir)
   renderRaceAiInsightsUI() {
     const root = document.getElementById('avigenRaceAiInsightsRoot');
     if (!root) return;
+
+    const hasAiSub = (typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.hasGeneticsAiAccess === 'function')
+      ? AvigenUxManager.hasGeneticsAiAccess()
+      : (typeof AvigenGenesisAI !== 'undefined' ? Boolean(AvigenGenesisAI.state.isPremiumActive) : false);
+
+    if (!hasAiSub) {
+      const devId = (typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.getOrCreateDeviceId === 'function')
+        ? AvigenUxManager.getOrCreateDeviceId()
+        : 'AVG-0000-0000';
+      root.innerHTML = `
+        <div class="ios-card" style="padding:14px 12px; border:1.5px solid #7c3aed; background:linear-gradient(145deg, #0f172a 0%, #2e1065 100%); color:#ffffff;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">
+            <span class="gene-badge gene-purple">🧬 GENESIS AI — YARIŞ ANALİZİ</span>
+            <span style="font-size:10px; color:#cbd5e1; font-weight:700;">AVIGEN AI Aboneliği</span>
+          </div>
+          <div style="font-size:13px; font-weight:900; color:#ffffff; margin-bottom:5px;">
+            🔒 GENESIS AI Yarış Performans &amp; Mesafe Uzmanlığı Analizi
+          </div>
+          <div style="font-size:10.5px; color:#e2e8f0; line-height:1.45; margin-bottom:10px;">
+            Standart yarış yönetimi (Kümesüstü, Dernek ve Büyük Ödüllü yarış oluşturma, kuş sepetleme ve hız hesabı) tamamen <strong>ücretsizdir</strong>.<br/>
+            <strong>GENESIS AI Yarış Analizi</strong> (kısa/orta/uzun mesafe uzmanlığı, hava koşulu korelasyonu, kuş karşılaştırma tablosu ve damızlık aktarım analizi) için <strong>AVIGEN AI</strong> aboneliği gereklidir (Cihaz ID: <strong>${escapeHtml(devId)}</strong>).
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px;">
+            <button type="button" class="ios-btn ios-btn-purple" style="padding:9px; font-size:10.8px; font-weight:900;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.openSubscriptionModal('checkout')">
+              🔑 Lisans Kodu Gir
+            </button>
+            <button type="button" class="ios-btn ios-btn-green" style="padding:9px; font-size:10.8px; font-weight:900;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.requestLicenseViaWhatsApp('3.990 TL', 'Yıllık (365 Gün)')">
+              📲 Kod İste (0532 782 03 85)
+            </button>
+          </div>
+        </div>
+      `;
+      return;
+    }
 
     const analytics = this.computeGenesisRealRaceAnalytics();
 

@@ -15,8 +15,8 @@ const GENESIS_HISTORY_STORAGE_KEY = 'avigen_genesis_analysis_history_v1';
 
 const AvigenGenesisAI = {
   state: {
-    isPremiumActive: true,
-    planName: 'AVIGEN PRO (Yıllık Abonelik)',
+    isPremiumActive: false,
+    planName: 'AVIGEN FREE',
     viewStage: 'launcher', // 'launcher' (Kare Bento Kartlar) | 'tool' (Seçilen Analiz Çalışma Ekranı) | 'history' (Geçmiş Analizler)
     activeMode: 'breeding', // 'breeding' | 'smart_race' | 'nutrition'
     selectedRacerPedId: '',
@@ -253,7 +253,18 @@ const AvigenGenesisAI = {
         const parsedH = JSON.parse(savedHist);
         if (Array.isArray(parsedH)) this.analysisHistory = parsedH;
       }
+      if (typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.hasGeneticsAiAccess === 'function') {
+        this.state.isPremiumActive = AvigenUxManager.hasGeneticsAiAccess();
+      }
     } catch (e) {}
+  },
+
+  hasActiveGenesisSubscription() {
+    if (typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.hasGeneticsAiAccess === 'function') {
+      this.state.isPremiumActive = AvigenUxManager.hasGeneticsAiAccess();
+      return this.state.isPremiumActive;
+    }
+    return Boolean(this.state.isPremiumActive);
   },
 
   saveState() {
@@ -5360,7 +5371,10 @@ const AvigenGenesisAI = {
     const container = document.getElementById('genesisModuleRoot');
     if (!container) return;
 
-    if (!this.state.isPremiumActive) {
+    if (!this.hasActiveGenesisSubscription()) {
+      const devId = (typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.getOrCreateDeviceId === 'function')
+        ? AvigenUxManager.getOrCreateDeviceId()
+        : 'AVG-0000-0000';
       container.innerHTML = `
         <div class="genesis-paywall-card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -5370,23 +5384,35 @@ const AvigenGenesisAI = {
           <div style="display:flex; align-items:center; gap:11px; margin-bottom:8px;">
             <img src="avigen-logo.svg" style="width:46px; height:46px; background:#fff; padding:4px; border-radius:13px; flex-shrink:0;" />
             <div>
-              <div style="font-size:15.5px; font-weight:900; color:#ffffff; letter-spacing:0.4px;">AVIGEN GENESIS AI v3.0</div>
-              <div style="font-size:10.5px; font-weight:800; color:#a7f3d0; margin-top:1px;">AKILLI EŞLEŞTİRME • HARİTALI YARIŞ SİMÜLASYONU • AKILLI YEM</div>
+              <div style="font-size:15.5px; font-weight:900; color:#ffffff; letter-spacing:0.4px;">AVIGEN GENESIS AI v5.3</div>
+              <div style="font-size:10px; font-weight:800; color:#a7f3d0; margin-top:1px;">AKILLI EŞLEŞTİRME • GENESIS AI'YA SOR • HARİTALI YARIŞ • AKILLI YEM</div>
             </div>
           </div>
-          <div style="font-size:11px; color:#e2e8f0; line-height:1.5; margin-bottom:12px; background:rgba(255,255,255,0.08); padding:9px 11px; border-radius:10px;">
-            • <strong>1. 💞 Akıllı Eşleştirme &amp; Yavru Öngörüsü:</strong> Kümesteki en uygun 5 çifti otomatik bulma, 5 nesil akrabalık (COI), ortak şampiyon ata kontrolü, fenotip uyumu ve tek tıkla yuva kaydı.<br/>
-            • <strong>2. 🗺️ 81 İl Haritalı Akıllı Yarış Simülasyonu:</strong> Türkiye haritasında salım-kümes rotası, canlı rüzgâr/hava riski, kuşa özel uygunluk sıralaması, tahmini dönüş saati ve tek tuşla sepetleme.<br/>
-            • <strong>3. 🌾 Akıllı Yem, Suluk Kürü &amp; 1 Aylık Maliyet:</strong> Günün tarihine, canlı hava sıcaklığına ve kuş sayısına göre sabah/akşam yem reçetesi ve 30 günlük çuval/TL maliyet hesabı.
+          <div style="font-size:10.8px; color:#e2e8f0; line-height:1.48; margin-bottom:10px; background:rgba(255,255,255,0.08); padding:9px 11px; border-radius:10px;">
+            • <strong>1. 💞 Akıllı Eşleştirme &amp; Soy Danışmanı:</strong> Kümesteki en uygun 5 çifti otomatik bulma, 5 nesil akrabalık (Sewall Wright COI), 11 özellikte yavru öngörüsü ve <strong>"🧬 GENESIS AI'ya Sor"</strong> doğal dil yapay zekâ danışmanı.<br/>
+            • <strong>2. 🗺️ 81 İl/İlçe Haritalı Akıllı Yarış Simülasyonu:</strong> Türkiye haritasında salım-kümes rotası, rüzgâr/arazi riski, mobil kartlarda olası dönüş saati, tahmini hız (m/dk) ve tek tuşla sepetleme.<br/>
+            • <strong>3. 🌾 Akıllı Yem, Suluk Kürü &amp; 1 Aylık Maliyet:</strong> Günün tarihine, canlı hava sıcaklığına ve kuş sayısına göre günlük yem reçetesi ve 30 günlük maliyet tablosu.
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px;">
-            <button class="ios-btn ios-btn-purple" style="padding:10px; font-size:12px;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.openSubscriptionModal()">
-              ✨ Paketleri İncele
+          <div style="background:rgba(15,23,42,0.55); border:1px solid rgba(147,197,253,0.45); border-radius:9px; padding:7px 10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <div>
+              <div style="font-size:8.5px; color:#93c5fd; font-weight:800;">📱 CİHAZ KİMLİK KODUNUZ (CİHAZ ID):</div>
+              <div style="font-size:12.5px; color:#ffffff; font-weight:900; letter-spacing:0.8px;">${escapeHtml(devId)}</div>
+            </div>
+            <div style="font-size:9.2px; color:#a7f3d0; font-weight:800; text-align:right;">
+              Lisans Hattı:<br/><strong>0 532 782 03 85</strong>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:7px;">
+            <button class="ios-btn ios-btn-purple" style="padding:10px 8px; font-size:11px; font-weight:900;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.openSubscriptionModal('checkout')">
+              🔑 Lisans Kodu Gir
             </button>
-            <button class="ios-btn ios-btn-green" style="padding:10px; font-size:12px;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.setMembershipTier('GENETICS_AI'); else AvigenGenesisAI.togglePremiumSubscription(true);">
-              🔓 GENESIS AI'ı Aç
+            <button class="ios-btn ios-btn-green" style="padding:10px 8px; font-size:11px; font-weight:900;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.requestLicenseViaWhatsApp('3.990 TL', 'Yıllık (365 Gün)')">
+              📲 Kod İste (0532 782 03 85)
             </button>
           </div>
+          <button class="ios-btn ios-btn-outline" style="width:100%; padding:8px; font-size:10.5px; color:#ffffff; border-color:rgba(255,255,255,0.35); background:rgba(255,255,255,0.08);" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.openSubscriptionModal('plans')">
+            👑 Paketleri İncele (AVIGEN AI &amp; AVIGEN GLOBAL)
+          </button>
         </div>
       `;
       return;
@@ -7683,6 +7709,46 @@ const AvigenGenesisAI = {
     const effectiveTopic = topicOverride || (!rawPrompt ? 'breeding_advice' : undefined);
     this.state.geminiDraftPrompt = '';
     candidateInputs.forEach(el => { el.value = ''; });
+
+    // ABONELİK KONTROLÜ: GENESIS AI'ya Sor (ve bağlı yapay zekâ motoru) yalnızca AVIGEN AI veya AVIGEN GLOBAL aboneliği ile çalışır
+    if (!this.hasActiveGenesisSubscription()) {
+      const devId = (typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.getOrCreateDeviceId === 'function')
+        ? AvigenUxManager.getOrCreateDeviceId()
+        : 'AVG-0000-0000';
+      if (!Array.isArray(this.state.geminiChatHistory)) {
+        this.state.geminiChatHistory = [];
+      }
+      this.state.geminiChatHistory.unshift({
+        id: 'gem_lock_' + Date.now(),
+        time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+        question: promptText,
+        sourceBadge: '🔒 AVIGEN AI',
+        answerHtml: `
+          <div style="color:var(--ios-text); line-height:1.45;">
+            <div style="font-weight:900; color:#6d28d9; margin-bottom:4px;">
+              🔒 GENESIS AI'ya Sor &amp; Yapay Zekâ Kümes Danışmanı (Abonelik Gerektirir)
+            </div>
+            <div style="margin-bottom:7px;">
+              <strong>AVIGEN FREE</strong> sürümünde sınırsız kuş, 4 kuşak pedigri, yuva ve yarış yönetimi ücretsizdir. <strong>GENESIS AI'ya Sor</strong>, <strong>5 Nesil Akıllı Eşleştirme</strong>, <strong>Haritalı Yarış Simülasyonu</strong> ve <strong>Akıllı Yem</strong> modülleri için <strong>AVIGEN AI</strong> lisans kodu gereklidir (Cihaz Kodunuz: <strong>${escapeHtml(devId)}</strong>).
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+              <button type="button" class="ios-btn ios-btn-purple" style="padding:6px 8px; font-size:9.5px; font-weight:900;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.openSubscriptionModal('checkout')">
+                🔑 Lisans Kodu Gir
+              </button>
+              <button type="button" class="ios-btn ios-btn-green" style="padding:6px 8px; font-size:9.5px; font-weight:900;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.requestLicenseViaWhatsApp('3.990 TL', 'Yıllık (365 Gün)')">
+                📲 Kod İste (0532 782 03 85)
+              </button>
+            </div>
+          </div>
+        `
+      });
+      this.state.geminiChatHistory = this.state.geminiChatHistory.slice(0, 10);
+      this.state.geminiIsLoading = false;
+      this.saveState();
+      this.renderGenesisModuleUI();
+      this.renderHomeTeaserCard();
+      return;
+    }
 
     this.state.geminiIsLoading = true;
     this.renderGenesisModuleUI();

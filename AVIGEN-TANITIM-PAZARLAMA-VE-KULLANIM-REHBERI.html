@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AVIGEN 2.0 — Resmi Tanıtım, Pazarlama ve Kuşçu Kullanım Kılavuzu</title>
+  <link rel="icon" type="image/svg+xml" href="avigen-logo.svg" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --blue: #0066ff;
+      --blue-dark: #0044aa;
+      --purple: #7c3aed;
+      --green: #059669;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand img {
+      width: 40px;
+      height: 40px;
+    }
+    .brand-title {
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--blue-dark);
+      letter-spacing: 0.4px;
+    }
+    .brand-sub {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--purple);
+    }
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .btn-blue { background: var(--blue); color: #fff; }
+    .btn-purple { background: var(--purple); color: #fff; }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-outline { background: #fff; color: var(--text); border: 1.5px solid var(--border); }
+    .container {
+      max-width: 1040px;
+      margin: 24px auto 60px;
+      padding: 0 20px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #003380 0%, #0066ff 52%, #7c3aed 100%);
+      color: #fff;
+      border-radius: 20px;
+      padding: 32px 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 14px 34px rgba(0, 102, 255, 0.18);
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+    .hero p {
+      margin: 0;
+      font-size: 15px;
+      color: #e0f2fe;
+      max-width: 820px;
+    }
+    .section-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 22px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--text);
+      margin: 0 0 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f1f5f9;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .feature-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--blue);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .feature-box.purple { border-top-color: var(--purple); }
+    .feature-box.green { border-top-color: var(--green); }
+    .feature-box h3 {
+      margin: 0 0 8px;
+      font-size: 15.5px;
+      font-weight: 900;
+    }
+    .feature-box p, .feature-box ul {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--muted);
+      padding-left: 18px;
+    }
+    .feature-box li { margin-bottom: 5px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      font-weight: 900;
+    }
+    .copy-card {
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .copy-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+    .copy-pre {
+      white-space: pre-wrap;
+      font-family: inherit;
+      font-size: 13px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 0;
+      color: var(--text);
+    }
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      font-weight: 900;
+      font-size: 13px;
+      margin-right: 6px;
+    }
+    @media print {
+      .top-bar, .no-print { display: none !important; }
+      body { background: #fff; }
+      .section-card { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar no-print">
+    <div class="brand">
+      <img src="avigen-logo.svg" alt="AVIGEN Logo" />
+      <div>
+        <div class="brand-title">AVIGEN 2.0 — TANITIM, PAZARLAMA &amp; KULLANIM KILAVUZU</div>
+        <div class="brand-sub">AVIGEN FREE &amp; AVIGEN GENESIS AI • Resmi Yetiştirici Rehberi</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <a href="index.html" class="btn btn-outline">← Uygulamaya Dön</a>
+      <button class="btn btn-blue" onclick="window.print()">🖨️ PDF Olarak Kaydet / Yazdır</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- HERO -->
+    <div class="hero">
+      <span class="hero-badge">🕊️ YARIŞ &amp; POSTA GÜVERCİNİ YETİŞTİRİCİLERİ İÇİN</span>
+      <h1>AVIGEN: Kümesinizi, 4 Kuşak Pedigrilerinizi ve Damızlık Eşleştirmelerinizi Cebinizden Yönetin</h1>
+      <p>
+        Defter, kalem ve karmaşık bilgisayar programlarıyla uğraşmadan; kümeste kuş tutarken tek elle kullanabileceğiniz,
+        yavrunun anne-babasını seçince 30 atalık şeceresini otomatik dolduran, 5 nesil akrabalık (COI) ve aylık yem maliyetini hesaplayan yeni nesil kümes sistemi.
+      </p>
+    </div>
+
+    <!-- BÖLÜM 1: NEYİN NE İŞE YARADIĞI (5 ANA SEKME SÖZLÜĞÜ) -->
+    <div class="section-card">
+      <h2 class="section-title">🧭 1. Programdaki 5 Ana Bölüm ve Neyin Ne İşe Yaradığı</h2>
+      <div class="grid-2">
+        <div class="feature-box">
+          <h3>🏠 1. Sekme: Ana Sayfa (Kümes Kokpiti)</h3>
+          <ul>
+            <li><strong>Canlı Uçuş Havası &amp; Manyetik Kp (0-9):</strong> Bulunduğunuz şehrin veya GPS konumunuzun anlık sıcaklık, nem, rüzgâr yönü/şiddeti ve güneş manyetik fırtına indeksini 15 dakikada bir canlı çeker. Antrenman salımı için havanın uygun olup olmadığını söyler.</li>
+            <li><strong>Hızlı Arama Kutusu:</strong> Bileziğin sadece son 3-4 rakamını (Örn: <code>9001</code>) veya kuşun adını yazdığınızda anında şeceresini veya performans kartını açar.</li>
+            <li><strong>Alt Kokpit (Takvim, Yuvalar, Yarışlar, Sicil):</strong> Yaklaşan aşı/ilaç görevlerini, yuvalardaki yumurtlama ve yavruya boncuk takma günlerini tek ekranda özetler.</li>
+          </ul>
+        </div>
+
+        <div class="feature-box">
+          <h3>🕊️ 2. Sekme: Kuşlarım &amp; Pedigri Stüdyosu</h3>
+          <ul>
+            <li><strong>Kümesimdeki Kuşlar:</strong> Kuşlarınızı <em>♂ Erkek, ♀ Dişi, Damızlık, Yarışçı, Yavru</em> olarak filtreler. <strong>📜 Soy Arşivi</strong> sekmesi ise kümesinizde fiziksel olarak bulunmayan ama pedigri kağıtlarında adı geçen eski anne/baba/dedeleri saklar.</li>
+            <li><strong>📜 4 Kuşak Mavi Pedigri Kağıdı:</strong> 31 kutuluk uluslararası standartta şecere kağıdı üretir. Herhangi bir kutuya dokunarak düzenleyebilir, iki parmakla büyütebilir, <strong>🖼️ HD Pedigre İndir</strong> veya <strong>📲 Paylaş</strong> ile WhatsApp'tan gönderebilirsiniz.</li>
+            <li><strong>📊 Performans &amp; Genetik Profil:</strong> Kuşun yanındaki <em>İşlemler ▾</em> menüsünden açılır. Kuşun gerçek yarış derecelerini (yeşil/mavi çubuk) ve henüz yarışmamışsa atalarından gelen soy potansiyelini (mor çubuk) 4 net grafikte gösterir.</li>
+          </ul>
+        </div>
+
+        <div class="feature-box purple">
+          <h3>🧬 3. Sekme: GENESIS AI (Yapay Zekâ Merkezi)</h3>
+          <ul>
+            <li><strong>1. 💞 Akıllı Eşleştirme, 5 Nesil Soy &amp; Yavru Analizi:</strong>
+              <ul>
+                <li><strong>🏆 En Uygun 5 Eşleşmeyi Otomatik Göster:</strong> Tek tek kuş denemenize gerek kalmadan kümesinizdeki tüm erkek ve dişileri çapraz tarayıp en uyumlu 5 çifti sıralar.</li>
+                <li><strong>5 Nesil Akrabalık (Wright COI) &amp; Ortak Ata Kalite Denetimi:</strong> 62 ata düğümünü tarar; ortak ata varsa o atanın gerçekten şampiyon/dereceli olup olmadığını kontrol eder.</li>
+                <li><strong>Mesafe &amp; Hız Tamamlayıcılığı:</strong> Kısa mesafe (Sprint), Orta mesafe ve Uzun mesafe (Maraton) kanlarının birbirini tamamlayıp tamamlamadığını ölçer.</li>
+                <li><strong>🪺 Tek Tuşla Yuvaya Kaydet:</strong> Beğendiğiniz çifti tek dokunuşla Aktif Yuvalara kaydeder.</li>
+              </ul>
+            </li>
+            <li><strong>2. 🌾 Akıllı Yem, Sıvı Önerisi &amp; 1 Aylık Maliyet:</strong> Bugünün tarihine, canlı hava sıcaklığına ve kuşların durumuna göre günlük kuş başı yem gramajını, suluğa konulacak takviyeyi ve 30 günlük toplam yem/sıvı maliyetinizi (TL) hesaplar.</li>
+          </ul>
+        </div>
+
+        <div class="feature-box green">
+          <h3>🏁 4. Sekme: Yarış &amp; Eşleşme + ⚙️ 5. Sekme: Ayarlar</h3>
+          <ul>
+            <li><strong>🏁 Yarış Yönetimi:</strong> Yeni yarış etabı açıp sepete kuş eklemenizi, dönüş saatini girince resmi hızı (<code>m/dk</code>) ve sırayı otomatik hesaplayıp kuşun pedigrisine işlemesini sağlar.</li>
+            <li><strong>💑 Yuva, Çiftler &amp; Kuluçka:</strong> Eşleşen çiftlerin 1. yumurta (+8. gün), 2. yumurta (+10. gün), fener kontrolü (+15. gün), yavru çıkışı (+28. gün) ve <strong>ayağa boncuk takma gününü (+35. gün)</strong> otomatik takip eder. <strong>🐣 Yavru Kaydet</strong> tuşuyla doğan yavruyu anne-babası bağlı olarak kümese ekler.</li>
+            <li><strong>⚙️ Ayarlar &amp; Yedek:</strong> Tüm kümesinizi tek bir <code>.JSON</code> dosyası olarak telefonunuza yedeklemenizi, yeni telefona aktarmanızı ve tek tuşla uygulama güncellemesi yapmanızı sağlar.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- BÖLÜM 2: ADIM ADIM NASIL KULLANILIR? -->
+    <div class="section-card">
+      <h2 class="section-title">📖 2. Adım Adım Pratik Kullanım Rehberi (Kuşçu İçin En Kısa Yol)</h2>
+      <div class="grid-3">
+        <div class="feature-box">
+          <h3><span class="step-badge">1</span> Yeni Kuş &amp; Yavru Ekleme</h3>
+          <p>
+            <strong>➕ Kuş Ekle</strong> butonuna basın. Bilezik numarasını ve adını yazın. Eğer bu kuşun anne ve babası zaten kümesinizde kayıtlıysa, alttaki <strong>"♂ Baba Seç"</strong> ve <strong>"♀ Anne Seç"</strong> kutularından seçin: 30 kutuluk tüm üst soyağacı tek saniyede otomatik dolacaktır!
+          </p>
+        </div>
+        <div class="feature-box">
+          <h3><span class="step-badge">2</span> Kuşa Derece Yazma</h3>
+          <p>
+            Kuş düzenleme ekranındaki <strong>"🏆 Standart Yarış / Damızlık Derecesi Ekle"</strong> kutusundan <em>Kendi Derecesi / Yavrusu / Öz Kardeşi</em> seçin; Etap, Mesafe (km), Sıra ve Kuş Sayısını yazıp <strong>+ Ekle</strong>'ye basın. Hem şecere kağıdına hem de yapay zekâya standart formatta işlenir.
+          </p>
+        </div>
+        <div class="feature-box">
+          <h3><span class="step-badge">3</span> En İyi Eşleşmeyi Bulma</h3>
+          <p>
+            <strong>🧬 GENESIS AI → 1. Akıllı Eşleştirme</strong> ekranına girin. Eşleştirme amacınızı (<em>Dengeli / Yarış Yavrusu Yabancı Kan / Damızlık Soy Sabitleme</em>) seçin. Üstteki <strong>"🏆 En Uygun 5 Eşleşmeyi Otomatik Göster"</strong> listesini açıp beğendiğiniz çifti tek tuşla aktif yuvaya kaydedin.
+          </p>
+        </div>
+        <div class="feature-box">
+          <h3><span class="step-badge">4</span> HD Pedigri Paylaşma</h3>
+          <p>
+            <strong>Kuşlarım → 📜 Pedigre Kağıdı</strong> ekranına geçin. Alttaki <strong>🖼️ HD Pedigre İndir</strong> veya <strong>📲 Paylaş</strong> butonuna basarak 4 kuşak mavi şecereyi yüksek çözünürlüklü resim olarak WhatsApp'tan gönderin veya yazıcıdan çıktı alın.
+          </p>
+        </div>
+        <div class="feature-box">
+          <h3><span class="step-badge">5</span> Yem &amp; Maliyet Hesabı</h3>
+          <p>
+            <strong>🧬 GENESIS AI → 2. Akıllı Yem &amp; Sıvı</strong> ekranına girin. Beslenecek grubu (Tüm Kümes / Yarışçı / Damızlık / Yavru) seçin. Günlük gramajları görün; alttaki <strong>1 Aylık Tüketim ve Maliyet</strong> tablosuna yem kg fiyatlarınızı girerek aylık masrafınızı hesaplayın.
+          </p>
+        </div>
+        <div class="feature-box">
+          <h3><span class="step-badge">6</span> Kümes Yedeği Alma</h3>
+          <p>
+            Haftada bir kez <strong>Profil &amp; Ayarlar → ⚙️ Ayarlar &amp; Yedek</strong> ekranındaki <strong>⬇️ Tam Yedeği İndir (.JSON)</strong> butonuna basın. Telefonunuz değişse veya sıfırlansa bile bu dosyayla tüm kuşlarınızı 5 saniyede geri yükleyebilirsiniz.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- BÖLÜM 3: AVIGEN FREE vs AVIGEN GENESIS AI PAKET KARŞILAŞTIRMASI -->
+    <div class="section-card">
+      <h2 class="section-title">👑 3. Versiyon Karşılaştırma Tablosu: AVIGEN FREE vs. AVIGEN GENESIS AI</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Özellik / Modül</th>
+            <th>🔓 1. AVIGEN FREE (Ücretsiz • Sınırsız Kuş)</th>
+            <th>🧬 2. AVIGEN AI / GENESIS AI (Tam Sürüm • 399 TL/ay • 3.990 TL/yıl)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Kuş &amp; 4 Kuşak (31 Kutu) Mavi Pedigri Kaydı</strong></td>
+            <td><strong>✅ Sınırsız Kuş &amp; Pedigri Kaydı (Ücretsiz)</strong></td>
+            <td><strong>✅ Sınırsız Kuş, Pedigri &amp; Soy Arşivi</strong></td>
+          </tr>
+          <tr>
+            <td><strong>HD Pedigri Resmi / PDF İndirme &amp; WhatsApp Paylaşımı</strong></td>
+            <td>✅ Dahil</td>
+            <td>✅ Dahil</td>
+          </tr>
+          <tr>
+            <td><strong>Otomatik Baba-Anne Bağlantılı 30 Kutu Yavru Şeceresi</strong></td>
+            <td>✅ Dahil</td>
+            <td>✅ Dahil (1–5. Nesil Tüm Kartlardan Çapraz Bağlama)</td>
+          </tr>
+          <tr>
+            <td><strong>Aktif Yuva, Kuluçka &amp; Boncuk Takma Günü Takibi</strong></td>
+            <td>✅ Dahil</td>
+            <td>✅ Dahil</td>
+          </tr>
+          <tr>
+            <td><strong>3 Kategorili Yarış Takibi (Kümesüstü / Dernek / Büyük Ödüllü)</strong></td>
+            <td>✅ Dahil</td>
+            <td>✅ Dahil + GENESIS AI Yarış Performans Analizi</td>
+          </tr>
+          <tr>
+            <td><strong>Canlı Hava Durumu, Rüzgâr &amp; Manyetik Kp (0-9)</strong></td>
+            <td>✅ Dahil</td>
+            <td>✅ Dahil</td>
+          </tr>
+          <tr>
+            <td><strong>📊 Bireysel Performans &amp; Genetik Profil Grafikleri</strong></td>
+            <td>✅ Dahil</td>
+            <td>✅ Dahil</td>
+          </tr>
+          <tr>
+            <td><strong>🧬 GENESIS AI'ya Sor (Yapay Zekâ Kümes &amp; Soy Danışmanı)</strong></td>
+            <td>🔒 GENESIS AI Aboneliği Gerektirir</td>
+            <td><strong>✅ Tam Erişim (Canlı Kümes Verili Soru-Cevap)</strong></td>
+          </tr>
+          <tr>
+            <td><strong>💞 GENESIS AI: 5 Nesil Akıllı Eşleştirme, Wright COI &amp; En Uygun 5 Çift</strong></td>
+            <td>🔒 GENESIS AI Aboneliği Gerektirir</td>
+            <td><strong>✅ Tam Erişim + 11 Yavru Özelliği &amp; Koşullu BLUP</strong></td>
+          </tr>
+          <tr>
+            <td><strong>🗺️ GENESIS AI: 81 İl/İlçe Haritalı Akıllı Yarış Simülasyonu</strong></td>
+            <td>🔒 GENESIS AI Aboneliği Gerektirir</td>
+            <td><strong>✅ Tam Erişim (Mobil Kartlı Dönüş Saati &amp; Hız Tahmini)</strong></td>
+          </tr>
+          <tr>
+            <td><strong>🌾 GENESIS AI: Tarih/Hava Bazlı Akıllı Yem, Suluk &amp; 1 Aylık Maliyet</strong></td>
+            <td>🔒 GENESIS AI Aboneliği Gerektirir</td>
+            <td><strong>✅ Tam Erişim (Canlı Fiyat Girişli)</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size:13px; color:#047857; font-weight:800; margin-top:10px; margin-bottom:0;">
+        📲 Cihaza Özel GENESIS AI Lisans Kodu Talep Hattı (WhatsApp): <strong>0 532 782 03 85</strong>
+      </p>
+    </div>
+
+    <!-- BÖLÜM 4: HAZIR PAZARLAMA VE TANITIM METİNLERİ -->
+    <div class="section-card">
+      <h2 class="section-title">📣 4. WhatsApp, Facebook Grupları ve Dernekler İçin Hazır Tanıtım Mesajları</h2>
+      <p style="font-size:13.5px; color:var(--muted); margin-top:0;">
+        Aşağıdaki hazır tanıtım metinlerini <strong>"📋 Metni Kopyala"</strong> butonuna basarak doğrudan WhatsApp gruplarında, Facebook posta güvercini sayfalarında veya dernek duyurularında paylaşabilirsiniz:
+      </p>
+
+      <div class="copy-card">
+        <div class="copy-header">
+          <strong style="color:var(--green);">📲 Şablon 1: WhatsApp Grupları İçin Vurucu &amp; Kısa Mesaj</strong>
+          <button class="btn btn-green no-print" style="padding:6px 12px; font-size:12px;" onclick="copyText('tpl1')">📋 Metni Kopyala</button>
+        </div>
+        <pre class="copy-pre" id="tpl1">🕊️ *AVIGEN — Yarış Güvercini Pedigri, Yuva ve Yapay Zekâ Kümes Programı*
+
+Defteri kalemi bırakın! Telefonunuzdan:
+✅ 4 Kuşak Mavi Resmi Pedigri Kağıdı hazırlayıp WhatsApp'tan HD resim olarak paylaşın,
+✅ Yavru eklerken sadece Baba ve Anneyi seçin, 30 atalık soyağacı otomatik dolsun,
+✅ *GENESIS AI* ile kümesinizdeki en uyumlu 5 çifti ve 5 nesil akrabalık (COI) riskini tek tuşla görün,
+✅ Kuş sayınıza ve mevsime göre günlük yem/sıvı gramajını ve 1 aylık yem maliyetinizi hesaplayın!
+
+🌐 Web / iPhone / Bilgisayar: https://hasanbenzer.github.io/avigen/
+📲 Android APK İndir: https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk</pre>
+      </div>
+
+      <div class="copy-card">
+        <div class="copy-header">
+          <strong style="color:var(--blue);">📘 Şablon 2: Facebook Grupları &amp; Güvercin Dernekleri İçin Detaylı Tanıtım</strong>
+          <button class="btn btn-blue no-print" style="padding:6px 12px; font-size:12px;" onclick="copyText('tpl2')">📋 Metni Kopyala</button>
+        </div>
+        <pre class="copy-pre" id="tpl2">🏆 POSTA VE YARIŞ GÜVERCİNİ YETİŞTİRİCİLERİ İÇİN YENİ NESİL KÜMES &amp; PEDİGRİ SİSTEMİ: AVIGEN 2.0
+
+Kümeste kuş tutarken tek elle kullanabileceğiniz, internet olmasa bile çalışan profesyonel kümes yönetim programı:
+
+1️⃣ 4 Kuşak Resmi Mavi Pedigri Stüdyosu: Yavruyu eklerken sadece Babayı ve Anneyi seçin; dede, nine ve tüm üst soyunu diğer kartlardan otomatik bağlasın. Tek tuşla HD Pedigri indirip paylaşın.
+2️⃣ GENESIS AI — 5 Nesil Akıllı Eşleştirme: Sadece yakın akrabalığa değil, ortak atanın gerçekten şampiyon olup olmadığına ve mesafe (Sprint / Orta / Maraton) tamamlayıcılığına bakarak kümesinizdeki en uygun 5 çifti otomatik sıralar.
+3️⃣ Akıllı Yem, Suluk Sıvı Reçetesi &amp; 1 Aylık Maliyet: Bugünün tarihine, canlı hava sıcaklığına ve kuşlarınızın durumuna göre günlük kaç gram yem verileceğini ve 1 aylık toplam yem/sıvı maliyetinizi TL olarak hesaplar.
+4️⃣ Canlı Uçuş Havası &amp; Güneş Manyetik (Kp) Takibi: 21 merkez ve GPS konumunuzla anlık rüzgâr, sıcaklık ve manyetik fırtına uyarısı verir.
+
+👉 Hemen Ücretsiz Deneyin (AVIGEN FREE): https://hasanbenzer.github.io/avigen/
+📲 Android Telefonlar İçin Direkt APK: https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk</pre>
+      </div>
+
+      <div class="copy-card">
+        <div class="copy-header">
+          <strong style="color:var(--purple);">🎯 Şablon 3: Kuşçuların En Çok Soracağı 5 Soru ve Hazır Cevapları</strong>
+        </div>
+        <div style="font-size:13px; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px;">
+          <p style="margin:0 0 8px;"><strong>Soru 1: "Telefonum bozulursa veya değişirse girdiğim kuşlar ve şecereler silinir mi?"</strong><br/>
+          👉 <strong>Cevap:</strong> Hayır! <em>Profil &amp; Ayarlar → Ayarlar &amp; Yedek</em> içinden <strong>"Tam Yedeği İndir (.JSON)"</strong> tuşuna bastığınızda tüm kümesiniz tek bir dosya olarak iner. Yeni telefonda <em>"Yedeği Geri Yükle"</em> dediğinizde tüm kuşlarınız saniyesinde geri gelir.</p>
+          <p style="margin:0 0 8px;"><strong>Soru 2: "Yeni yavru eklerken her seferinde 30 kutuluk dedesini ninesini baştan mı yazacağım?"</strong><br/>
+          👉 <strong>Cevap:</strong> Hayır! Yavruyu eklerken sadece kümesteki Babasını ve Annesini seçiyorsunuz; sistem anne ve babanın tüm üst soyunu diğer kartlardan otomatik çekip 30 kutuyu kendisi dolduruyor.</p>
+          <p style="margin:0 0 8px;"><strong>Soru 3: "Kümeste internet çekmiyor, program çalışır mı?"</strong><br/>
+          👉 <strong>Cevap:</strong> Evet! AVIGEN çevrimdışı (offline) mimariyle çalışır. Kuşlarınız, şecereleriniz, eşleştirme ve yem analizleriniz internet olmadan da %100 çalışır (sadece canlı hava durumu için internet gerekir).</p>
+          <p style="margin:0 0 8px;"><strong>Soru 4: "Yeni güncelleme çıktığında telefondaki kuşlarım silinir mi?"</strong><br/>
+          👉 <strong>Cevap:</strong> Kesinlikle silinmez. <em>Ayarlar &amp; Yedek</em> ekranındaki <strong>"⚡ Şimdi Güncelle"</strong> butonu kayıtlı kuşlarınıza hiç dokunmadan sadece yeni özellikleri yükler.</p>
+          <p style="margin:0;"><strong>Soru 5: "Hem Android telefonda, hem iPhone'da, hem bilgisayarda çalışır mı?"</strong><br/>
+          👉 <strong>Cevap:</strong> Evet! Android telefonlara doğrudan <code>AVIGEN.apk</code> olarak kurulur; iPhone ve bilgisayarlarda ise web linkinden açılıp <em>"Ana Ekrana Ekle"</em> denilerek tam ekran uygulama olarak kullanılır.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function copyText(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const txt = el.innerText;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(() => {
+          alert('✅ Metin kopyalandı! WhatsApp veya Facebook\'a doğrudan yapıştırabilirsiniz.');
+        });
+      } else {
+        prompt('Metni kopyalayın:', txt);
+      }
+    }
+  </script>
+</body>
+</html>
