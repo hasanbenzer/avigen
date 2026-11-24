@@ -14,11 +14,11 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
   <link rel="icon" type="image/svg+xml" href="avigen-logo.svg" />
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
-  <link rel="manifest" href="manifest.json?v=5.5.3" />
+  <link rel="manifest" href="manifest.json?v=5.6.0" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@500;700;800&family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5.5.3" />
+  <link rel="stylesheet" href="styles.css?v=5.6.0" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
@@ -183,8 +183,20 @@
               </div>
             </div>
 
-            <!-- Canlı AVIGEN Mavi Pedigre Şablonu (İki Parmakla Pinch-to-Zoom + Kademeli Büyütme Destekli) -->
+            <!-- Canlı AVIGEN Mavi Pedigre Şablonu (1. Sayfa Soyağacı + 2. Sayfa Performans, Genetik Profil & Sicil Dosyası) -->
             <div class="pedigree-stage-box" id="pedigreeStageBox">
+              <!-- PEDİGRE SAYFA SEÇİCİ (1. SAYFA SOYAĞACI | 2. SAYFA PERFORMANS, GENETİK & SİCİL | İKİ SAYFA BİRLİKTE) -->
+              <div style="width:100%; display:grid; grid-template-columns:1fr 1.15fr 0.85fr; gap:4px; margin-bottom:6px;">
+                <button type="button" id="btnPedPage1" class="ios-btn ios-btn-primary" style="padding:5px 6px; font-size:9.8px; font-weight:900;" onclick="switchPedigreeSheetPage('page1')">
+                  📜 1. Sayfa: 4 Kuşak Pedigri
+                </button>
+                <button type="button" id="btnPedPage2" class="ios-btn ios-btn-outline" style="padding:5px 6px; font-size:9.8px; font-weight:900; background:#1e293b; color:#e2e8f0; border-color:#475569;" onclick="switchPedigreeSheetPage('page2')">
+                  📊 2. Sayfa: Performans &amp; Sicil
+                </button>
+                <button type="button" id="btnPedPageBoth" class="ios-btn ios-btn-outline" style="padding:5px 6px; font-size:9.8px; font-weight:900; background:#1e293b; color:#e2e8f0; border-color:#475569;" onclick="switchPedigreeSheetPage('both')">
+                  📑 1+2 Sayfa
+                </button>
+              </div>
               <div style="width:100%; display:flex; justify-content:space-between; align-items:center; color:#cbd5e1; font-size:10px; margin-bottom:5px; padding:0 2px; gap:4px;">
                 <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👆 Kutuya dokun düzenle • 🤏 İki parmakla büyüt</span>
                 <div style="display:flex; align-items:center; gap:3px; flex-shrink:0;">
@@ -199,16 +211,16 @@
               </div>
             </div>
 
-            <!-- Sadeleştirilmiş 1-Dokunuş Sadece Pedigri PDF İndirme & WhatsApp PDF Paylaşma Çubuğu -->
+            <!-- Sadeleştirilmiş 1-Dokunuş 2 Sayfa Pedigri + Sicil PDF İndirme & WhatsApp PDF Paylaşma Çubuğu -->
             <div class="ios-card" style="padding:9px 11px; flex-shrink:0;">
               <div class="btn-row">
                 <button class="ios-btn ios-btn-primary" style="flex:1.35; padding:10px;" onclick="downloadHighResPedigree()">
-                  📄 Pedigre PDF İndir
+                  📄 Pedigre + Sicil PDF İndir
                 </button>
                 <button class="ios-btn ios-btn-green" style="flex:1.35; padding:10px;" onclick="shareActivePedigree()">
                   📲 WhatsApp PDF Paylaş
                 </button>
-                <button class="ios-btn ios-btn-outline" style="padding:10px 10px;" onclick="downloadHighResPedigreePng()" title="Sadece Pedigriyi Yüksek Çözünürlüklü Resim (PNG) Olarak İndir">
+                <button class="ios-btn ios-btn-outline" style="padding:10px 10px;" onclick="downloadHighResPedigreePng()" title="Pedigri ve Performans/Sicil Kartını Yüksek Çözünürlüklü Resim (PNG) Olarak İndir">
                   🖼️ PNG
                 </button>
               </div>
@@ -1068,15 +1080,15 @@
     </div>
   </div>
 
-  <script src="real-pedigrees-64.js?v=5.5.3"></script>
-  <script src="app.js?v=5.5.3"></script>
-  <script src="scientific-library.js?v=5.5.3"></script>
-  <script src="genesis-ai.js?v=5.5.3"></script>
-  <script src="performance-profile.js?v=5.5.3"></script>
+  <script src="real-pedigrees-64.js?v=5.6.0"></script>
+  <script src="app.js?v=5.6.0"></script>
+  <script src="scientific-library.js?v=5.6.0"></script>
+  <script src="genesis-ai.js?v=5.6.0"></script>
+  <script src="performance-profile.js?v=5.6.0"></script>
   <script>
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=5.5.3').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=5.6.0').then((reg) => {
           if (reg && typeof reg.update === 'function') {
             reg.update().catch(() => {});
           }

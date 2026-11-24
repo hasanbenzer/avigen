@@ -1615,11 +1615,121 @@ function renderHomeFlightWeatherStrip() {
   syncLoftIdentityAcrossUI();
 }
 
+let homeFeedBriefingMode = 'AUTO'; // 'AUTO' | 'RACE' | 'BREEDING' | 'MOULTING' | 'WINTER'
+
+function setHomeFeedBriefingMode(modeKey) {
+  homeFeedBriefingMode = modeKey || 'AUTO';
+  renderHomeMorningBriefingCard();
+}
+
 function renderHomeMorningBriefingCard() {
   const box = document.getElementById('homeMorningBriefingCard');
   if (!box) return;
-  box.style.display = 'none';
-  box.innerHTML = '';
+
+  const allActive = collectUniqueLoftBirds().filter(b => b.isActiveLoftBird);
+  const totalBirds = allActive.length;
+  const racersCnt = allActive.filter(b => b.roleCategory === 'RACER').length;
+  const breedersCnt = allActive.filter(b => b.roleCategory === 'BREEDER').length;
+  const youngCnt = allActive.filter(b => b.roleCategory === 'YOUNG').length;
+  const nestsCnt = Array.isArray(activePairsList) ? activePairsList.length : 0;
+
+  const wState = (typeof AvigenLiveWeather !== 'undefined' && AvigenLiveWeather.state)
+    ? AvigenLiveWeather.state
+    : { cityName: 'Türkiye', temp: 18, windSpeedKmh: 12 };
+  const temp = Number(wState.temp ?? 18);
+
+  const now = new Date();
+  const monthNum = now.getMonth() + 1;
+  const dayNum = now.getDay();
+  const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+  const dayName = dayNames[dayNum];
+
+  // Otomatik Mevsim ve Kümes Durumu Tespiti
+  let effectiveMode = homeFeedBriefingMode;
+  if (effectiveMode === 'AUTO') {
+    if (nestsCnt > 0 && (monthNum >= 2 && monthNum <= 6)) {
+      effectiveMode = 'BREEDING';
+    } else if (monthNum >= 4 && monthNum <= 8) {
+      effectiveMode = 'RACE';
+    } else if (monthNum === 9 || monthNum === 10) {
+      effectiveMode = 'MOULTING';
+    } else {
+      effectiveMode = nestsCnt > 0 ? 'BREEDING' : 'WINTER';
+    }
+  }
+
+  let phaseTitle = '';
+  let phaseBadge = '';
+  let feedNote = '';
+  let drinkNote = '';
+
+  if (effectiveMode === 'RACE') {
+    if (dayNum === 0 || dayNum === 1) {
+      phaseTitle = `🏁 Yarış & Antrenman Dönemi (${dayName} • Toparlanma)`;
+      phaseBadge = 'Detoks & Elektrolit';
+      feedNote = `<strong>Kuş Başı 32–34 gr/gün</strong> (Sabah %35 / Akşam %65) • Yarış/uçuş dönüşü karaciğeri yormayan <strong>%35 Kavuzsuz Arpa + %25 Beyaz Darı + %15 Çeltik + %15 Buğday + %10 Aspir</strong> verilmeli; ilk 24 saat ağır bezelye verilmemelidir.`;
+      drinkNote = `<strong>Sulukta:</strong> 1 Lt suya <strong>2 ml Elektrolit + Aminoasit</strong> (veya bal/dekstroz). <strong>Yem Üstü:</strong> Karaciğer koruyucu (Metiyonin/Sedochol) + Probiyotik tozu.`;
+    } else if (dayNum === 4 || dayNum === 5) {
+      phaseTitle = `🏁 Yarış & Antrenman Dönemi (${dayName} • Enerji Yükleme)`;
+      phaseBadge = 'Glikojen & Lipit';
+      feedNote = `<strong>Kuş Başı 38–42 gr/gün</strong> • Sepetleme öncesi uçuş yakıtı için <strong>%35 Cin Mısırı (Kırmızı/Sarı) + %22 Beyaz Darı + %20 Aspir/Soyulmuş Ayçekirdeği/Kenevir + %13 Buğday + %10 Küçük Bezelye</strong>.`;
+      drinkNote = `<strong>Sulukta:</strong> ${temp >= 26 ? `Sıcak hava (${temp}°C) nedeniyle öğleye kadar <strong>Elektrolit + Vitamin C</strong>, akşam <strong>saf klorsuz su</strong>.` : `<strong>B-Kompleks Vitamin + L-Karnitin</strong>, sepetleme günü ise yalnızca <strong>saf taze içme suyu</strong>.`}`;
+    } else {
+      phaseTitle = `🏁 Yarış & Antrenman Dönemi (${dayName} • Kas Onarımı)`;
+      phaseBadge = 'Kas & Kondisyon';
+      feedNote = `<strong>Kuş Başı 36–38 gr/gün</strong> • Göğüs kası onarımı ve antrenman temposu için <strong>%25 Cin Mısırı + %22 Bezelye/Maş/Fiğ + %20 Beyaz Darı + %18 Buğday/Arpa + %15 Aspir/Keten</strong>.`;
+      drinkNote = `<strong>Sulukta:</strong> 1 Lt suya <strong>5 ml Doğal Elma Sirkesi</strong> veya <strong>Solunum/Kekik Çayı</strong>. <strong>Yem Üstü:</strong> Sarımsak/Omega-3 Yağı + Bira Mayası.`;
+    }
+  } else if (effectiveMode === 'BREEDING') {
+    phaseTitle = `🪺 Eşleşme, Kuluçka & Yavru Büyütme (${nestsCnt} Aktif Yuva)`;
+    phaseBadge = 'Yüksek Protein & Kalsiyum';
+    feedNote = `<strong>Kuş Başı 40–45 gr/gün</strong> (Yavrulu çiftlerde günde 2–3 öğün) • Yavru iskelet/kas gelişimi ve kursak sütü için <strong>%28 Bezelye + Maş + Fiğ (Bakliyat) + %24 Cin Mısırı + %20 Buğday/Darı + %16 Aspir/Kenevir + %12 Kavuzsuz Yulaf</strong>.`;
+    drinkNote = `<strong>Sulukta:</strong> Haftada 2 gün <strong>Kalsiyum + D3 Vitamini</strong>, 2 gün <strong>Elma Sirkesi / Probiyotik (1 Lt suya 5 ml)</strong>. <strong>Kümes Önünde:</strong> Her gün taze <strong>Grit + Kırmızı Taş + İstiridye Kabuğu</strong>.`;
+  } else if (effectiveMode === 'MOULTING') {
+    phaseTitle = `🪶 Tüy Dökümü & Telek Yenileme (Moulting) Dönemi`;
+    phaseBadge = 'Omega-3 & Keratin';
+    feedNote = `<strong>Kuş Başı 38–40 gr/gün</strong> • Yeni teleklerin ipeksi ve esnek çıkması için yağlı tohum ağırlıklı <strong>%22 Bezelye/Fiğ + %22 Mısır + %20 Buğday/Arpa + %20 Keten Tohumu/Aspir/Kanola/Kenevir + %16 Darı</strong>.`;
+    drinkNote = `<strong>Sulukta:</strong> Haftada 2 gün <strong>Metiyonin + Bira Mayası + B-Kompleks</strong>. Haftada 1 gün ılık güneşte <strong>Banyo Suyu (10 Lt suya 1 kaşık kaya tuzu + 2 kaşık elma sirkesi)</strong>.`;
+  } else {
+    // WINTER (Kış & Dinlenme)
+    phaseTitle = `❄️ Kış & Dinlenme Dönemi (${temp}°C • İç Yağlanma Koruması)`;
+    phaseBadge = 'Lif & Bağışıklık';
+    feedNote = `<strong>Kuş Başı ${temp <= 8 ? '36–38' : '32–34'} gr/gün</strong> (Tek öğün veya hafif sabah/akşam) • Damızlıklarda iç yağlanmayı önleyen <strong>%38 Arpa & Çeltik + %22 Buğday + %20 Cin Mısırı + %12 Darı + %8 Aspir/Keten</strong>.`;
+    drinkNote = `<strong>Sulukta:</strong> Haftada 2 gün <strong>1 Lt suya 5 ml Doğal Elma Sirkesi</strong>, 1 gün <strong>Sarımsak-Limon-Kekik Kürü veya Probiyotik</strong>, diğer günler klorsuz taze su ve taze <strong>Grit Taşı</strong>.`;
+  }
+
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div class="ios-card" style="padding:9px 11px; border-left:4px solid #059669; background:linear-gradient(135deg, var(--ios-card) 0%, rgba(16,185,129,0.06) 100%);">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
+        <div style="display:flex; align-items:center; gap:5px;">
+          <span style="font-size:13px;">🌾💧</span>
+          <span style="font-size:11px; font-weight:900; color:var(--ios-text);">${phaseTitle}</span>
+        </div>
+        <span class="gene-badge gene-green" style="font-size:8px; padding:2px 6px;">${phaseBadge}</span>
+      </div>
+
+      <!-- HIZLI DÖNEM / DURUM SEÇİCİ -->
+      <div style="display:flex; gap:4px; overflow-x:auto; padding-bottom:5px; margin-bottom:6px;">
+        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'AUTO' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.6px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('AUTO')">🔄 Otomatik (${totalBirds} Kuş)</button>
+        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'RACE' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.6px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('RACE')">🏁 Yarış (${racersCnt})</button>
+        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'BREEDING' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.6px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('BREEDING')">🪺 Eşleşme/Yavru (${breedersCnt + youngCnt})</button>
+        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'MOULTING' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.6px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('MOULTING')">🪶 Tüy Dönemi</button>
+        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'WINTER' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.6px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('WINTER')">❄️ Kış Dinlenme</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr; gap:5px; font-size:9.6px; line-height:1.38;">
+        <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px;">
+          <div style="font-weight:900; color:#b45309; margin-bottom:2px;">🥣 Bugün Verilecek Yem &amp; Karışım Oranı:</div>
+          <div style="color:var(--ios-text);">${feedNote}</div>
+        </div>
+        <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px;">
+          <div style="font-weight:900; color:#0284c7; margin-bottom:2px;">💧 Bugün Verilecek İçecek (Suluk) &amp; Doğal Takviye:</div>
+          <div style="color:var(--ios-text);">${drinkNote}</div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 // Ana Sayfa Hızlı Güvercin Arama (1-Dokunuşla Pedigre, Profil veya GENESIS Analiz Açma)
@@ -3752,6 +3862,349 @@ function getInlineAvigenLogoSvgHtml(styleStr = 'width:100%;height:100%;display:b
   </svg>`;
 }
 
+let activePedigreeSheetPageMode = 'page1'; // 'page1' | 'page2' | 'both'
+
+function switchPedigreeSheetPage(modeKey) {
+  activePedigreeSheetPageMode = ['page1', 'page2', 'both'].includes(modeKey) ? modeKey : 'page1';
+  const b1 = document.getElementById('btnPedPage1');
+  const b2 = document.getElementById('btnPedPage2');
+  const bBoth = document.getElementById('btnPedPageBoth');
+  [
+    { el: b1, key: 'page1' },
+    { el: b2, key: 'page2' },
+    { el: bBoth, key: 'both' }
+  ].forEach(item => {
+    if (!item.el) return;
+    if (activePedigreeSheetPageMode === item.key) {
+      item.el.className = 'ios-btn ios-btn-primary';
+      item.el.style.cssText = 'padding:5px 6px; font-size:9.8px; font-weight:900;';
+    } else {
+      item.el.className = 'ios-btn ios-btn-outline';
+      item.el.style.cssText = 'padding:5px 6px; font-size:9.8px; font-weight:900; background:#1e293b; color:#e2e8f0; border-color:#475569;';
+    }
+  });
+  renderActivePedigree();
+}
+
+function computePedigreePage2Data(ped) {
+  const b = ped?.boxes || {};
+  const main = b.main || { flag: '🇹🇷', ring: 'TR-2026-0001', name: 'Şampiyon', color: 'Mavi Çakmaklı', notes: '', sex: 'M' };
+  const ringClean = (main.ring || '').trim();
+  const ringUp = ringClean.toUpperCase();
+
+  // 1. Performans ve Genetik Profil Motorundan Verileri Al
+  let perfProfile = null;
+  if (typeof AvigenPerformanceEngine !== 'undefined' && typeof AvigenPerformanceEngine.computeBirdFullProfile === 'function') {
+    try {
+      perfProfile = AvigenPerformanceEngine.computeBirdFullProfile(ringClean);
+    } catch (e) {}
+  }
+
+  const breedingScore = perfProfile?.geneticProfile?.breedingValueScore ?? 82;
+  const raceScore = perfProfile?.performanceSummary?.overallPerformanceScore ?? 79;
+  const reliabilityPct = perfProfile?.performanceSummary?.dataReliabilityPct ?? 74;
+  const coiPct = perfProfile?.geneticProfile?.inbreedingCoiPct ?? 0.0;
+  const specialtyLabel = perfProfile?.geneticProfile?.distanceSpecialtyLabel || 'Orta & Uzun Mesafe (All-Round)';
+  const distSuit = perfProfile?.geneticProfile?.distanceSuitability || {
+    sprint: 78,
+    middle: 86,
+    long: 82,
+    marathon: 74
+  };
+
+  // 2. Fiziksel (Ele Alma / Fenotip) Özellikler
+  const eyeLabels = {
+    yellow_breeder: 'Sarı İris (Damızlık & Hız)',
+    pearl_racer: 'Beyaz / İnci İris (Yarışçı)',
+    orange_amber: 'Portakal / Kehribar İris',
+    red_chestnut: 'Kırmızı / Kestane İris',
+    violet_pearl: 'Menekşe / Viyole İnci İris',
+    green_circle: 'Yeşil Halkalı Sarı İris',
+    gravel_grey: 'Dumanlı Gri / Çakıl İris',
+    dark_brown: 'Koyu Kestane / Kahve İris',
+    bull_eye: 'Koyu / Bilye Göz (Bull Eye)',
+    split_eye: 'Çift Renkli / Kırık Göz'
+  };
+  const roleLabels = {
+    BREEDER: 'Damızlık Kadrosu',
+    RACER: 'Yarış Kadrosu',
+    YOUNG: 'Genç / Yavru Kadrosu'
+  };
+  const statusLabels = {
+    ACTIVE: 'Aktif Kümeste',
+    RESTING: 'Dinlenmede',
+    LOST_SOLD: 'Kayıp / Satıldı'
+  };
+
+  const phenotype = {
+    bodyBuild: main.bodyBuild || 'Standart Dengeli Gövde',
+    muscleType: main.muscleType || 'Esnek ve Güçlü Göğüs Kası',
+    pubicBone: main.pubicBone || 'Sıkı ve Dengeli Çatal Kemik',
+    wingFeather: main.wingFeather || 'Dengeli Kanat & İpeksi Telek',
+    eyeSignLabel: eyeLabels[main.eyeSign] || 'Beyaz / İnci İris',
+    roleLabel: roleLabels[main.roleCategory] || 'Yarış & Damızlık',
+    statusLabel: statusLabels[main.birdStatus] || 'Aktif Kümeste'
+  };
+
+  // 3. Resmi Yarış Geçmişi + Pedigri Başarı Satırları
+  const raceRecords = [];
+  if (typeof AvigenRaceTracker !== 'undefined' && typeof AvigenRaceTracker.getBirdRaceHistory === 'function') {
+    try {
+      const trackerHist = AvigenRaceTracker.getBirdRaceHistory(ringClean) || [];
+      trackerHist.forEach(h => {
+        const rankTxt = h.rank ? `${h.rank}. Derece` : (h.birdStatusLabel || 'Katıldı');
+        const speedTxt = h.speedMpm ? `${h.speedMpm} m/dk` : '';
+        raceRecords.push({
+          title: `${h.raceTitle || 'Yarış Etabı'} (${h.distanceKm || '-'} km)`,
+          detail: [rankTxt, h.totalCompetitors ? `${h.totalCompetitors} Kuş` : '', speedTxt, h.releaseDate || ''].filter(Boolean).join(' • ')
+        });
+      });
+    } catch (e) {}
+  }
+
+  const noteLines = String(main.notes || '')
+    .split(/\r?\n/)
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('Fiziksel Yapı:'));
+  noteLines.forEach(line => {
+    if (raceRecords.length < 7) {
+      raceRecords.push({
+        title: line.slice(0, 78),
+        detail: 'Pedigri Resmi Başarı & Soy Kaydı'
+      });
+    }
+  });
+
+  // 4. Kişisel Sicil Dosyası Kayıtları (birdDossierList + Aktif Yuva Eşleşmeleri)
+  const dossierRecords = [];
+  if (Array.isArray(birdDossierList)) {
+    birdDossierList.forEach(item => {
+      const itemRing = String(item.ring || '').toUpperCase();
+      if (ringUp && (itemRing.includes(ringUp) || ringUp.includes(itemRing))) {
+        dossierRecords.push({
+          date: item.date || '-',
+          category: item.category || 'Sicil Kaydı',
+          detail: item.detail || ''
+        });
+      }
+    });
+  }
+  if (Array.isArray(activePairsList)) {
+    activePairsList.forEach(pair => {
+      const sUp = String(pair.sire || '').toUpperCase();
+      const dUp = String(pair.dam || '').toUpperCase();
+      if (ringUp && (sUp.includes(ringUp) || dUp.includes(ringUp))) {
+        dossierRecords.push({
+          date: pair.eventDate || 'Aktif',
+          category: `🪺 ${pair.nest || 'Aktif Yuva'}`,
+          detail: `Eşleşme: ♂ ${pair.sire} × ♀ ${pair.dam} (${pair.detail || 'Kuluçka/Yavru Takibi'})`
+        });
+      }
+    });
+  }
+
+  return {
+    main,
+    breedingScore,
+    raceScore,
+    reliabilityPct,
+    coiPct,
+    specialtyLabel,
+    distSuit,
+    phenotype,
+    raceRecords,
+    dossierRecords
+  };
+}
+
+function buildPedigreeSecondPageHtml(ped, logoHtml, birdPhotoHtml, accent, genDepth, showCodes) {
+  const d = computePedigreePage2Data(ped);
+  const main = d.main;
+
+  return `
+    <div class="paper-watermark">${escapeHtml(loftConfig.title)}</div>
+
+    <!-- ÜST BAŞLIK & ANA KUŞ (1. SAYFA İLE BİREBİR KURUMSAL BÜTÜNLÜK) -->
+    <div class="paper-top">
+      <div class="paper-loft" onclick="openLoftHeaderModal()" style="cursor:pointer;">
+        <div class="paper-logo">${logoHtml}</div>
+        <div class="paper-loft-title">
+          <h2>${escapeHtml(loftConfig.title)}</h2>
+          <p>SAYFA 2 / 2 • PERFORMANS, GENETİK PROFİL &amp; KİŞİSEL SİCİL DOSYASI</p>
+        </div>
+      </div>
+
+      <div class="paper-main-bird" onclick="openBoxEditModal('main')">
+        <div class="paper-bird-photo">${birdPhotoHtml}</div>
+        <div style="min-width:0; flex:1; overflow:hidden;">
+          <div style="font-size:12.5px; font-weight:900; color:${accent}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${main.flag || '🇹🇷'} ${escapeHtml(main.ring)} • ${main.sex === 'F' ? '♀ Dişi' : '♂ Erkek'}
+          </div>
+          <div style="font-size:11px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.name || 'İsimsiz Güvercin')}</div>
+          <div style="font-size:8.5px; opacity:0.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.color || 'Mavi Çakmaklı')} • ${escapeHtml(d.phenotype.roleLabel)}</div>
+          <div style="font-size:8px; font-weight:800; color:#047857; margin-top:1px;">Uzmanlık: ${escapeHtml(d.specialtyLabel)}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. SAYFA ANA GÖVDE: 2x2 KURUMSAL ANALİZ VE SİCİL TABLOSU -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; grid-template-rows:195px 218px; gap:8px; height:422px; padding:2px 0;">
+
+      <!-- KUTU 1 (SOL ÜST): BİREYSEL PERFORMANS & GENETİK PROFİL KARTI -->
+      <div style="background:#ffffff; border:1.5px solid #93c5fd; border-left:4px solid #1d4ed8; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; justify-content:space-between;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
+          <span style="font-size:10px; font-weight:900; color:#1e3a8a;">📊 1. PERFORMANS &amp; GENETİK PROFİL ENDEKSİ</span>
+          <span style="font-size:8px; font-weight:800; background:#eff6ff; color:#1d4ed8; padding:1px 6px; border-radius:4px;">Güven: %${d.reliabilityPct}</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; text-align:center; margin:4px 0;">
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:4px;">
+            <div style="font-size:7.2px; font-weight:800; color:#475569;">DAMIZLIK DEĞERİ (EBV)</div>
+            <div style="font-size:14px; font-weight:900; color:#1d4ed8;">${d.breedingScore}/100</div>
+          </div>
+          <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:6px; padding:4px;">
+            <div style="font-size:7.2px; font-weight:800; color:#475569;">YARIŞ PERFORMANSI</div>
+            <div style="font-size:14px; font-weight:900; color:#047857;">${d.raceScore}/100</div>
+          </div>
+          <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:6px; padding:4px;">
+            <div style="font-size:7.2px; font-weight:800; color:#475569;">WRIGHT 5 NESİL COI</div>
+            <div style="font-size:13px; font-weight:900; color:#6d28d9;">%${Number(d.coiPct || 0).toFixed(2)}</div>
+          </div>
+        </div>
+
+        <!-- 4 Mesafe Kategorisi Çubukları -->
+        <div style="display:flex; flex-direction:column; gap:3.5px; font-size:8px;">
+          ${[
+            { label: 'Sprint / Kısa Mesafe (100-300 km)', val: d.distSuit.sprint || 78, col: '#0284c7' },
+            { label: 'Orta Mesafe (300-500 km)', val: d.distSuit.middle || 85, col: '#1d4ed8' },
+            { label: 'Uzun Mesafe (500-700 km)', val: d.distSuit.long || 82, col: '#7c3aed' },
+            { label: 'Maraton / Ekstrem (700+ km)', val: d.distSuit.marathon || 74, col: '#059669' }
+          ].map(bar => `
+            <div>
+              <div style="display:flex; justify-content:space-between; font-weight:800; color:#334155; margin-bottom:1px;">
+                <span>${bar.label}</span>
+                <span style="color:${bar.col};">%${bar.val}</span>
+              </div>
+              <div style="height:5px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
+                <div style="width:${Math.min(100, Math.max(15, bar.val))}%; height:100%; background:${bar.col}; border-radius:3px;"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- KUTU 2 (SAĞ ÜST): KUŞÇU ELE ALMA, FİZİKSEL FENOTİP & KİMLİK ÖZELLİKLERİ -->
+      <div style="background:#ffffff; border:1.5px solid #c4b5fd; border-left:4px solid #7c3aed; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; justify-content:space-between;" onclick="openBoxEditModal('main')">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
+          <span style="font-size:10px; font-weight:900; color:#5b21b6;">✋ 2. ELE ALMA &amp; FİZİKSEL FENOTİP KİMLİĞİ</span>
+          <span style="font-size:7.8px; font-weight:800; color:#7c3aed; cursor:pointer;">✎ Düzenle</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; font-size:8.3px;">
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; padding:4px 6px;">
+            <div style="font-size:7.2px; font-weight:800; color:#64748b;">GÖVDE &amp; OMURGA YAPISI</div>
+            <div style="font-weight:900; color:#0f172a; margin-top:1px;">${escapeHtml(d.phenotype.bodyBuild)}</div>
+          </div>
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; padding:4px 6px;">
+            <div style="font-size:7.2px; font-weight:800; color:#64748b;">GÖĞÜS KASI KARAKTERİ</div>
+            <div style="font-weight:900; color:#0f172a; margin-top:1px;">${escapeHtml(d.phenotype.muscleType)}</div>
+          </div>
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; padding:4px 6px;">
+            <div style="font-size:7.2px; font-weight:800; color:#64748b;">ÇATAL KEMİK (PUBİS)</div>
+            <div style="font-weight:900; color:#0f172a; margin-top:1px;">${escapeHtml(d.phenotype.pubicBone)}</div>
+          </div>
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; padding:4px 6px;">
+            <div style="font-size:7.2px; font-weight:800; color:#64748b;">KANAT &amp; SON 3 TELEK</div>
+            <div style="font-weight:900; color:#0f172a; margin-top:1px;">${escapeHtml(d.phenotype.wingFeather)}</div>
+          </div>
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; padding:4px 6px;">
+            <div style="font-size:7.2px; font-weight:800; color:#64748b;">GÖZ İRİS İŞARETİ (EYE-SIGN)</div>
+            <div style="font-weight:900; color:#5b21b6; margin-top:1px;">${escapeHtml(d.phenotype.eyeSignLabel)}</div>
+          </div>
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; padding:4px 6px;">
+            <div style="font-size:7.2px; font-weight:800; color:#64748b;">KÜMES STATÜSÜ &amp; EBEVEYN</div>
+            <div style="font-weight:900; color:#047857; margin-top:1px;">♂ ${escapeHtml(ped.boxes?.sire?.ring || '-')} × ♀ ${escapeHtml(ped.boxes?.dam?.ring || '-')}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KUTU 3 (SOL ALT): RESMİ YARIŞ DERECELERİ, ETAP HIZLARI & SOY BAŞARILARI -->
+      <div style="background:#ffffff; border:1.5px solid #6ee7b7; border-left:4px solid #059669; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:4px; margin-bottom:5px;">
+          <span style="font-size:10px; font-weight:900; color:#065f46;">🏆 3. YARIŞ DERECELERİ &amp; PERFORMANS KAYITLARI</span>
+          <span style="font-size:7.8px; font-weight:800; background:#ecfdf5; color:#047857; padding:1px 6px; border-radius:4px;">${d.raceRecords.length} Kayıt</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:4px; overflow:hidden; flex:1;">
+          ${d.raceRecords.length > 0 ? d.raceRecords.slice(0, 5).map((rItem, idx) => `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-left:3px solid #059669; border-radius:5px; padding:3.5px 6px; font-size:8.2px;">
+              <div style="font-weight:900; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${idx + 1}. ${escapeHtml(rItem.title)}</div>
+              <div style="font-size:7.5px; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(rItem.detail)}</div>
+            </div>
+          `).join('') : `
+            <div style="font-size:8.5px; color:#64748b; padding:12px 6px; text-align:center;">
+              Henüz bireysel yarış veya derece kaydı girilmemiş. Kuş kutusuna dokunarak "+ Standart Derece Ekle" aracından yarış derecesi ekleyebilirsiniz.
+            </div>
+          `}
+        </div>
+      </div>
+
+      <!-- KUTU 4 (SAĞ ALT): GÜVERCİN KİŞİSEL SİCİL DOSYASI (AŞI, SAĞLIK, YUVA & KÜMES NOTLARI) -->
+      <div style="background:#ffffff; border:1.5px solid #fcd34d; border-left:4px solid #d97706; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column;" onclick="openBirdDossierModal('${escapeHtml(main.ring)}', '${escapeHtml(main.name || '')}')">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:4px; margin-bottom:5px;">
+          <span style="font-size:10px; font-weight:900; color:#92400e;">📋 4. KİŞİSEL SİCİL DOSYASI (SAĞLIK, AŞI &amp; YUVA)</span>
+          <span style="font-size:7.8px; font-weight:900; background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:1px 6px; border-radius:4px; cursor:pointer;">+ Sicil Ekle</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:4px; overflow:hidden; flex:1;">
+          ${d.dossierRecords.length > 0 ? d.dossierRecords.slice(0, 5).map(doc => `
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-left:3px solid #d97706; border-radius:5px; padding:3.5px 6px; font-size:8.2px;">
+              <div style="display:flex; justify-content:space-between; font-weight:900; color:#92400e;">
+                <span>${escapeHtml(doc.category)}</span>
+                <span style="font-size:7.4px; color:#b45309;">${escapeHtml(doc.date)}</span>
+              </div>
+              <div style="font-size:7.6px; color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(doc.detail)}</div>
+            </div>
+          `).join('') : `
+            <div style="background:#fffbeb; border:1px dashed #fcd34d; border-radius:6px; padding:10px 8px; font-size:8.3px; color:#92400e; line-height:1.4;">
+              <strong>📋 Resmi Kümes Sicil Özeti:</strong><br/>
+              • Kuş Halka No: <strong>${escapeHtml(main.ring)}</strong> (${escapeHtml(d.phenotype.statusLabel)})<br/>
+              • Aşı, sağlık tedavisi, eşleşme veya özel kümes sicil kaydı eklemek için bu kutuya dokunun.
+            </div>
+          `}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ALT BİLGİ: QR KOD & BARKOD + AVIGEN GENESIS AI RESMİ SERTİFİKA BARI -->
+    <div class="paper-footer" style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <div class="paper-codes">
+        ${showCodes ? makeQrSvg(encodeFullPedigreeQrPayload(ped)) : ''}
+        ${showCodes ? makeBarcodeSvg(main.ring) : ''}
+        <div>
+          <strong style="color:${accent};">${escapeHtml(loftConfig.title)} — SAYFA 2 (PERFORMANS &amp; SİCİL)</strong>
+          <div>AVIGEN Dijital Sicil &amp; Profil Kodu: #AVG-${(main.ring || '001').replace(/[^A-Z0-9]/gi, '').slice(-5)}-P2</div>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:7px; background:linear-gradient(135deg, #0a1938 0%, #1e3a8a 60%, #3b0764 100%); border:1.2px solid #f59e0b; border-radius:7px; padding:3px 8px 3px 4px; color:#ffffff; box-shadow:0 2px 6px rgba(15,23,42,0.18);">
+        <img src="avigen-dna-pigeon.jpg" alt="AVIGEN GENESIS AI" style="width:32px; height:28px; object-fit:cover; border-radius:5px; border:1px solid #38bdf8; flex-shrink:0;" />
+        <div style="line-height:1.15; text-align:left;">
+          <div style="display:flex; align-items:center; gap:4px;">
+            <span style="background:#f59e0b; color:#0f172a; font-size:7px; font-weight:900; padding:0.5px 3.5px; border-radius:3px;">AI</span>
+            <span style="font-size:8.5px; font-weight:900; color:#fde047; letter-spacing:0.3px;">AVIGEN GENESIS AI</span>
+            <span style="font-size:7px; font-weight:700; color:#bae6fd;">• Performance &amp; Dossier (Page 2)</span>
+          </div>
+          <div style="font-size:7.2px; font-weight:600; color:#e2e8f0; margin-top:1px;">
+            Bireysel Performans • Genetik Profil • Kişisel Sicil Dosyası
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderActivePedigree() {
   const paper = document.getElementById('mypedigrePaper');
   if (!paper) return;
@@ -3762,7 +4215,7 @@ function renderActivePedigree() {
         <div style="font-size:44px; margin-bottom:10px;">📜</div>
         <div style="font-size:18px; font-weight:900; color:#1d4ed8; margin-bottom:6px;">Henüz Kayıtlı Pedigri Yok</div>
         <div style="font-size:13px; color:#475569; max-width:460px; line-height:1.5; margin-bottom:16px;">
-          Kümesinize ilk güvercininizi ekleyerek 4 kuşak (31 kutu) resmi AVIGEN soyağacı sertifikasını oluşturabilir, PDF/PNG olarak indirebilir ve WhatsApp'tan paylaşabilirsiniz.
+          Kümesinize ilk güvercininizi ekleyerek 4 kuşak (31 kutu) resmi AVIGEN soyağacı sertifikasını ve 2. sayfa Performans/Sicil kartını oluşturabilir, PDF/PNG olarak indirebilir ve WhatsApp'tan paylaşabilirsiniz.
         </div>
         <button type="button" class="ios-btn ios-btn-primary" style="padding:12px 22px; font-size:14px; font-weight:900;" onclick="createNewPedigreeRecord()">
           ➕ İlk Güvercinimi &amp; Pedigrisini Oluştur
@@ -3801,7 +4254,9 @@ function renderActivePedigree() {
 
   const badgeEl = document.getElementById('zoomBadge');
   if (badgeEl && !pedigreeZoomedIn) {
-    badgeEl.textContent = `AVIGEN Resmi Sertifika (${genDepth} Kuşak)`;
+    badgeEl.textContent = activePedigreeSheetPageMode === 'page2'
+      ? 'Sayfa 2: Performans & Sicil'
+      : (activePedigreeSheetPageMode === 'both' ? 'Sayfa 1+2 (Tam Dosya)' : `Sayfa 1: Pedigri (${genDepth} Kuşak)`);
   }
 
   let g4ColumnHtml = '';
@@ -3813,7 +4268,7 @@ function renderActivePedigree() {
     g4ColumnHtml = `<div class="paper-col col-g4">${g4Boxes}</div>`;
   }
 
-  paper.innerHTML = `
+  const page1InnerHtml = `
     <div class="paper-watermark">${escapeHtml(loftConfig.title)}</div>
 
     <!-- ÜST BAŞLIK & ANA KUŞ -->
@@ -3870,7 +4325,7 @@ function renderActivePedigree() {
         ${showCodes ? makeQrSvg(encodeFullPedigreeQrPayload(ped)) : ''}
         ${showCodes ? makeBarcodeSvg(main.ring) : ''}
         <div>
-          <strong style="color:${accent};">${escapeHtml(loftConfig.title)}</strong>
+          <strong style="color:${accent};">${escapeHtml(loftConfig.title)} — SAYFA 1 (SOYAĞACI)</strong>
           <div>AVIGEN QR/Barkod Kodu: #AVG-${(main.ring || '001').replace(/[^A-Z0-9]/gi, '').slice(-5)}</div>
         </div>
       </div>
@@ -3891,6 +4346,26 @@ function renderActivePedigree() {
       </div>
     </div>
   `;
+
+  const page2InnerHtml = buildPedigreeSecondPageHtml(ped, logoHtml, birdPhotoHtml, accent, genDepth, showCodes);
+
+  if (activePedigreeSheetPageMode === 'page2') {
+    paper.style.height = '560px';
+    paper.innerHTML = page2InnerHtml;
+  } else if (activePedigreeSheetPageMode === 'both') {
+    paper.style.height = '1136px';
+    paper.innerHTML = `
+      <div style="position:relative; width:100%; height:552px; border-bottom:3px dashed #1d4ed8; padding-bottom:6px; margin-bottom:10px; display:flex; flex-direction:column; justify-content:space-between;">
+        ${page1InnerHtml}
+      </div>
+      <div style="position:relative; width:100%; height:552px; display:flex; flex-direction:column; justify-content:space-between;">
+        ${page2InnerHtml}
+      </div>
+    `;
+  } else {
+    paper.style.height = '560px';
+    paper.innerHTML = page1InnerHtml;
+  }
 
   setTimeout(fitPaperToIphoneScreen, 10);
 }
@@ -3950,7 +4425,7 @@ function fitPaperToIphoneScreen() {
 
   const availW = Math.max(260, stageBox.clientWidth - 12);
   const baseW = 760;
-  const baseH = 560;
+  const baseH = activePedigreeSheetPageMode === 'both' ? 1136 : 560;
   const fitScale = Math.min(1, availW / baseW);
 
   if (customPedigreeScale !== null && customPedigreeScale > fitScale + 0.02) {
@@ -3970,13 +4445,15 @@ function fitPaperToIphoneScreen() {
     paper.style.transformOrigin = 'top center';
     paper.style.transform = `scale(${fitScale})`;
     paper.style.marginRight = '0px';
-    paper.style.marginBottom = '0px';
+    paper.style.marginBottom = activePedigreeSheetPageMode === 'both' ? `${Math.ceil(baseH * fitScale - baseH)}px` : '0px';
     viewport.style.overflowX = 'hidden';
-    viewport.style.overflowY = 'hidden';
+    viewport.style.overflowY = activePedigreeSheetPageMode === 'both' ? 'auto' : 'hidden';
     viewport.style.justifyContent = 'center';
-    viewport.style.height = `${Math.ceil(baseH * fitScale)}px`;
+    viewport.style.height = activePedigreeSheetPageMode === 'both'
+      ? `${Math.min(430, Math.ceil(baseH * fitScale))}px`
+      : `${Math.ceil(baseH * fitScale)}px`;
     if (btn) btn.textContent = '🔍 Büyüt';
-    if (badge) badge.textContent = 'Sığdırıldı';
+    if (badge) badge.textContent = activePedigreeSheetPageMode === 'page2' ? '2. Sayfa' : (activePedigreeSheetPageMode === 'both' ? '1+2 Sayfa' : '1. Sayfa');
   }
 }
 
@@ -6004,8 +6481,282 @@ function drawNativePedigreeCertificateCanvas(ped) {
   return canvas;
 }
 
+// 2. SAYFA VEKTÖREL CANVAS MOTORU: PERFORMANS, GENETİK PROFİL & KİŞİSEL SİCİL SERTİFİKASI (A4 YATAY 2280x1680)
+function drawNativePedigreePage2Canvas(ped) {
+  const scale = 3;
+  const W = 760;
+  const H = 560;
+  const canvas = document.createElement('canvas');
+  canvas.width = W * scale;
+  canvas.height = H * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  const d = computePedigreePage2Data(ped);
+  const main = d.main;
+  const loftTitle = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN ELITE LOFT';
+
+  // 1. Zemin ve Çift Çizgili Resmi Mavi Çerçeve
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = '#1d4ed8';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(4, 4, W - 8, H - 8);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(8, 8, W - 16, H - 16);
+
+  // Filigran
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.rotate(-0.26);
+  ctx.font = '900 44px Inter, Arial, sans-serif';
+  ctx.fillStyle = 'rgba(29, 78, 216, 0.045)';
+  ctx.textAlign = 'center';
+  ctx.fillText(loftTitle.toUpperCase(), 0, 0);
+  ctx.restore();
+
+  // 2. Üst Başlık & Ana Kuş Kartı
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#bfdbfe';
+  ctx.lineWidth = 1.2;
+  ctx.fillRect(14, 13, 330, 66);
+  ctx.strokeRect(14, 13, 330, 66);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#1d4ed8';
+  ctx.lineWidth = 1.4;
+  ctx.fillRect(22, 24, 44, 44);
+  ctx.strokeRect(22, 24, 44, 44);
+  drawAvigenVectorPigeonLogoOnCanvas(ctx, 25, 29, 38, 34);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '900 13.5px Inter, Arial, sans-serif';
+  ctx.fillText(String(loftTitle).slice(0, 32), 74, 37);
+  ctx.fillStyle = '#1d4ed8';
+  ctx.font = '800 8.5px Inter, Arial, sans-serif';
+  ctx.fillText('SAYFA 2 / 2 • PERFORMANS, GENETİK PROFİL & SİCİL DOSYASI', 74, 53);
+  ctx.fillStyle = '#475569';
+  ctx.font = '700 8px Inter, Arial, sans-serif';
+  ctx.fillText(`Uzmanlık: ${String(d.specialtyLabel).slice(0, 44)}`, 74, 67);
+
+  // Sağ Ana Kuş Kutusu
+  ctx.fillStyle = '#eff6ff';
+  ctx.strokeStyle = '#1d4ed8';
+  ctx.lineWidth = 1.6;
+  ctx.fillRect(354, 13, W - 368, 66);
+  ctx.strokeRect(354, 13, W - 368, 66);
+
+  ctx.fillStyle = '#1d4ed8';
+  ctx.font = '900 13px Inter, Arial, sans-serif';
+  ctx.fillText(`${main.ring || 'TR-2026-0001'}  •  ${main.name || ''}`, 366, 31);
+  ctx.fillStyle = '#1e293b';
+  ctx.font = '700 9.5px Inter, Arial, sans-serif';
+  ctx.fillText(`Renk / Cinsiyet: ${main.color || 'Mavi Çakmaklı'} ${main.sex === 'F' ? '(♀ Dişi)' : '(♂ Erkek)'} • ${d.phenotype.roleLabel}`, 366, 47);
+  ctx.fillStyle = '#047857';
+  ctx.font = '800 8.5px Inter, Arial, sans-serif';
+  ctx.fillText(`Baba: ${ped?.boxes?.sire?.ring || '-'}   ×   Anne: ${ped?.boxes?.dam?.ring || '-'}`, 366, 63);
+
+  // 3. 2x2 Gövde Kutuları (y: 86..514)
+  // KUTU 1 (SOL ÜST): Performans & Genetik Profil (x:14, y:86, w:360, h:206)
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#93c5fd';
+  ctx.lineWidth = 1.2;
+  ctx.fillRect(14, 86, 360, 206);
+  ctx.strokeRect(14, 86, 360, 206);
+  ctx.fillStyle = '#1d4ed8';
+  ctx.fillRect(14, 86, 4, 206);
+
+  ctx.fillStyle = '#1e3a8a';
+  ctx.font = '900 10.5px Inter, Arial, sans-serif';
+  ctx.fillText('1. BİREYSEL PERFORMANS & GENETİK PROFİL ENDEKSİ', 26, 104);
+
+  const metrics = [
+    { lbl: 'DAMIZLIK DEĞERİ (EBV)', val: `${d.breedingScore}/100`, bg: '#eff6ff', col: '#1d4ed8', x: 26 },
+    { lbl: 'YARIŞ PERFORMANSI', val: `${d.raceScore}/100`, bg: '#ecfdf5', col: '#047857', x: 140 },
+    { lbl: 'WRIGHT 5 NESİL COI', val: `%${Number(d.coiPct || 0).toFixed(2)}`, bg: '#f5f3ff', col: '#6d28d9', x: 254 }
+  ];
+  metrics.forEach(m => {
+    ctx.fillStyle = m.bg;
+    ctx.fillRect(m.x, 113, 106, 42);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(m.x, 113, 106, 42);
+    ctx.fillStyle = '#475569';
+    ctx.font = '800 7.2px Inter, Arial, sans-serif';
+    ctx.fillText(m.lbl, m.x + 7, 126);
+    ctx.fillStyle = m.col;
+    ctx.font = '900 14px Inter, Arial, sans-serif';
+    ctx.fillText(m.val, m.x + 7, 145);
+  });
+
+  const bars = [
+    { label: 'Sprint / Kısa Mesafe (100-300 km)', val: d.distSuit.sprint || 78, col: '#0284c7', y: 170 },
+    { label: 'Orta Mesafe (300-500 km)', val: d.distSuit.middle || 85, col: '#1d4ed8', y: 199 },
+    { label: 'Uzun Mesafe (500-700 km)', val: d.distSuit.long || 82, col: '#7c3aed', y: 228 },
+    { label: 'Maraton / Ekstrem (700+ km)', val: d.distSuit.marathon || 74, col: '#059669', y: 257 }
+  ];
+  bars.forEach(bItem => {
+    ctx.fillStyle = '#334155';
+    ctx.font = '800 8.2px Inter, Arial, sans-serif';
+    ctx.fillText(bItem.label, 26, bItem.y);
+    ctx.fillStyle = bItem.col;
+    ctx.fillText(`%${bItem.val}`, 336, bItem.y);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(26, bItem.y + 5, 334, 7);
+    ctx.fillStyle = bItem.col;
+    ctx.fillRect(26, bItem.y + 5, Math.round(334 * Math.min(100, Math.max(10, bItem.val)) / 100), 7);
+  });
+
+  // KUTU 2 (SAĞ ÜST): Ele Alma & Fiziksel Fenotip Kimliği (x:386, y:86, w:360, h:206)
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#c4b5fd';
+  ctx.lineWidth = 1.2;
+  ctx.fillRect(386, 86, 360, 206);
+  ctx.strokeRect(386, 86, 360, 206);
+  ctx.fillStyle = '#7c3aed';
+  ctx.fillRect(386, 86, 4, 206);
+
+  ctx.fillStyle = '#5b21b6';
+  ctx.font = '900 10.5px Inter, Arial, sans-serif';
+  ctx.fillText('2. KUŞÇU ELE ALMA & FİZİKSEL FENOTİP KİMLİĞİ', 398, 104);
+
+  const traits = [
+    { lbl: 'GÖVDE & OMURGA YAPISI', val: d.phenotype.bodyBuild, y: 122 },
+    { lbl: 'GÖĞÜS KASI KARAKTERİ', val: d.phenotype.muscleType, y: 152 },
+    { lbl: 'ÇATAL KEMİK (PUBİS)', val: d.phenotype.pubicBone, y: 182 },
+    { lbl: 'KANAT & SON 3 TELEK', val: d.phenotype.wingFeather, y: 212 },
+    { lbl: 'GÖZ İRİS İŞARETİ (EYE-SIGN)', val: d.phenotype.eyeSignLabel, y: 242 },
+    { lbl: 'KÜMES STATÜSÜ & GÜVENİLİRLİK', val: `${d.phenotype.statusLabel} • Veri Güveni: %${d.reliabilityPct}`, y: 272 }
+  ];
+  traits.forEach(t => {
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(398, t.y - 10, 336, 24);
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(398, t.y - 10, 336, 24);
+    ctx.fillStyle = '#64748b';
+    ctx.font = '800 7.2px Inter, Arial, sans-serif';
+    ctx.fillText(t.lbl + ':', 405, t.y + 4);
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '900 8.6px Inter, Arial, sans-serif';
+    ctx.fillText(String(t.val || '-').slice(0, 34), 542, t.y + 4);
+  });
+
+  // KUTU 3 (SOL ALT): Resmi Yarış Dereceleri & Performans Kayıtları (x:14, y:300, w:360, h:214)
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#6ee7b7';
+  ctx.lineWidth = 1.2;
+  ctx.fillRect(14, 300, 360, 214);
+  ctx.strokeRect(14, 300, 360, 214);
+  ctx.fillStyle = '#059669';
+  ctx.fillRect(14, 300, 4, 214);
+
+  ctx.fillStyle = '#065f46';
+  ctx.font = '900 10.5px Inter, Arial, sans-serif';
+  ctx.fillText(`3. YARIŞ DERECELERİ & SOY BAŞARILARI (${d.raceRecords.length} Kayıt)`, 26, 318);
+
+  if (d.raceRecords.length > 0) {
+    d.raceRecords.slice(0, 5).forEach((rec, idx) => {
+      const ry = 328 + idx * 35;
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(26, ry, 336, 30);
+      ctx.strokeStyle = '#d1fae5';
+      ctx.strokeRect(26, ry, 336, 30);
+      ctx.fillStyle = '#059669';
+      ctx.fillRect(26, ry, 3, 30);
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '900 8.6px Inter, Arial, sans-serif';
+      ctx.fillText(`${idx + 1}. ${String(rec.title).slice(0, 54)}`, 34, ry + 12);
+      ctx.fillStyle = '#475569';
+      ctx.font = '700 7.6px Inter, Arial, sans-serif';
+      ctx.fillText(String(rec.detail).slice(0, 62), 34, ry + 24);
+    });
+  } else {
+    ctx.fillStyle = '#64748b';
+    ctx.font = '700 9px Inter, Arial, sans-serif';
+    ctx.fillText('Henüz bireysel yarış derecesi kaydı girilmemiştir.', 26, 355);
+  }
+
+  // KUTU 4 (SAĞ ALT): Güvercin Kişisel Sicil Dosyası (x:386, y:300, w:360, h:214)
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#fcd34d';
+  ctx.lineWidth = 1.2;
+  ctx.fillRect(386, 300, 360, 214);
+  ctx.strokeRect(386, 300, 360, 214);
+  ctx.fillStyle = '#d97706';
+  ctx.fillRect(386, 300, 4, 214);
+
+  ctx.fillStyle = '#92400e';
+  ctx.font = '900 10.5px Inter, Arial, sans-serif';
+  ctx.fillText(`4. KİŞİSEL SİCİL DOSYASI — SAĞLIK, AŞI & YUVA (${d.dossierRecords.length})`, 398, 318);
+
+  if (d.dossierRecords.length > 0) {
+    d.dossierRecords.slice(0, 5).forEach((doc, idx) => {
+      const dy = 328 + idx * 35;
+      ctx.fillStyle = '#fffbeb';
+      ctx.fillRect(398, dy, 336, 30);
+      ctx.strokeStyle = '#fde68a';
+      ctx.strokeRect(398, dy, 336, 30);
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(398, dy, 3, 30);
+      ctx.fillStyle = '#92400e';
+      ctx.font = '900 8.5px Inter, Arial, sans-serif';
+      ctx.fillText(`${String(doc.category).slice(0, 36)}  (${doc.date})`, 406, dy + 12);
+      ctx.fillStyle = '#334155';
+      ctx.font = '700 7.6px Inter, Arial, sans-serif';
+      ctx.fillText(String(doc.detail).slice(0, 60), 406, dy + 24);
+    });
+  } else {
+    ctx.fillStyle = '#92400e';
+    ctx.font = '700 8.5px Inter, Arial, sans-serif';
+    ctx.fillText(`Halka No: ${main.ring || '-'} (${d.phenotype.statusLabel})`, 398, 352);
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('Kayıtlı özel hastalık/tedavi bulgusu yok; kümes sicili temiz.', 398, 370);
+  }
+
+  // 4. Alt Sertifika Çubuğu
+  ctx.fillStyle = '#eff6ff';
+  ctx.strokeStyle = '#bfdbfe';
+  ctx.lineWidth = 1;
+  ctx.fillRect(14, 522, W - 28, 28);
+  ctx.strokeRect(14, 522, W - 28, 28);
+
+  const certCode = `#AVG-${(main.ring || '001').replace(/[^A-Z0-9]/gi, '').slice(-6).toUpperCase()}-P2`;
+  ctx.fillStyle = '#1e3a8a';
+  ctx.font = '800 8.5px Inter, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${loftTitle}  •  SAYFA 2: PERFORMANS, GENETİK & SİCİL RAPORU (${certCode})`, 22, 539);
+
+  const adX = W - 280;
+  const adY = 524;
+  const adW = 262;
+  const adH = 24;
+  const gAd = ctx.createLinearGradient(adX, adY, adX + adW, adY + adH);
+  gAd.addColorStop(0, '#0a1938');
+  gAd.addColorStop(0.6, '#1e3a8a');
+  gAd.addColorStop(1, '#3b0764');
+  ctx.fillStyle = gAd;
+  ctx.fillRect(adX, adY, adW, adH);
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(adX, adY, adW, adH);
+
+  drawAvigenVectorPigeonLogoOnCanvas(ctx, adX + 5, adY + 2, 22, 19);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#fde047';
+  ctx.font = '900 8.2px Inter, Arial, sans-serif';
+  ctx.fillText('AVIGEN GENESIS AI  •  Performance & Dossier', adX + 32, adY + 10);
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = '600 7px Inter, Arial, sans-serif';
+  ctx.fillText('Bireysel Performans • Genetik Profil • Sicil Dosyası', adX + 32, adY + 20);
+
+  return canvas;
+}
+
 // Yalnızca #mypedigrePaper sertifikasını (%100 senkron, sıfır donma ve sıfır html2canvas gecikmesiyle <15ms içinde) yüksek çözünürlüklü Canvas olarak üretir.
-// ÖNEMLİ ANDROID DÜZELTMESİ: html2canvas Android WebView ve Chrome'da ekranı dondurduğu ve dokunma iznini (User Gesture) düşürdüğü için doğrudan yerleşik vektörel Canvas motoru kullanılır!
 function captureOnlyPedigreePaperCanvasSync(targetPedId) {
   if (targetPedId && targetPedId !== activePedigreeId) {
     activePedigreeId = targetPedId;
@@ -6042,20 +6793,9 @@ function isAndroidOrWebViewDevice() {
   );
 }
 
-// Yüksek çözünürlüklü Pedigri Canvas'ını tek sayfalık standart A4 Yatay (842 x 595 pt) gerçek .PDF (application/pdf) dosyasına dönüştürür
-function convertPedigreeCanvasToPdfBlob(canvas) {
-  const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.94);
-  const base64Data = jpegDataUrl.split(',')[1] || '';
-  const binaryStr = atob(base64Data);
-  const jpegLen = binaryStr.length;
-  const jpegBytes = new Uint8Array(jpegLen);
-  for (let i = 0; i < jpegLen; i++) {
-    jpegBytes[i] = binaryStr.charCodeAt(i);
-  }
-
-  const imgW = canvas.width;
-  const imgH = canvas.height;
-  // A4 Yatay (Landscape): 842 x 595 pt (10 pt kenar boşluğu ile 822 x 575 pt çizim alanı)
+// Yüksek çözünürlüklü Pedigri (1. Sayfa) ve Performans/Sicil (2. Sayfa) Canvas'larını standart A4 Yatay (842 x 595 pt) gerçek 2 Sayfalık .PDF dosyasına dönüştürür
+function convertPedigreeCanvasToPdfBlob(canvasPage1, canvasPage2 = null) {
+  const canvases = canvasPage2 ? [canvasPage1, canvasPage2] : [canvasPage1];
   const pageW = 842;
   const pageH = 595;
   const margin = 10;
@@ -6086,24 +6826,42 @@ function convertPedigreeCanvasToPdfBlob(canvas) {
   markObj();
   pushStr('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
 
+  // Her sayfa 3 nesne kullanır: Page (3, 6...), Image (4, 7...), Content (5, 8...)
+  const pageObjNums = canvases.map((_, idx) => 3 + idx * 3);
+
   // 2 0 obj: Pages
   markObj();
-  pushStr('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+  pushStr(`2 0 obj\n<< /Type /Pages /Kids [${pageObjNums.map(n => `${n} 0 R`).join(' ')}] /Count ${canvases.length} >>\nendobj\n`);
 
-  // 3 0 obj: Page (A4 Landscape)
-  markObj();
-  pushStr(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`);
+  canvases.forEach((cnv, idx) => {
+    const pageObjId = 3 + idx * 3;
+    const imgObjId = pageObjId + 1;
+    const contentObjId = pageObjId + 2;
 
-  // 4 0 obj: Image XObject (/DCTDecode raw JPEG)
-  markObj();
-  pushStr(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`);
-  pushBytes(jpegBytes);
-  pushStr('\nendstream\nendobj\n');
+    const jpegDataUrl = cnv.toDataURL('image/jpeg', 0.94);
+    const base64Data = jpegDataUrl.split(',')[1] || '';
+    const binaryStr = atob(base64Data);
+    const jpegLen = binaryStr.length;
+    const jpegBytes = new Uint8Array(jpegLen);
+    for (let i = 0; i < jpegLen; i++) {
+      jpegBytes[i] = binaryStr.charCodeAt(i);
+    }
 
-  // 5 0 obj: Content Stream
-  const contentStream = `q\n${drawW} 0 0 ${drawH} ${margin} ${margin} cm\n/Im0 Do\nQ\n`;
-  markObj();
-  pushStr(`5 0 obj\n<< /Length ${contentStream.length} >>\nstream\n${contentStream}endstream\nendobj\n`);
+    // Page Object
+    markObj();
+    pushStr(`${pageObjId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im${idx} ${imgObjId} 0 R >> >> /Contents ${contentObjId} 0 R >>\nendobj\n`);
+
+    // Image Object
+    markObj();
+    pushStr(`${imgObjId} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${cnv.width} /Height ${cnv.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`);
+    pushBytes(jpegBytes);
+    pushStr('\nendstream\nendobj\n');
+
+    // Content Stream Object
+    const contentStream = `q\n${drawW} 0 0 ${drawH} ${margin} ${margin} cm\n/Im${idx} Do\nQ\n`;
+    markObj();
+    pushStr(`${contentObjId} 0 obj\n<< /Length ${contentStream.length} >>\nstream\n${contentStream}endstream\nendobj\n`);
+  });
 
   // xref tablosu
   const xrefOffset = currentOffset;
@@ -6124,9 +6882,24 @@ function isCapacitorAndroidApk() {
   );
 }
 
-// Android APK (WebView) ve tüm tarayıcılarda WhatsApp / dış bağlantıları güvenle açar
+// Android APK (WebView) ve tüm tarayıcılarda WhatsApp / dış bağlantıları güvenle açar (APK içinde WhatsApp donmasını %100 önler)
 function openExternalUrlSafe(url) {
   if (!url) return;
+
+  // Eğer Android APK veya mobil cihazda https://wa.me/ linki açılıyorsa doğrudan yerel WhatsApp uygulamasını (whatsapp://send) tetikle
+  if (isAndroidOrWebViewDevice() && /^https?:\/\/(wa\.me|api\.whatsapp\.com)/i.test(url)) {
+    try {
+      const parsedUrl = new URL(url);
+      const phonePart = parsedUrl.pathname.replace(/\//g, '').trim();
+      const textParam = parsedUrl.searchParams.get('text') || '';
+      const nativeWaUrl = phonePart
+        ? `whatsapp://send?phone=${encodeURIComponent(phonePart)}&text=${encodeURIComponent(textParam)}`
+        : `whatsapp://send?text=${encodeURIComponent(textParam)}`;
+      window.location.href = nativeWaUrl;
+      return;
+    } catch (e) {}
+  }
+
   const isSpecialScheme = /^(whatsapp:|mailto:|tel:|intent:)/i.test(url);
   if (isCapacitorAndroidApk() || isSpecialScheme) {
     try {
@@ -6204,17 +6977,19 @@ function triggerBlobFileDownload(blob, fileName, dataUrlFallback = '') {
 let _lastExportedPedigreeState = null;
 
 function buildPedigreeWhatsAppSummaryText(ped) {
+  const d = computePedigreePage2Data(ped);
   const b = ped?.boxes || {};
   const m = b.main || {};
   const s = b.sire || {};
-  const d = b.dam || {};
+  const dm = b.dam || {};
   const loftTitle = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN KÜMESİ';
   const lines = [
-    `🕊️ *${loftTitle} — RESMİ 4 KUŞAK PEDİGRİ KÜNYESİ*`,
+    `🕊️ *${loftTitle} — RESMİ 4 KUŞAK PEDİGRİ & PERFORMANS/SİCİL KÜNYESİ*`,
     `• *Kuş:* ${m.flag || '🇹🇷'} ${m.ring || '-'} (${m.name || 'İsimsiz'})`,
     `• *Cinsiyet / Renk:* ${m.sex === 'F' ? '♀ Dişi' : '♂ Erkek'} • ${m.color || 'Mavi Çakmaklı'}`,
+    `• *Performans & Genetik:* Damızlık (EBV): ${d.breedingScore}/100 • Yarış: ${d.raceScore}/100 • COI: %${Number(d.coiPct || 0).toFixed(2)}`,
     `• *♂ Baba:* ${s.ring || '-'} ${s.name ? '(' + s.name + ')' : ''}`,
-    `• *♀ Anne:* ${d.ring || '-'} ${d.name ? '(' + d.name + ')' : ''}`,
+    `• *♀ Anne:* ${dm.ring || '-'} ${dm.name ? '(' + dm.name + ')' : ''}`,
     `• *Büyükbabalar:* ${b.g2_1?.ring || '-'} / ${b.g2_3?.ring || '-'}`,
     `• *Büyükanneler:* ${b.g2_2?.ring || '-'} / ${b.g2_4?.ring || '-'}`
   ];
@@ -6226,10 +7001,11 @@ function buildPedigreeWhatsAppSummaryText(ped) {
 
 function printOrSavePedigreePdfOnAndroid() {
   if (!_lastExportedPedigreeState || !_lastExportedPedigreeState.jpegDataUrl) return;
-  const imgUrl = _lastExportedPedigreeState.jpegDataUrl;
-  const titleStr = _lastExportedPedigreeState.pdfFileName || 'AVIGEN_Pedigre.pdf';
+  const imgUrl1 = _lastExportedPedigreeState.jpegDataUrl;
+  const imgUrl2 = _lastExportedPedigreeState.page2JpegDataUrl;
+  const titleStr = _lastExportedPedigreeState.pdfFileName || 'AVIGEN_Pedigre_ve_Sicil.pdf';
 
-  // Android WebView ve tüm mobil tarayıcılarda çalışan tam sayfa yatay A4 yazdırma / PDF kaydetme katmanı
+  // Android WebView ve tüm mobil tarayıcılarda çalışan 2 sayfa yatay A4 yazdırma / PDF kaydetme katmanı
   let printStyle = document.getElementById('avigenAndroidPrintPdfStyle');
   if (!printStyle) {
     printStyle = document.createElement('style');
@@ -6239,15 +7015,23 @@ function printOrSavePedigreePdfOnAndroid() {
         @page { size: A4 landscape; margin: 4mm; }
         body > *:not(#avigenAndroidPrintOnlyContainer) { display: none !important; }
         #avigenAndroidPrintOnlyContainer {
-          display: flex !important;
-          position: fixed !important;
-          inset: 0 !important;
-          width: 100vw !important;
-          height: 100vh !important;
+          display: block !important;
+          width: 100% !important;
           background: #ffffff !important;
+          z-index: 999999 !important;
+        }
+        #avigenAndroidPrintOnlyContainer .print-page-sheet {
+          width: 100% !important;
+          height: 98vh !important;
+          display: flex !important;
           align-items: center !important;
           justify-content: center !important;
-          z-index: 999999 !important;
+          page-break-after: always !important;
+          break-after: page !important;
+        }
+        #avigenAndroidPrintOnlyContainer .print-page-sheet:last-child {
+          page-break-after: auto !important;
+          break-after: auto !important;
         }
         #avigenAndroidPrintOnlyContainer img {
           max-width: 100% !important;
@@ -6266,7 +7050,10 @@ function printOrSavePedigreePdfOnAndroid() {
     printBox.style.display = 'none';
     document.body.appendChild(printBox);
   }
-  printBox.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(titleStr)}" />`;
+  printBox.innerHTML = `
+    <div class="print-page-sheet"><img src="${imgUrl1}" alt="${escapeHtml(titleStr)} - Sayfa 1" /></div>
+    ${imgUrl2 ? `<div class="print-page-sheet"><img src="${imgUrl2}" alt="${escapeHtml(titleStr)} - Sayfa 2" /></div>` : ''}
+  `;
 
   const oldTitle = document.title;
   document.title = titleStr.replace(/\.pdf$/i, '');
@@ -6281,16 +7068,18 @@ async function shareExportedPedigreeFromAssistModal(formatType = 'pdf') {
   const st = _lastExportedPedigreeState;
   if (navigator.share) {
     try {
-      const targetFile = formatType === 'png' ? st.pngFile : st.pdfFile;
-      if (!navigator.canShare || navigator.canShare({ files: [targetFile] })) {
+      const filesToShare = formatType === 'png'
+        ? (st.page2PngFile ? [st.pngFile, st.page2PngFile] : [st.pngFile])
+        : [st.pdfFile];
+      if (!navigator.canShare || navigator.canShare({ files: filesToShare })) {
         await navigator.share({
-          files: [targetFile],
-          title: `${st.ring} Resmi Pedigri Sertifikası`
+          files: filesToShare,
+          title: `${st.ring} Resmi 2 Sayfa Pedigri & Sicil Sertifikası`
         });
         return;
       }
-      // Eğer PDF dosyası paylaşımı WebView'da desteklenmiyorsa PNG resmi olarak paylaşmayı dene
-      if (formatType === 'pdf' && (!navigator.canShare || navigator.canShare({ files: [st.pngFile] }))) {
+      // Eğer 2 resim veya PDF paylaşımı WebView'da desteklenmiyorsa tek PNG resmi olarak paylaşmayı dene
+      if (!navigator.canShare || navigator.canShare({ files: [st.pngFile] })) {
         await navigator.share({
           files: [st.pngFile],
           title: `${st.ring} Resmi Pedigri Sertifikası`
@@ -6301,12 +7090,12 @@ async function shareExportedPedigreeFromAssistModal(formatType = 'pdf') {
       if (err && err.name === 'AbortError') return;
     }
   }
-  // WebView dosya paylaşımını desteklemiyorsa WhatsApp'ı soyağacı künyesiyle aç
+  // WebView dosya paylaşımını desteklemiyorsa WhatsApp'ı soyağacı + performans künyesiyle aç
   const waMsg = encodeURIComponent(buildPedigreeWhatsAppSummaryText(st.ped));
   openExternalUrlSafe(`https://wa.me/?text=${waMsg}`);
 }
 
-function openPedigreeExportAssistModal(modeLabel = 'PDF İndir & WhatsApp Paylaş') {
+function openPedigreeExportAssistModal(modeLabel = '2 Sayfa PDF İndir & WhatsApp Paylaş') {
   if (!_lastExportedPedigreeState) return;
   const st = _lastExportedPedigreeState;
 
@@ -6320,7 +7109,7 @@ function openPedigreeExportAssistModal(modeLabel = 'PDF İndir & WhatsApp Payla�
   }
 
   modal.innerHTML = `
-    <div class="ios-sheet" style="max-height:92%;">
+    <div class="ios-sheet" style="max-height:93%;">
       <div class="ios-card-title" style="margin-bottom:8px;">
         <div style="display:flex; align-items:center; gap:6px;">
           <span>📜</span>
@@ -6331,33 +7120,46 @@ function openPedigreeExportAssistModal(modeLabel = 'PDF İndir & WhatsApp Payla�
 
       <div style="display:flex; flex-direction:column; gap:8px; font-size:10.5px;">
         <div style="background:#ecfdf5; border:1.5px solid #6ee7b7; border-radius:9px; padding:7px 9px; color:#065f46; line-height:1.38;">
-          ✅ <strong>4 Kuşak (31 Kutu) Pedigri Sertifikası Hazır!</strong><br/>
-          Android telefonlarda ve WhatsApp'ta anında paylaşmak veya telefonunuza kaydetmek için aşağıdaki seçeneklerden birine dokunun (veya aşağıdaki pedigri resmine <strong>basılı tutarak Resmi İndir / Paylaş</strong> seçin):
-        </div>
-
-        <!-- CANLI YÜKSEK ÇÖZÜNÜRLÜKLÜ PEDİGRİ RESMİ (Android'de basılı tutup kaydetme/paylaşma destekli) -->
-        <div style="background:#0f172a; border:2px solid #1d4ed8; border-radius:10px; padding:5px; text-align:center;">
-          <img src="${st.pngDataUrl}" alt="${escapeHtml(st.ring)} Pedigri" style="width:100%; height:auto; border-radius:6px; display:block;" />
-          <div style="font-size:8.8px; color:#bae6fd; margin-top:4px; font-weight:700;">
-            💡 İpucu: Resmin üzerine parmağınızla 1 saniye basılı tutarak da "Resmi İndir" veya "Resmi Paylaş" yapabilirsiniz.
-          </div>
+          ✅ <strong>2 Sayfalık Resmi Sertifika Hazır!</strong><br/>
+          • <strong>1. Sayfa:</strong> 4 Kuşak (31 Kutu) Soyağacı Pedigrisi<br/>
+          • <strong>2. Sayfa:</strong> Bireysel Performans, Genetik Profil &amp; Kişisel Sicil Dosyası
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
           <button type="button" class="ios-btn ios-btn-green" style="padding:10px 8px; font-size:10.8px; font-weight:900;" onclick="shareExportedPedigreeFromAssistModal('pdf')">
-            📲 WhatsApp'ta Paylaş (PDF/Resim)
+            📲 WhatsApp'ta Paylaş (2 Sayfa PDF)
           </button>
           <button type="button" class="ios-btn ios-btn-primary" style="padding:10px 8px; font-size:10.8px; font-weight:900;" onclick="printOrSavePedigreePdfOnAndroid()">
             📄 Cihaza PDF Kaydet / Yazdır
           </button>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-          <a href="${st.pngDataUrl}" download="${escapeHtml(st.pngFileName)}" class="ios-btn ios-btn-outline" style="padding:8px; font-size:10px; font-weight:800; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;">
-            🖼️ HD Resim İndir (.PNG)
+        <!-- 1. SAYFA VE 2. SAYFA CANLI YÜKSEK ÇÖZÜNÜRLÜKLÜ ÖNİZLEME (Basılı Tutup Kaydetme Destekli) -->
+        <div style="background:#0f172a; border:2px solid #1d4ed8; border-radius:10px; padding:6px; text-align:center; display:flex; flex-direction:column; gap:7px; max-height:310px; overflow-y:auto;">
+          <div>
+            <div style="font-size:9px; font-weight:900; color:#fde047; margin-bottom:3px;">📜 1. SAYFA: 4 KUŞAK (31 KUTU) SOYAĞACI PEDİGRİSİ</div>
+            <img src="${st.pngDataUrl}" alt="${escapeHtml(st.ring)} Sayfa 1 Pedigri" style="width:100%; height:auto; border-radius:6px; display:block;" />
+          </div>
+          ${st.page2PngDataUrl ? `
+            <div style="border-top:1px dashed #38bdf8; padding-top:6px;">
+              <div style="font-size:9px; font-weight:900; color:#34d399; margin-bottom:3px;">📊 2. SAYFA: PERFORMANS, GENETİK PROFİL &amp; SİCİL DOSYASI</div>
+              <img src="${st.page2PngDataUrl}" alt="${escapeHtml(st.ring)} Sayfa 2 Performans ve Sicil" style="width:100%; height:auto; border-radius:6px; display:block;" />
+            </div>
+          ` : ''}
+          <div style="font-size:8.6px; color:#bae6fd; font-weight:700;">
+            💡 İpucu: Resimlerin üzerine parmağınızla 1 saniye basılı tutarak da "Resmi İndir / Paylaş" yapabilirsiniz.
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;">
+          <a href="${st.pngDataUrl}" download="${escapeHtml(st.pngFileName)}" class="ios-btn ios-btn-outline" style="padding:7px 4px; font-size:9.3px; font-weight:800; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;">
+            🖼️ 1. Sayfa PNG
           </a>
-          <button type="button" class="ios-btn ios-btn-outline" style="padding:8px; font-size:10px; font-weight:800; color:#047857; border-color:#6ee7b7;" onclick="openExternalUrlSafe('https://wa.me/?text=' + encodeURIComponent(buildPedigreeWhatsAppSummaryText(_lastExportedPedigreeState.ped)))">
-            💬 WhatsApp'a Soyağacı Metni Gönder
+          <a href="${st.page2PngDataUrl || st.pngDataUrl}" download="${escapeHtml(st.page2PngFileName || st.pngFileName)}" class="ios-btn ios-btn-outline" style="padding:7px 4px; font-size:9.3px; font-weight:800; text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;">
+            📊 2. Sayfa PNG
+          </a>
+          <button type="button" class="ios-btn ios-btn-outline" style="padding:7px 4px; font-size:9.3px; font-weight:800; color:#047857; border-color:#6ee7b7;" onclick="openExternalUrlSafe('https://wa.me/?text=' + encodeURIComponent(buildPedigreeWhatsAppSummaryText(_lastExportedPedigreeState.ped)))">
+            💬 WhatsApp Metin
           </button>
         </div>
       </div>
@@ -6368,55 +7170,70 @@ function openPedigreeExportAssistModal(modeLabel = 'PDF İndir & WhatsApp Payla�
 }
 
 function preparePedigreeExportAssetsSync(targetPedId) {
-  const canvas = captureOnlyPedigreePaperCanvasSync(targetPedId);
+  if (targetPedId && targetPedId !== activePedigreeId) {
+    activePedigreeId = targetPedId;
+  }
+  renderActivePedigree();
   const ped = getActivePedigree();
+  const canvas1 = drawNativePedigreeCertificateCanvas(ped);
+  const canvas2 = drawNativePedigreePage2Canvas(ped);
   const m = ped?.boxes?.main || {};
   const ring = (m.ring || 'Pedigre').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const pdfFileName = `AVIGEN_${ring}_Pedigre.pdf`;
-  const pngFileName = `AVIGEN_${ring}_Pedigre.png`;
-  const pdfBlob = convertPedigreeCanvasToPdfBlob(canvas);
-  const pngDataUrl = canvas.toDataURL('image/png');
-  const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.94);
+  const pdfFileName = `AVIGEN_${ring}_Pedigre_ve_Sicil_2Sayfa.pdf`;
+  const pngFileName = `AVIGEN_${ring}_Sayfa1_Pedigre.png`;
+  const page2PngFileName = `AVIGEN_${ring}_Sayfa2_Performans_Sicil.png`;
+
+  const pdfBlob = convertPedigreeCanvasToPdfBlob(canvas1, canvas2);
+  const pngDataUrl = canvas1.toDataURL('image/png');
+  const jpegDataUrl = canvas1.toDataURL('image/jpeg', 0.94);
+  const page2PngDataUrl = canvas2.toDataURL('image/png');
+  const page2JpegDataUrl = canvas2.toDataURL('image/jpeg', 0.94);
+
   const pngBlob = dataUrlToBlobSync(pngDataUrl, 'image/png');
+  const page2PngBlob = dataUrlToBlobSync(page2PngDataUrl, 'image/png');
   const pdfFile = new File([pdfBlob], pdfFileName, { type: 'application/pdf', lastModified: Date.now() });
   const pngFile = new File([pngBlob], pngFileName, { type: 'image/png', lastModified: Date.now() });
+  const page2PngFile = new File([page2PngBlob], page2PngFileName, { type: 'image/png', lastModified: Date.now() });
 
   _lastExportedPedigreeState = {
     ped,
     ring: m.ring || 'Pedigre',
     pdfFileName,
     pngFileName,
+    page2PngFileName,
     pdfBlob,
     pngBlob,
+    page2PngBlob,
     pdfFile,
     pngFile,
+    page2PngFile,
     pngDataUrl,
-    jpegDataUrl
+    jpegDataUrl,
+    page2PngDataUrl,
+    page2JpegDataUrl
   };
   return _lastExportedPedigreeState;
 }
 
-// 1. SADECE PEDİGRİYİ .PDF OLARAK İNDİRİR (%100 Senkron, Android'de Donma Yapmaz!)
+// 1. 2 SAYFALIK PEDİGRİ + PERFORMANS/SİCİL DOSYASINI .PDF OLARAK İNDİRİR (%100 Senkron, Android'de Donma Yapmaz!)
 async function downloadHighResPedigree(targetPedId) {
   const st = preparePedigreeExportAssetsSync(targetPedId);
   if (!isCapacitorAndroidApk()) {
     triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
   }
-  if (isAndroidOrWebViewDevice()) {
-    openPedigreeExportAssistModal('Pedigri PDF İndir & Kaydet');
-  }
+  openPedigreeExportAssistModal('2 Sayfa Pedigri + Sicil PDF İndir');
 }
 
-// 2. SADECE PEDİGRİYİ YÜKSEK ÇÖZÜNÜRLÜKLÜ RESİM (.PNG) OLARAK İNDİRİR (%100 Senkron)
+// 2. PEDİGRİ VE PERFORMANS/SİCİL KARTINI YÜKSEK ÇÖZÜNÜRLÜKLÜ RESİM (.PNG) OLARAK İNDİRİR (%100 Senkron)
 async function downloadHighResPedigreePng(targetPedId) {
   const st = preparePedigreeExportAssetsSync(targetPedId);
-  triggerBlobFileDownload(st.pngBlob, st.pngFileName, st.pngDataUrl);
-  if (isAndroidOrWebViewDevice()) {
-    openPedigreeExportAssistModal('HD Pedigri Resmi (.PNG) İndir');
+  if (!isCapacitorAndroidApk()) {
+    triggerBlobFileDownload(st.pngBlob, st.pngFileName, st.pngDataUrl);
   }
+  openPedigreeExportAssistModal('HD Pedigri & Sicil Resmi (.PNG)');
 }
 
-// 3. WHATSAPP ÜZERİNDEN DOĞRUDAN GERÇEK .PDF / .PNG DOSYASI OLARAK PAYLAŞIR (%100 Senkron, Donmaz!)
+// 3. WHATSAPP ÜZERİNDEN DOĞRUDAN GERÇEK 2 SAYFA .PDF / .PNG DOSYASI OLARAK PAYLAŞIR (%100 Senkron, Donmaz!)
 async function shareActivePedigree(targetPedId) {
   const st = preparePedigreeExportAssetsSync(targetPedId);
 
@@ -6425,7 +7242,14 @@ async function shareActivePedigree(targetPedId) {
       if (!navigator.canShare || navigator.canShare({ files: [st.pdfFile] })) {
         await navigator.share({
           files: [st.pdfFile],
-          title: `${st.ring} Resmi Pedigri Sertifikası (PDF)`
+          title: `${st.ring} Resmi 2 Sayfa Pedigri & Sicil Sertifikası (PDF)`
+        });
+        return;
+      }
+      if (!navigator.canShare || navigator.canShare({ files: [st.pngFile, st.page2PngFile] })) {
+        await navigator.share({
+          files: [st.pngFile, st.page2PngFile],
+          title: `${st.ring} Resmi Pedigri & Sicil Sertifikası`
         });
         return;
       }
@@ -6444,7 +7268,7 @@ async function shareActivePedigree(targetPedId) {
   if (!isCapacitorAndroidApk()) {
     triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
   }
-  openPedigreeExportAssistModal('WhatsApp Paylaş & PDF İndir');
+  openPedigreeExportAssistModal('WhatsApp Paylaş & 2 Sayfa PDF İndir');
 }
 
 // ============================================================================
@@ -8918,7 +9742,7 @@ const AvigenUxManager = {
           </div>
         </div>
 
-        <!-- 0.5 GENESIS AI – BULUT SİNİR AĞI BAĞLANTISI (SADECE GENESIS AI ABONELERİ İÇİN) -->
+        <!-- 0.5 GENESIS AI – BULUT SİNİR AĞI BAĞLANTISI (BOŞ OLDUĞUNDA ADIM ADIM KURULUM VE BİLGİLENDİRME REHBERLİ) -->
         <div class="ios-card" style="padding:11px 12px; border:1.5px solid #7c3aed; background:linear-gradient(135deg, rgba(124,58,237,0.06), rgba(2,132,199,0.05));">
           <div class="ios-card-title" style="margin-bottom:5px; display:flex; justify-content:space-between; align-items:center;">
             <span style="color:#4c1d95;">🧬 GENESIS AI – Bulut Sinir Ağı Ayarı</span>
@@ -8928,17 +9752,50 @@ const AvigenUxManager = {
           </div>
           ${this.hasGeneticsAiAccess() ? `
             <div style="font-size:9.8px; color:var(--ios-subtext); margin-bottom:7px; line-height:1.38;">
-              <strong>GENESIS AI</strong> tüm sorularınızı yerleşik bilimsel kümes motoruyla anında yanıtlar. İsteğe bağlı bulut yapay zekâ motor anahtarınızı bağlayarak derin doğal dil sinir ağını da aktif edebilirsiniz:
+              <strong>GENESIS AI</strong> tüm sorularınızı yerleşik bilimsel kümes motoruyla anında yanıtlar. İsteğe bağlı kişisel <strong>GENESIS AI Bulut Sinir Ağı Anahtarınızı</strong> girerek derin doğal dil sinir ağını da aktif edebilirsiniz:
             </div>
-            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-              <input type="password" id="settingsGeminiApiKeyInput" class="ios-input" style="flex:1; min-width:170px; padding:6px 8px; font-size:10.8px;" placeholder="GENESIS AI Bulut Motor Anahtarı (İsteğe Bağlı)" value="${escapeHtml((localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim())}" />
-              <button type="button" class="ios-btn ios-btn-primary" style="padding:6px 10px; font-size:10px;" onclick="if(typeof AvigenGenesisAI!=='undefined'){AvigenGenesisAI.saveGeminiApiKeyFromInput('settingsGeminiApiKeyInput');}">
+            <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-bottom:7px;">
+              <input type="password" id="settingsGeminiApiKeyInput" class="ios-input" style="flex:1; min-width:165px; padding:7px 9px; font-size:11px; font-weight:800;" placeholder="AIzaSy... ile başlayan Bulut Anahtarınızı girin" value="${escapeHtml((localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim())}" />
+              <button type="button" class="ios-btn ios-btn-outline" style="padding:7px 9px; font-size:9.8px; font-weight:800;" onclick="(async()=>{const el=document.getElementById('settingsGeminiApiKeyInput');if(!el)return;let txt='';if(navigator.clipboard&&navigator.clipboard.readText){try{txt=await navigator.clipboard.readText();}catch(e){}}if(!txt.trim()){const m=prompt('📋 Kopyaladığınız AIzaSy... ile başlayan Bulut Sinir Ağı Anahtarını buraya yapıştırın:',el.value||'');if(m===null)return;txt=m;}if(txt.trim()){el.value=txt.trim();if(typeof AvigenGenesisAI!=='undefined'){AvigenGenesisAI.saveGeminiApiKeyFromInput('settingsGeminiApiKeyInput');}}})()">
+                📋 Yapıştır
+              </button>
+              <button type="button" class="ios-btn ios-btn-primary" style="padding:7px 10px; font-size:10px; font-weight:900;" onclick="if(typeof AvigenGenesisAI!=='undefined'){AvigenGenesisAI.saveGeminiApiKeyFromInput('settingsGeminiApiKeyInput');}">
                 💾 Kaydet
               </button>
             </div>
+            ${!(localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim() ? `
+              <div style="background:#f5f3ff; border:1.5px solid #c4b5fd; border-radius:9px; padding:8px 10px; font-size:9.3px; color:#4c1d95; line-height:1.42;">
+                <div style="font-weight:900; font-size:10px; color:#5b21b6; margin-bottom:3px;">
+                  📌 Bilgilendirme — Bu Kutu Boşsa Nasıl Doldurulur?
+                </div>
+                1️⃣ <strong>Boş Bırakırsanız:</strong> Hiçbir sorun olmaz! <strong>GENESIS AI Yerleşik Bilimsel Kümes Motoru</strong> ve ücretsiz bulut katmanı tüm eşleştirme, 5 nesil COI, yarış ve yem analizlerini <strong>anahtarsız %100 çalıştırır</strong>.<br/>
+                2️⃣ <strong>Nasıl Doldurulur? (3 Adımda Ücretsiz Anahtar Kurulumu):</strong><br/>
+                • <strong>Adım 1:</strong> Aşağıdaki <strong>"🔗 Ücretsiz Bulut Anahtarı Al"</strong> butonuna dokunun ve açılan sayfada <strong>"Create API key"</strong> tuşuna basın.<br/>
+                • <strong>Adım 2:</strong> Ekranda verilen <strong><code>AIzaSy...</code></strong> ile başlayan 39 haneli kodu kopyalayın.<br/>
+                • <strong>Adım 3:</strong> Yukarıdaki <strong>"📋 Yapıştır"</strong> ve <strong>"💾 Kaydet"</strong> butonuna basın.
+                <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:6px; margin-top:6px;">
+                  <button type="button" class="ios-btn ios-btn-purple" style="padding:6px 8px; font-size:9.3px; font-weight:900;" onclick="openExternalUrlSafe('https://aistudio.google.com/app/apikey')">
+                    🔗 Ücretsiz Bulut Anahtarı Al
+                  </button>
+                  <button type="button" class="ios-btn ios-btn-green" style="padding:6px 8px; font-size:9.3px; font-weight:900;" onclick="openExternalUrlSafe('https://wa.me/905327820385?text=' + encodeURIComponent('Merhaba, AVIGEN GENESIS AI Bulut Sinir Ağı Anahtarı kurulumu için destek / hazır anahtar talep ediyorum.'))">
+                    📲 WhatsApp Kurulum Desteği
+                  </button>
+                </div>
+              </div>
+            ` : `
+              <div style="background:#ecfdf5; border:1px solid #6ee7b7; border-radius:8px; padding:6px 9px; font-size:9.2px; color:#065f46; display:flex; justify-content:space-between; align-items:center;">
+                <span>✅ <strong>Kişisel Bulut Sinir Ağı Anahtarınız Kayıtlı ve Aktif!</strong></span>
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.5px; color:#dc2626; border-color:#fca5a5;" onclick="localStorage.removeItem('avigen_gemini_free_api_key_v1'); AvigenUxManager.renderProfileAccountSection();">Anahtarı Temizle</button>
+              </div>
+            `}
           ` : `
             <div style="font-size:9.8px; color:var(--ios-subtext); margin-bottom:7px; line-height:1.38;">
               <strong>GENESIS AI'ya Sor</strong> ve bulut sinir ağı özellikleri <strong>AVIGEN AI</strong> aboneliğine dahildir. Lisans kodunuzu girerek veya <strong>0 532 782 03 85</strong> WhatsApp hattından kod isteyerek aktif edebilirsiniz:
+            </div>
+            <div style="background:#f5f3ff; border:1px solid #c4b5fd; border-radius:8px; padding:7px 9px; font-size:9.1px; color:#4c1d95; line-height:1.38; margin-bottom:7px;">
+              📌 <strong>Nasıl Çalışır &amp; Nasıl Doldurulur?</strong><br/>
+              • <strong>AVIGEN AI</strong> lisansınızı aktif ettiğinizde burada <strong>Bulut Sinir Ağı Anahtarı</strong> kutusu açılır.<br/>
+              • Kutuyu boş bıraksanız dahi <strong>GENESIS AI Yerleşik Bilimsel Kümes Motoru</strong> tüm eşleştirme, yarış ve yem analizlerini anında yapar; isterseniz tek tuşla ücretsiz <code>AIzaSy...</code> bulut anahtarınızı yapıştırarak derin sinir ağını da bağlayabilirsiniz.
             </div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
               <button type="button" class="ios-btn ios-btn-purple" style="padding:7px 8px; font-size:10px; font-weight:900;" onclick="AvigenUxManager.openSubscriptionModal('checkout')">
@@ -9934,15 +10791,16 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.5.3',
-    localBuild: 553,
-    remoteVersion: '5.5.3',
-    remoteBuild: 553,
-    remoteTitle: "AVIGEN v5.5.3 — Önbellek Kırıcı (Cache-Busting) Canlı Güncelleme & Üst Bar Yedekleme/Kopyalama Merkezi",
+    localVersion: '5.6.0',
+    localBuild: 560,
+    remoteVersion: '5.6.0',
+    remoteBuild: 560,
+    remoteTitle: "AVIGEN v5.6.0 — 2 Sayfalık Pedigri + Performans/Sicil Sertifikası, Büyük Yarış Koordinat Girişi, Ana Sayfa Mevsimsel Yem/Suluk Rehberi & Bulut Sinir Ağı Kurulum Rehberi",
     remoteNotes: [
-      "Android WebView & Tarayıcı Önbellek Kırıcı (?v=5.5.3): Eski app.js dosyasının telefon önbelleğinde takılı kalmasını önleyen zorunlu sürüm parametresi eklendi",
-      "Profil & Ayarlar En Üst Kartına Tek Tuşla '⬇️ Yedeği İndir / Kopyala' ve '📋 Yedek Kodu Yapıştır / Yükle' Hızlı Erişim Butonları eklendi",
-      "Android & iPhone Kopyala/Yapıştır Yedekleme Asistanı, Canlı Bulut Bağlantılı Android APK ve Tam Android Uyumluluğu"
+      "2 Sayfalık Resmi Pedigri & Sicil Sertifikası: Pedigri görsel tasarımına 2. sayfa olarak kuşun Bireysel Performans, Genetik Profil, Fenotip ve Kişisel Sicil Dosyası sertifikası eklendi (Tek tuşla 2 sayfa PDF/PNG indirme ve WhatsApp paylaşımı)",
+      "Yarış Sekmesi Büyük & Kolay GPS Koordinat Girişi: Salım Noktası ve Varış (Kümes) Koordinat kutuları büyütüldü, tek tuşla panodan konum yapıştırma (📋 Konum Yapıştır) ve canlı metre/km mesafe hesaplayıcı eklendi",
+      "Ana Sayfa Mevsimsel & Kümes Durumuna Göre Yem ve İçecek (Suluk) Bilgi Notu: Kuşların durumuna (Yarış, Eşleşme/Yavru, Tüy, Kış) ve mevsime göre günlük yem karışımı ve suluk takviyesi özeti ana ekrana eklendi",
+      "GENESIS AI Bulut Sinir Ağı Kurulum Rehberi & Android APK WhatsApp/Paylaşım Tam Uyumluluğu"
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',

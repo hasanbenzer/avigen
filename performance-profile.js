@@ -2661,59 +2661,98 @@ const AvigenRaceTracker = {
     if (categoryCode === 'LOFT_ENDURANCE' || categoryCode === 'CLUB_RACE') {
       const nextStageNum = this.events.filter(e => e.category === 'CLUB_RACE' || e.category === 'LOFT_ENDURANCE').length + 1;
       categorySpecificFieldsHtml = `
-        <div style="background:var(--ios-card-alt); border:1.5px solid #93c5fd; border-radius:10px; padding:8px 9px; display:flex; flex-direction:column; gap:7px;">
-          <!-- 1. SALIM KONUMU: İL/İLÇE SEÇİMİ VEYA SALIM GPS KOORDİNATI -->
-          <div style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.25); border-radius:8px; padding:6px 8px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <label style="font-size:9.3px; font-weight:900; color:#dc2626;">🔴 1. Salım Konumu (İl/İlçe Seçin veya Koordinat Girin)</label>
-              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.2px; color:#dc2626; border-color:#fca5a5;" onclick="AvigenRaceTracker.captureMyGpsForRaceField('newRaceReleaseCoords')">
-                🛰️ GPS'ten Al
-              </button>
+        <div style="background:linear-gradient(135deg,#f8fafc,#eff6ff); border:2px solid #3b82f6; border-radius:12px; padding:10px 11px; display:flex; flex-direction:column; gap:9px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+            <span style="font-size:11.5px; font-weight:900; color:#1e3a8a;">🧭 SALIM NOKTASI &amp; VARIŞ (KÜMES) GPS KOORDİNAT GİRİŞİ</span>
+            <span class="gene-badge gene-blue" style="font-size:8.5px;">Hassas Mesafe (Metre/Km)</span>
+          </div>
+
+          <!-- 1. SALIM KONUMU: BÜYÜK VE NET GPS KOORDİNATI + HIZLI İL/İLÇE SEÇİMİ -->
+          <div style="background:#fff5f5; border:2px solid #ef4444; border-radius:10px; padding:9px 10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
+              <label style="font-size:11.5px; font-weight:900; color:#b91c1c;">🔴 1. SALIM NOKTASI KOORDİNATI (Kuşların Salındığı Yer)</label>
+              <div style="display:flex; gap:5px;">
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 9px; font-size:9.8px; font-weight:900; color:#b91c1c; border-color:#f87171; background:#ffffff;" onclick="AvigenRaceTracker.pasteCoordinateToField('newRaceReleaseCoords')">
+                  📋 Konum Yapıştır
+                </button>
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 9px; font-size:9.8px; font-weight:900; color:#b91c1c; border-color:#f87171; background:#ffffff;" onclick="AvigenRaceTracker.captureMyGpsForRaceField('newRaceReleaseCoords')">
+                  🛰️ GPS'ten Al
+                </button>
+              </div>
             </div>
-            ${geoNodes.length > 0 ? `
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:5px;">
-                <select id="newRaceRelCitySelect" class="ios-select" style="padding:5px 6px; font-size:10px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange('rel_city')">
-                  ${geoNodes.map(n => `<option value="${n.id}" ${n.id === defaultRelCityId ? 'selected' : ''}>${escapeHtml(n.name.split(' (')[0])}</option>`).join('')}
-                </select>
-                <select id="newRaceRelDistSelect" class="ios-select" style="padding:5px 6px; font-size:10px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange('rel_dist')">
-                  ${(typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.getDistrictsForProvince === 'function' ? AvigenGenesisAI.getDistrictsForProvince(defaultRelCityId) : []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
-                </select>
+
+            <div style="margin-bottom:6px;">
+              <input type="text" id="newRaceReleaseCoords" class="ios-input" style="height:42px; padding:8px 11px; font-size:14.5px; font-weight:900; color:#0f172a; background:#ffffff; border:2px solid #dc2626; letter-spacing:0.3px;" placeholder="📍 Salım Koordinatını Yazın veya Yapıştırın (Örn: 39.5842, 32.1472)" value="${escapeHtml(prefillData?.releaseCoords || '39.9334, 32.8597')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+              <div style="font-size:9px; color:#7f1d1d; margin-top:3px; font-weight:700;">
+                💡 Harita / WhatsApp konumunu (Örn: <strong>39.5842, 32.1472</strong> veya <strong>39°35'03"N 32°08'50"E</strong>) doğrudan yukarıdaki büyük kutuya yapıştırabilirsiniz.
               </div>
-            ` : ''}
-            <div style="display:grid; grid-template-columns:0.95fr 1.05fr; gap:5px;">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1.1fr; gap:5px; align-items:end;">
+              ${geoNodes.length > 0 ? `
+                <div>
+                  <label style="font-size:8.6px; font-weight:800; color:#7f1d1d;">Hızlı İl Seç (Koordinat Doldurur)</label>
+                  <select id="newRaceRelCitySelect" class="ios-select" style="padding:6px; font-size:10.5px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange('rel_city')">
+                    ${geoNodes.map(n => `<option value="${n.id}" ${n.id === defaultRelCityId ? 'selected' : ''}>${escapeHtml(n.name.split(' (')[0])}</option>`).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:8.6px; font-weight:800; color:#7f1d1d;">Salım İlçesi</label>
+                  <select id="newRaceRelDistSelect" class="ios-select" style="padding:6px; font-size:10.5px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange('rel_dist')">
+                    ${(typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.getDistrictsForProvince === 'function' ? AvigenGenesisAI.getDistrictsForProvince(defaultRelCityId) : []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
+                  </select>
+                </div>
+              ` : ''}
               <div>
-                <label style="font-size:8.4px; font-weight:800; color:var(--ios-subtext);">Salım Noktası Adı</label>
-                <input type="text" id="newRaceReleasePoint" class="ios-input" style="padding:5px 7px; font-size:10.3px;" value="${escapeHtml(prefillData?.releasePoint || 'Ankara (Polatlı)')}" />
-              </div>
-              <div>
-                <label style="font-size:8.4px; font-weight:800; color:#dc2626;">📍 Salım Koordinatı (Enlem, Boylam)</label>
-                <input type="text" id="newRaceReleaseCoords" class="ios-input" style="padding:5px 7px; font-size:10.3px; font-weight:800;" placeholder="Örn: 39.5842, 32.1472" value="${escapeHtml(prefillData?.releaseCoords || '39.9334, 32.8597')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+                <label style="font-size:8.6px; font-weight:800; color:#7f1d1d;">Salım Noktası Adı</label>
+                <input type="text" id="newRaceReleasePoint" class="ios-input" style="padding:6px 8px; font-size:10.8px; font-weight:800;" value="${escapeHtml(prefillData?.releasePoint || 'Ankara (Polatlı)')}" />
               </div>
             </div>
           </div>
 
-          <!-- 2. VARIŞ (KÜMES) KONUMU: İL/İLÇE SEÇİMİ VEYA KÜMES GPS KOORDİNATI -->
-          <div style="background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.28); border-radius:8px; padding:6px 8px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <label style="font-size:9.3px; font-weight:900; color:#059669;">🟢 2. Varış / Kümes Konumu (İl/İlçe veya Kümes Koordinatı)</label>
-              <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.2px; color:#059669; border-color:#6ee7b7;" onclick="AvigenRaceTracker.captureMyGpsForRaceField('newRaceLoftCoords')">
-                🛰️ Kümes GPS'imi Al
-              </button>
+          <!-- 2. VARIŞ (KÜMES) KONUMU: BÜYÜK VE NET GPS KOORDİNATI + TEK TUŞLA KÜMES SABİTLEME -->
+          <div style="background:#ecfdf5; border:2px solid #10b981; border-radius:10px; padding:9px 10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
+              <label style="font-size:11.5px; font-weight:900; color:#047857;">🟢 2. VARIŞ NOKTASI / KÜMES KOORDİNATI (Kuşların Döndüğü Kümes)</label>
+              <div style="display:flex; gap:5px;">
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 9px; font-size:9.8px; font-weight:900; color:#047857; border-color:#34d399; background:#ffffff;" onclick="AvigenRaceTracker.pasteCoordinateToField('newRaceLoftCoords')">
+                  📋 Konum Yapıştır
+                </button>
+                <button type="button" class="ios-btn ios-btn-green" style="padding:5px 9px; font-size:9.8px; font-weight:900;" onclick="AvigenRaceTracker.captureMyGpsForRaceField('newRaceLoftCoords')">
+                  🛰️ Kümes GPS'imi Al
+                </button>
+              </div>
             </div>
+
+            <div style="margin-bottom:6px;">
+              <input type="text" id="newRaceLoftCoords" class="ios-input" style="height:42px; padding:8px 11px; font-size:14.5px; font-weight:900; color:#0f172a; background:#ffffff; border:2px solid #059669; letter-spacing:0.3px;" placeholder="📍 Kümes / Varış Koordinatını Yazın veya Yapıştırın (Örn: 40.1885, 29.0610)" value="${escapeHtml(prefillData?.loftCoords || savedLoftGps)}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+              <div style="font-size:9px; color:#065f46; margin-top:3px; font-weight:700;">
+                💡 Kümesinizin koordinatını bir kez girdiğinizde veya <strong>"🛰️ Kümes GPS'imi Al"</strong> tuşuna bastığınızda hafızaya kaydedilir ve tüm yarışlarda hazır gelir.
+              </div>
+            </div>
+
             ${geoNodes.length > 0 ? `
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:5px;">
-                <select id="newRaceLoftCitySelect" class="ios-select" style="padding:5px 6px; font-size:10px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange('loft_city')">
-                  ${geoNodes.map(n => `<option value="${n.id}" ${n.id === defaultLoftCityId ? 'selected' : ''}>${escapeHtml(n.name.split(' (')[0])}</option>`).join('')}
-                </select>
-                <select id="newRaceLoftDistSelect" class="ios-select" style="padding:5px 6px; font-size:10px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange('loft_dist')">
-                  ${(typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.getDistrictsForProvince === 'function' ? AvigenGenesisAI.getDistrictsForProvince(defaultLoftCityId) : []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
-                </select>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+                <div>
+                  <label style="font-size:8.6px; font-weight:800; color:#065f46;">Kümes İli (İsteğe Bağlı Seçim)</label>
+                  <select id="newRaceLoftCitySelect" class="ios-select" style="padding:6px; font-size:10.5px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange('loft_city')">
+                    ${geoNodes.map(n => `<option value="${n.id}" ${n.id === defaultLoftCityId ? 'selected' : ''}>${escapeHtml(n.name.split(' (')[0])}</option>`).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:8.6px; font-weight:800; color:#065f46;">Kümes İlçesi</label>
+                  <select id="newRaceLoftDistSelect" class="ios-select" style="padding:6px; font-size:10.5px; font-weight:800;" onchange="AvigenRaceTracker.onCreateRaceCitySelectChange('loft_dist')">
+                    ${(typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.getDistrictsForProvince === 'function' ? AvigenGenesisAI.getDistrictsForProvince(defaultLoftCityId) : []).map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
+                  </select>
+                </div>
               </div>
             ` : ''}
-            <div>
-              <label style="font-size:8.4px; font-weight:800; color:#059669;">📍 Kümes / Varış Koordinatı (Enlem, Boylam — Otomatik Mesafe Hesaplar)</label>
-              <input type="text" id="newRaceLoftCoords" class="ios-input" style="padding:5px 7px; font-size:10.3px; font-weight:800;" placeholder="Örn: 40.1885, 29.0610 veya 40°11'18&quot;N 29°03'39&quot;E" value="${escapeHtml(prefillData?.loftCoords || savedLoftGps)}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
-            </div>
+          </div>
+
+          <!-- CANLI HESAPLANAN KOORDİNAT MESAFE GÖSTERGESİ -->
+          <div id="newRaceLiveCoordBanner" style="background:#1e3a8a; color:#ffffff; border-radius:9px; padding:8px 11px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; font-size:11.5px; font-weight:900;">
+            <span>📏 Koordinattan Hesaplanan Kuş Uçuşu Mesafe:</span>
+            <span id="newRaceLiveCoordKmText" style="color:#fde047; font-size:13.5px;">${prefillData?.distanceKm || 380} km</span>
           </div>
         </div>
 
@@ -2817,19 +2856,31 @@ const AvigenRaceTracker = {
           </div>
         </div>
 
-        <!-- SALIM NOKTASI VE KOORDİNAT GİRİŞİ -->
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px;">
-          <div>
-            <label style="font-size:8.6px; font-weight:800;">Salım Noktası Adı</label>
-            <input type="text" id="newRaceReleasePoint" class="ios-input" value="${escapeHtml(prefillData?.releasePoint || 'Sivas (505 km Final)')}" />
+        <!-- SALIM NOKTASI VE KOORDİNAT GİRİŞİ (BÜYÜK VE KOLAY ANLAŞILIR) -->
+        <div style="background:linear-gradient(135deg,#fffbeb,#fef2f2); border:2px solid #f59e0b; border-radius:10px; padding:9px 10px; display:flex; flex-direction:column; gap:7px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+            <span style="font-size:11px; font-weight:900; color:#b45309;">🧭 DERBY / BÜYÜK YARIŞ SALIM &amp; VARIŞ (KÜMES) KOORDİNATLARI</span>
+            <span id="newRaceLiveCoordKmText" style="font-size:11.5px; font-weight:900; color:#047857;">📏 ${prefillData?.distanceKm || 505} km</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px;">
+            <div style="background:#fff5f5; border:1.5px solid #ef4444; border-radius:8px; padding:7px 8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <label style="font-size:10px; font-weight:900; color:#b91c1c;">🔴 1. Salım Noktası Koordinatı</label>
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:8.8px; font-weight:900; color:#b91c1c; border-color:#f87171;" onclick="AvigenRaceTracker.pasteCoordinateToField('newRaceReleaseCoords')">📋 Yapıştır</button>
+              </div>
+              <input type="text" id="newRaceReleaseCoords" class="ios-input" style="height:38px; font-size:13px; font-weight:900; border:1.8px solid #dc2626;" placeholder="Örn: 39.7477, 37.0179" value="${escapeHtml(prefillData?.releaseCoords || '')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+            </div>
+            <div style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:8px; padding:7px 8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <label style="font-size:10px; font-weight:900; color:#047857;">🟢 2. Derby Kümes Koordinatı</label>
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:8.8px; font-weight:900; color:#047857; border-color:#34d399;" onclick="AvigenRaceTracker.pasteCoordinateToField('newRaceLoftCoords')">📋 Yapıştır</button>
+              </div>
+              <input type="text" id="newRaceLoftCoords" class="ios-input" style="height:38px; font-size:13px; font-weight:900; border:1.8px solid #059669;" placeholder="Örn: 41.0082, 28.9784" value="${escapeHtml(prefillData?.loftCoords || '')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+            </div>
           </div>
           <div>
-            <label style="font-size:8.6px; font-weight:800; color:#dc2626;">📍 Salım Koordinatı (İsteğe Bağlı)</label>
-            <input type="text" id="newRaceReleaseCoords" class="ios-input" placeholder="39.7477, 37.0179" value="${escapeHtml(prefillData?.releaseCoords || '')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
-          </div>
-          <div>
-            <label style="font-size:8.6px; font-weight:800; color:#059669;">📍 Derby Kümes Koordinatı</label>
-            <input type="text" id="newRaceLoftCoords" class="ios-input" placeholder="41.0082, 28.9784" value="${escapeHtml(prefillData?.loftCoords || '')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+            <label style="font-size:9px; font-weight:800;">Salım Noktası / Etap Mevkii Adı</label>
+            <input type="text" id="newRaceReleasePoint" class="ios-input" style="font-weight:800;" value="${escapeHtml(prefillData?.releasePoint || 'Sivas (505 km Final)')}" />
           </div>
         </div>
 
@@ -3000,11 +3051,49 @@ const AvigenRaceTracker = {
     const loftStr = document.getElementById('newRaceLoftCoords')?.value || '';
     const relCoord = this.parseGpsCoordinateString(relStr);
     const loftCoord = this.parseGpsCoordinateString(loftStr);
+    if (loftCoord) {
+      try {
+        const cleanLoft = `${loftCoord.lat}, ${loftCoord.lon}`;
+        localStorage.setItem('avigen_saved_loft_gps_coords_v1', cleanLoft);
+        if (typeof loftConfig !== 'undefined') {
+          loftConfig.gpsCoords = cleanLoft;
+        }
+      } catch (e) {}
+    }
     if (relCoord && loftCoord) {
-      const distKm = Math.max(1, Math.round(this.calculateHaversineKmFromCoords(relCoord.lat, relCoord.lon, loftCoord.lat, loftCoord.lon)));
+      const exactKm = Math.max(0.5, this.calculateHaversineKmFromCoords(relCoord.lat, relCoord.lon, loftCoord.lat, loftCoord.lon));
       const kmEl = document.getElementById('newRaceDistanceKm');
-      if (kmEl) kmEl.value = distKm;
-      this.onCreateDistanceInput(distKm);
+      if (kmEl) kmEl.value = exactKm;
+      const liveBannerTxt = document.getElementById('newRaceLiveCoordKmText');
+      if (liveBannerTxt) {
+        const meters = Math.round(exactKm * 1000).toLocaleString('tr-TR');
+        liveBannerTxt.textContent = `${exactKm} km (${meters} Metre)`;
+      }
+      this.onCreateDistanceInput(exactKm);
+    }
+  },
+
+  async pasteCoordinateToField(inputId) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    let rawClip = '';
+    if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+      try {
+        rawClip = (await navigator.clipboard.readText()) || '';
+      } catch (e) {}
+    }
+    if (!rawClip.trim()) {
+      const manual = prompt('📋 Kopyaladığınız Google Haritalar / WhatsApp Konumunu veya Enlem, Boylam koordinatını buraya yapıştırın:', el.value || '39.9334, 32.8597');
+      if (manual === null) return;
+      rawClip = manual;
+    }
+    const parsed = this.parseGpsCoordinateString(rawClip);
+    if (parsed) {
+      el.value = `${parsed.lat}, ${parsed.lon}`;
+      this.onCreateRaceCoordinateInput();
+    } else if (rawClip.trim()) {
+      el.value = rawClip.trim();
+      this.onCreateRaceCoordinateInput();
     }
   },
 
