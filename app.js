@@ -1361,12 +1361,8 @@ function openIosTab(tabId, btnEl, resetSubView) {
   document.querySelectorAll('.ios-modal-overlay.open').forEach(m => m.classList.remove('open'));
   if (typeof closeAllBirdActionPopups === 'function') closeAllBirdActionPopups();
 
-  if (tabId !== 'home' && window.history && typeof window.history.pushState === 'function') {
-    try {
-      if (!window.history.state || window.history.state.avigenTab !== tabId) {
-        window.history.pushState({ avigenGuard: true, avigenTab: tabId }, '');
-      }
-    } catch (e) {}
+  if (tabId !== 'home' && typeof pushAndroidUserGestureNavStep === 'function') {
+    pushAndroidUserGestureNavStep('tab_' + tabId);
   }
 
   document.querySelectorAll('.ios-tab-page').forEach(p => p.classList.remove('active'));
@@ -1616,9 +1612,15 @@ function renderHomeFlightWeatherStrip() {
 }
 
 let homeFeedBriefingMode = 'AUTO'; // 'AUTO' | 'RACE' | 'BREEDING' | 'MOULTING' | 'WINTER'
+let homeFeedCalendarDayOverride = 'TODAY'; // 'TODAY' | 0..6 (0=Pazar, 1=Pazartesi ... 6=Cumartesi)
 
 function setHomeFeedBriefingMode(modeKey) {
   homeFeedBriefingMode = modeKey || 'AUTO';
+  renderHomeMorningBriefingCard();
+}
+
+function setHomeFeedCalendarDay(dayVal) {
+  homeFeedCalendarDayOverride = dayVal === 'TODAY' ? 'TODAY' : Number(dayVal);
   renderHomeMorningBriefingCard();
 }
 
@@ -1640,17 +1642,27 @@ function renderHomeMorningBriefingCard() {
 
   const now = new Date();
   const monthNum = now.getMonth() + 1;
-  const dayNum = now.getDay();
+  const todayDayNum = now.getDay();
+  const dayNum = homeFeedCalendarDayOverride === 'TODAY' ? todayDayNum : Number(homeFeedCalendarDayOverride);
   const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-  const dayName = dayNames[dayNum];
+  const dayShort = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+  const dayName = dayNames[dayNum] || 'Bugün';
 
-  // Otomatik Mevsim ve Kümes Durumu Tespiti
+  // 1. Takvimdeki Aktif Kümes Gerekliliklerini (Aşı, İlaç Kürü, Antrenman, Yumurtlama, Yavru Çıkışı, Bilezik, Yarış) Oku
+  const calendarTasks = typeof buildUnifiedSmartReminders === 'function' ? buildUnifiedSmartReminders() : [];
+  const hasChickOrRinging = calendarTasks.some(t => t.sourceType === 'nest_ringing' || /yavru|bilezik|çıkış/i.test(`${t.title} ${t.subtitle}`));
+  const hasLayingOrIncubation = calendarTasks.some(t => t.sourceType === 'nest_milestone');
+  const hasVaccineOrMed = calendarTasks.find(t => t.sourceType === 'reminder' && /aşı|pmv|veba|salmonella|triko|kür|ilaç|koksidiyoz/i.test(`${t.title} ${t.subtitle}`));
+  const hasUpcomingRace = calendarTasks.find(t => t.sourceType === 'race_upcoming' || /yarış|etap|antre|salım|derby|final/i.test(`${t.title} ${t.subtitle}`));
+  const topCalendarRequirement = calendarTasks[0] || null;
+
+  // 2. Otomatik Mevsim, Kümes ve Takvim Durumu Tespiti
   let effectiveMode = homeFeedBriefingMode;
   if (effectiveMode === 'AUTO') {
-    if (nestsCnt > 0 && (monthNum >= 2 && monthNum <= 6)) {
-      effectiveMode = 'BREEDING';
-    } else if (monthNum >= 4 && monthNum <= 8) {
+    if (hasUpcomingRace || (monthNum >= 4 && monthNum <= 8 && racersCnt > 0)) {
       effectiveMode = 'RACE';
+    } else if (hasChickOrRinging || hasLayingOrIncubation || (nestsCnt > 0 && monthNum >= 2 && monthNum <= 7)) {
+      effectiveMode = 'BREEDING';
     } else if (monthNum === 9 || monthNum === 10) {
       effectiveMode = 'MOULTING';
     } else {
@@ -1660,71 +1672,157 @@ function renderHomeMorningBriefingCard() {
 
   let phaseTitle = '';
   let phaseBadge = '';
+  let calendarDayRequirementNote = '';
   let feedNote = '';
   let drinkNote = '';
 
+  // 3. HAFTALIK KÜMES TAKVİMİNDE GÜNÜN GEREKLİLİKLERİNE GÖRE (PAZARTESİ..PAZAR) ÖZEL YEM & SULUK PROGRAMI
   if (effectiveMode === 'RACE') {
-    if (dayNum === 0 || dayNum === 1) {
-      phaseTitle = `🏁 Yarış & Antrenman Dönemi (${dayName} • Toparlanma)`;
-      phaseBadge = 'Detoks & Elektrolit';
-      feedNote = `<strong>Kuş Başı 32–34 gr/gün</strong> (Sabah %35 / Akşam %65) • Yarış/uçuş dönüşü karaciğeri yormayan <strong>%35 Kavuzsuz Arpa + %25 Beyaz Darı + %15 Çeltik + %15 Buğday + %10 Aspir</strong> verilmeli; ilk 24 saat ağır bezelye verilmemelidir.`;
-      drinkNote = `<strong>Sulukta:</strong> 1 Lt suya <strong>2 ml Elektrolit + Aminoasit</strong> (veya bal/dekstroz). <strong>Yem Üstü:</strong> Karaciğer koruyucu (Metiyonin/Sedochol) + Probiyotik tozu.`;
-    } else if (dayNum === 4 || dayNum === 5) {
-      phaseTitle = `🏁 Yarış & Antrenman Dönemi (${dayName} • Enerji Yükleme)`;
-      phaseBadge = 'Glikojen & Lipit';
-      feedNote = `<strong>Kuş Başı 38–42 gr/gün</strong> • Sepetleme öncesi uçuş yakıtı için <strong>%35 Cin Mısırı (Kırmızı/Sarı) + %22 Beyaz Darı + %20 Aspir/Soyulmuş Ayçekirdeği/Kenevir + %13 Buğday + %10 Küçük Bezelye</strong>.`;
-      drinkNote = `<strong>Sulukta:</strong> ${temp >= 26 ? `Sıcak hava (${temp}°C) nedeniyle öğleye kadar <strong>Elektrolit + Vitamin C</strong>, akşam <strong>saf klorsuz su</strong>.` : `<strong>B-Kompleks Vitamin + L-Karnitin</strong>, sepetleme günü ise yalnızca <strong>saf taze içme suyu</strong>.`}`;
-    } else {
-      phaseTitle = `🏁 Yarış & Antrenman Dönemi (${dayName} • Kas Onarımı)`;
-      phaseBadge = 'Kas & Kondisyon';
-      feedNote = `<strong>Kuş Başı 36–38 gr/gün</strong> • Göğüs kası onarımı ve antrenman temposu için <strong>%25 Cin Mısırı + %22 Bezelye/Maş/Fiğ + %20 Beyaz Darı + %18 Buğday/Arpa + %15 Aspir/Keten</strong>.`;
-      drinkNote = `<strong>Sulukta:</strong> 1 Lt suya <strong>5 ml Doğal Elma Sirkesi</strong> veya <strong>Solunum/Kekik Çayı</strong>. <strong>Yem Üstü:</strong> Sarımsak/Omega-3 Yağı + Bira Mayası.`;
-    }
+    const weeklyRaceSchedule = {
+      1: { // Pazartesi
+        role: 'Pazartesi • Yarış Ertesi Karaciğer Detoksu & Sindirim Dinlendirme',
+        badge: 'Detoks & Arpa Günü',
+        req: 'Yarıştan dönen kuşların yorgun karaciğer ve sindirim sistemi dinlendirilir; ağır protein (bezelye) verilmez.',
+        feed: '<strong>Kuş Başı 30–32 gr/gün</strong> (Sabah %35 / Akşam %65) • <strong>%40 Kavuzsuz Arpa & Çeltik + %25 Beyaz Darı + %20 Buğday + %15 Aspir/Keten</strong> (Sindirimi kolay hafif diyet karışımı).',
+        drink: '<strong>Sulukta:</strong> 1 Lt suya <strong>5 ml Karaciğer Koruyucu (Sedochol / Metiyonin) + Probiyotik</strong>. <strong>Yem Üstü:</strong> Bira mayası ve limon/kekik özü.'
+      },
+      2: { // Salı
+        role: 'Salı • Göğüs Kası Onarımı & Solunum Yolu Temizliği',
+        badge: 'Kas Onarımı & Protein',
+        req: 'Uçuşta yıpranan göğüs kaslarının (Pectoralis) onarımı için bitkisel protein ve solunum yolu bakımı günüdür.',
+        feed: '<strong>Kuş Başı 35–36 gr/gün</strong> • <strong>%26 Bezelye / Maş / Fiğ + %24 Cin Mısırı + %20 Buğday/Arpa + %18 Beyaz Darı + %12 Aspir/Kenevir</strong>.',
+        drink: '<strong>Sulukta:</strong> 1 Lt suya <strong>5 ml Doğal Elma Sirkesi</strong> veya <strong>Kekik-Okaliptüs Solunum Çayı</strong>. <strong>Kümes Önü:</strong> Taze Grit + Kırmızı Mineral Taş.'
+      },
+      3: { // Çarşamba
+        role: 'Çarşamba • Kondisyon Yükseltme & Orta Tempo Antrenman Günü',
+        badge: 'Dengeli Karbonhidrat',
+        req: 'Hafta ortası 30–50 km antrenman uçuşu ve kan oksijen kapasitesini (kondisyonu) yükseltme günüdür.',
+        feed: '<strong>Kuş Başı 36–38 gr/gün</strong> • <strong>%30 Cin Mısırı (Kırmızı/Sarı) + %22 Beyaz Darı + %18 Bezelye/Fiğ + %16 Buğday + %14 Aspir/Keten/Soyulmuş Ayçekirdeği</strong>.',
+        drink: '<strong>Sulukta:</strong> 1 Lt suya <strong>B-Kompleks Vitamin + Demir / İyot Desteği</strong>. <strong>Yem Üstü:</strong> Omega-3 balık/keten yağı + çoklu aminoasit.'
+      },
+      4: { // Perşembe
+        role: 'Perşembe • Uzun Mesafe Yakıt (Yağ & Glikojen) Yükleme Günü',
+        badge: 'Lipit & Enerji Yükleme',
+        req: 'Yarış öncesi göğüs kaslarında uçuş yakıtı (trigliserit ve glikojen) depolama günüdür; yağlı tohum oranı artırılır.',
+        feed: '<strong>Kuş Başı 38–42 gr/gün</strong> • <strong>%36 Cin Mısırı + %22 Aspir / Soyulmuş Ayçekirdeği / Kenevir / Kolza + %20 Beyaz Darı + %12 Buğday + %10 Küçük Bezelye</strong>.',
+        drink: '<strong>Sulukta:</strong> 1 Lt suya <strong>L-Karnitin + E Vitamini + Selenyum</strong> (Kas krampını önler ve yağ yakım verimini %25 artırır).'
+      },
+      5: { // Cuma
+        role: 'Cuma • Sepetleme (Basketing) & Hidrasyon Hazırlık Günü',
+        badge: 'Sepetleme & Elektrolit',
+        req: 'Sepetleme öncesi kuşların susuzluk çekmemesi için tuzsuz, lifsiz, hızlı sindirilen karbonhidrat ve tam su yüklemesi yapılır.',
+        feed: '<strong>Kuş Başı 34–36 gr/gün</strong> (Sepetlemeden en az 4 saat önce) • <strong>%40 Küçük Cin Mısırı + %30 Beyaz Darı / Kanarya Yemi + %20 Buğday + %10 Soyulmuş Ayçekirdeği</strong> (Bakliyat/bezelye verilmez!).',
+        drink: `<strong>Sulukta:</strong> Öğleye kadar <strong>Elektrolit + Vitamin C (${temp >= 25 ? temp + '°C sıcak hava koruması' : 'hidrasyon deposu'})</strong>, öğleden sonra sepetlemeye kadar <strong>saf klorsuz içme suyu</strong>.`
+      },
+      6: { // Cumartesi
+        role: 'Cumartesi • Yarış Uçuşu / Etap Salım & Karşılama Günü',
+        badge: 'Yarış & Hızlı Enerji',
+        req: 'Salım ve eve dönüş günüdür; kümese inen kuşlara ilk 2 saatte kas spazmını çözen ılık elektrolit ve hafif tohum verilir.',
+        feed: '<strong>Kuş Başı 32–34 gr/gün</strong> • Dönüşte ilk öğün <strong>%35 Beyaz/Kırmızı Darı + %25 Kavuzsuz Arpa + %25 Küçük Mısır + %15 Aspir/Kenevir (Ödül Tohumu)</strong>.',
+        drink: '<strong>Sulukta (Dönüş Karşılama):</strong> 1 Lt ılık suya <strong>3 ml Elektrolit + Dekstroz/Bal + Aminoasit</strong> (Yorgunluğu ilk 30 dakikada alır).'
+      },
+      0: { // Pazar
+        role: 'Pazar • Yarış Dönüşü Tam Toparlanma & Banyo/Dinlenme Günü',
+        badge: 'Toparlanma & Elektrolit',
+        req: 'Yarıştan dönen kuşların kas laktik asit temizliği, bağırsak florası onarımı ve sakin dinlenme günüdür.',
+        feed: '<strong>Kuş Başı 34–36 gr/gün</strong> • <strong>%30 Kavuzsuz Arpa & Buğday + %25 Cin Mısırı + %25 Beyaz Darı + %20 Aspir/Keten Tohumu</strong>.',
+        drink: '<strong>Sulukta:</strong> 1 Lt suya <strong>Probiyotik + Elektrolit + B12 Vitamini</strong>. Öğle güneşinde <strong>10 Lt suya 1 kaşık banyo tuzu + elma sirkesi</strong>.'
+      }
+    };
+    const dayPlan = weeklyRaceSchedule[dayNum] || weeklyRaceSchedule[1];
+    phaseTitle = `🏁 Yarış & Antrenman Takvimi (${dayPlan.role})`;
+    phaseBadge = dayPlan.badge;
+    calendarDayRequirementNote = dayPlan.req;
+    feedNote = dayPlan.feed;
+    drinkNote = dayPlan.drink;
   } else if (effectiveMode === 'BREEDING') {
-    phaseTitle = `🪺 Eşleşme, Kuluçka & Yavru Büyütme (${nestsCnt} Aktif Yuva)`;
-    phaseBadge = 'Yüksek Protein & Kalsiyum';
-    feedNote = `<strong>Kuş Başı 40–45 gr/gün</strong> (Yavrulu çiftlerde günde 2–3 öğün) • Yavru iskelet/kas gelişimi ve kursak sütü için <strong>%28 Bezelye + Maş + Fiğ (Bakliyat) + %24 Cin Mısırı + %20 Buğday/Darı + %16 Aspir/Kenevir + %12 Kavuzsuz Yulaf</strong>.`;
-    drinkNote = `<strong>Sulukta:</strong> Haftada 2 gün <strong>Kalsiyum + D3 Vitamini</strong>, 2 gün <strong>Elma Sirkesi / Probiyotik (1 Lt suya 5 ml)</strong>. <strong>Kümes Önünde:</strong> Her gün taze <strong>Grit + Kırmızı Taş + İstiridye Kabuğu</strong>.`;
+    const isCaDay = (dayNum === 1 || dayNum === 4); // Pazartesi & Perşembe Kalsiyum+D3
+    const isProbDay = (dayNum === 2 || dayNum === 5); // Salı & Cuma Probiyotik/Elma sirkesi
+    const isVitDay = (dayNum === 3 || dayNum === 6); // Çarşamba & Cumartesi Aminoasit/E-Selenyum
+    phaseTitle = `🪺 Eşleşme, Kuluçka & Yavru Takvimi (${dayName} • ${nestsCnt} Aktif Yuva)`;
+    phaseBadge = isCaDay ? 'Kalsiyum & D3 Günü' : (isProbDay ? 'Probiyotik & Kursak Sütü' : (isVitDay ? 'Protein & Aminoasit' : 'Doğal Dinlenme & Grit'));
+    calendarDayRequirementNote = hasChickOrRinging
+      ? `Takvimde aktif yavru/bilezik dönemi var: Yavru büyütme ve kursak sütü kalitesi için günde 3 öğün yüksek proteinli bakliyat ve taze mineral verilmeli.`
+      : `Takvimde ${dayName} günü damızlık ve kuluçka gerekliliği: Yumurta kabuğu kalitesi ve döl verimi için dengeli protein/kalsiyum programı.`;
+    feedNote = `<strong>Kuş Başı 40–45 gr/gün</strong> (Yavrulu çiftlerde Sabah-Öğle-Akşam 3 öğün) • <strong>%28 Bezelye + Maş + Fiğ (Bakliyat) + %24 Cin Mısırı + %20 Buğday/Darı + %16 Aspir/Kenevir + %12 Kavuzsuz Yulaf</strong>.`;
+    drinkNote = isCaDay
+      ? `<strong>Sulukta (${dayName} Takvimi):</strong> 1 Lt suya <strong>5 ml Sıvı Kalsiyum + Vitamin D3</strong> (Yumurta felcini ve yavru raşitizmini önler). <strong>Kümes Önü:</strong> Taze Grit + İstiridye Kabuğu.`
+      : (isProbDay
+        ? `<strong>Sulukta (${dayName} Takvimi):</strong> 1 Lt suya <strong>5 ml Doğal Elma Sirkesi veya Canlı Probiyotik</strong> (Kursak sütü sindirimini ve yavru bağışıklığını korur).`
+        : (isVitDay
+          ? `<strong>Sulukta (${dayName} Takvimi):</strong> 1 Lt suya <strong>Aminoasit + E Vitamini & Selenyum</strong>. <strong>Yem Üstü:</strong> Bira mayası + Sarımsak/Kekik yağı.`
+          : `<strong>Sulukta (${dayName} Takvimi):</strong> Klorsuz <strong>Saf Taze İçme Suyu</strong> ve yuvalıklarda her çiftin önünde taze <strong>Kırmızı Mineral Taş + Grit</strong>.`));
   } else if (effectiveMode === 'MOULTING') {
-    phaseTitle = `🪶 Tüy Dökümü & Telek Yenileme (Moulting) Dönemi`;
-    phaseBadge = 'Omega-3 & Keratin';
-    feedNote = `<strong>Kuş Başı 38–40 gr/gün</strong> • Yeni teleklerin ipeksi ve esnek çıkması için yağlı tohum ağırlıklı <strong>%22 Bezelye/Fiğ + %22 Mısır + %20 Buğday/Arpa + %20 Keten Tohumu/Aspir/Kanola/Kenevir + %16 Darı</strong>.`;
-    drinkNote = `<strong>Sulukta:</strong> Haftada 2 gün <strong>Metiyonin + Bira Mayası + B-Kompleks</strong>. Haftada 1 gün ılık güneşte <strong>Banyo Suyu (10 Lt suya 1 kaşık kaya tuzu + 2 kaşık elma sirkesi)</strong>.`;
+    const isMethDay = (dayNum === 1 || dayNum === 3 || dayNum === 5);
+    phaseTitle = `🪶 Tüy Dökümü & Telek Yenileme Takvimi (${dayName})`;
+    phaseBadge = isMethDay ? 'Metiyonin & Keratin' : 'Omega-3 & Yağlı Tohum';
+    calendarDayRequirementNote = `${dayName} tüy takvimi: Yeni teleklerin kanamadan, parlak ve esnek çıkması için kükürtlü aminoasit (metiyonin) ve yağlı tohum günüdür.`;
+    feedNote = `<strong>Kuş Başı 38–40 gr/gün</strong> • Telek gelişimi için <strong>%22 Bezelye/Fiğ + %22 Cin Mısırı + %20 Buğday/Arpa + %20 Keten Tohumu / Aspir / Kanola / Kenevir + %16 Beyaz Darı</strong>.`;
+    drinkNote = isMethDay
+      ? `<strong>Sulukta (${dayName} Takvimi):</strong> 1 Lt suya <strong>Metiyonin + Biotin + B-Kompleks</strong>. <strong>Yem Üstü:</strong> Bira Mayası + Keten Tohumu Yağı.`
+      : `<strong>Sulukta (${dayName} Takvimi):</strong> 1 Lt suya <strong>5 ml Doğal Elma Sirkesi veya Sarımsak-Kekik Çayı</strong>. Haftada 1 gün ılık güneşte tuzlu-sirkeli banyo suyu.`;
   } else {
     // WINTER (Kış & Dinlenme)
-    phaseTitle = `❄️ Kış & Dinlenme Dönemi (${temp}°C • İç Yağlanma Koruması)`;
-    phaseBadge = 'Lif & Bağışıklık';
-    feedNote = `<strong>Kuş Başı ${temp <= 8 ? '36–38' : '32–34'} gr/gün</strong> (Tek öğün veya hafif sabah/akşam) • Damızlıklarda iç yağlanmayı önleyen <strong>%38 Arpa & Çeltik + %22 Buğday + %20 Cin Mısırı + %12 Darı + %8 Aspir/Keten</strong>.`;
-    drinkNote = `<strong>Sulukta:</strong> Haftada 2 gün <strong>1 Lt suya 5 ml Doğal Elma Sirkesi</strong>, 1 gün <strong>Sarımsak-Limon-Kekik Kürü veya Probiyotik</strong>, diğer günler klorsuz taze su ve taze <strong>Grit Taşı</strong>.`;
+    const isHerbDay = (dayNum === 2 || dayNum === 5);
+    const isVinegarDay = (dayNum === 1 || dayNum === 4);
+    phaseTitle = `❄️ Kış & Dinlenme Takvimi (${dayName} • ${temp}°C)`;
+    phaseBadge = isHerbDay ? 'Sarımsak-Kekik Kürü' : (isVinegarDay ? 'Elma Sirkesi & pH' : 'Lif & İç Yağlanma Koruması');
+    calendarDayRequirementNote = `${dayName} kış bakım takvimi: Soğuk havada (${temp}°C) damızlıkların iç yağlanmasını önleyen yüksek lifli arpa/çeltik ve doğal üst solunum koruma günüdür.`;
+    feedNote = `<strong>Kuş Başı ${temp <= 8 ? '36–38' : '32–34'} gr/gün</strong> • İç yağlanmayı önleyen <strong>%38 Arpa & Çeltik + %22 Buğday + %20 Cin Mısırı + %12 Darı + %8 Aspir/Keten</strong>.`;
+    drinkNote = isHerbDay
+      ? `<strong>Sulukta (${dayName} Takvimi):</strong> <strong>Sarımsak-Limon-Kekik Kürü veya Probiyotik</strong> (Doğal antibakteriyel kış bağışıklık kalkanı).`
+      : (isVinegarDay
+        ? `<strong>Sulukta (${dayName} Takvimi):</strong> 1 Lt suya <strong>5 ml Doğal Elma Sirkesi</strong> (Bağırsak pH dengesi ve Salmonella/Trichomonas koruması).`
+        : `<strong>Sulukta (${dayName} Takvimi):</strong> Klorsuz <strong>Saf İçme Suyu</strong> + Kümes önünde taze <strong>Grit ve Kırmızı Mineral Taşı</strong>.`);
+  }
+
+  // Eğer kullanıcının Takviminde bugün için özel bir Aşı/İlaç/Yuva/Yarış görevi kayıtlıysa üst satırda doğrudan vurgula
+  if (hasVaccineOrMed) {
+    calendarDayRequirementNote = `📌 <strong>Takvimdeki Aktif Sağlık Görevi (${escapeHtml(hasVaccineOrMed.title)}):</strong> Aşı ve ilaç kürü günlerinde suluğa elma sirkesi veya klorlu su koyulmamalı; kür bitiminde 2 gün <strong>Probiyotik + Karaciğer Koruyucu</strong> verilmelidir.`;
+  } else if (topCalendarRequirement) {
+    calendarDayRequirementNote = `📌 <strong>Takvimde Günün Kümes Kaydı:</strong> <strong>${escapeHtml(topCalendarRequirement.title)}</strong> (${escapeHtml(topCalendarRequirement.badge || dayName)}) — ${calendarDayRequirementNote}`;
+  } else {
+    calendarDayRequirementNote = `📌 <strong>${dayName} Kümes Takvimi Gerekliliği:</strong> ${calendarDayRequirementNote}`;
   }
 
   box.style.display = 'block';
   box.innerHTML = `
     <div class="ios-card" style="padding:9px 11px; border-left:4px solid #059669; background:linear-gradient(135deg, var(--ios-card) 0%, rgba(16,185,129,0.06) 100%);">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:5px;">
         <div style="display:flex; align-items:center; gap:5px;">
-          <span style="font-size:13px;">🌾💧</span>
-          <span style="font-size:11px; font-weight:900; color:var(--ios-text);">${phaseTitle}</span>
+          <span style="font-size:13px;">📅🌾</span>
+          <span style="font-size:10.8px; font-weight:900; color:var(--ios-text);">${phaseTitle}</span>
         </div>
         <span class="gene-badge gene-green" style="font-size:8px; padding:2px 6px;">${phaseBadge}</span>
       </div>
 
+      <!-- HAFTANIN GÜNLERİ (TAKVİM GÜNÜ SEÇİCİ) -->
+      <div style="display:flex; gap:3px; overflow-x:auto; padding-bottom:4px; margin-bottom:5px;">
+        <button type="button" class="ios-btn ${homeFeedCalendarDayOverride === 'TODAY' ? 'ios-btn-green' : 'ios-btn-outline'}" style="padding:3px 6px; font-size:8.4px; font-weight:900; flex-shrink:0;" onclick="setHomeFeedCalendarDay('TODAY')">📅 Bugün (${dayShort[todayDayNum]})</button>
+        ${[1, 2, 3, 4, 5, 6, 0].map(dIdx => `
+          <button type="button" class="ios-btn ${homeFeedCalendarDayOverride === dIdx ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 6px; font-size:8.3px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedCalendarDay(${dIdx})">${dayShort[dIdx]}</button>
+        `).join('')}
+      </div>
+
       <!-- HIZLI DÖNEM / DURUM SEÇİCİ -->
       <div style="display:flex; gap:4px; overflow-x:auto; padding-bottom:5px; margin-bottom:6px;">
-        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'AUTO' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.6px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('AUTO')">🔄 Otomatik (${totalBirds} Kuş)</button>
-        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'RACE' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.6px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('RACE')">🏁 Yarış (${racersCnt})</button>
-        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'BREEDING' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.6px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('BREEDING')">🪺 Eşleşme/Yavru (${breedersCnt + youngCnt})</button>
-        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'MOULTING' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.6px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('MOULTING')">🪶 Tüy Dönemi</button>
-        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'WINTER' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.6px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('WINTER')">❄️ Kış Dinlenme</button>
+        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'AUTO' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('AUTO')">🔄 Takvim Otomatik (${totalBirds} Kuş)</button>
+        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'RACE' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('RACE')">🏁 Yarış (${racersCnt})</button>
+        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'BREEDING' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('BREEDING')">🪺 Eşleşme/Yavru (${breedersCnt + youngCnt})</button>
+        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'MOULTING' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('MOULTING')">🪶 Tüy Dönemi</button>
+        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'WINTER' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('WINTER')">❄️ Kış Dinlenme</button>
       </div>
 
       <div style="display:grid; grid-template-columns:1fr; gap:5px; font-size:9.6px; line-height:1.38;">
+        <div style="background:rgba(5,150,105,0.08); border:1px solid rgba(5,150,105,0.28); border-radius:8px; padding:5px 8px; color:var(--ios-text);">
+          ${calendarDayRequirementNote}
+        </div>
         <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px;">
-          <div style="font-weight:900; color:#b45309; margin-bottom:2px;">🥣 Bugün Verilecek Yem &amp; Karışım Oranı:</div>
+          <div style="font-weight:900; color:#b45309; margin-bottom:2px;">🥣 Takvime Göre Bugün Verilecek Yem &amp; Karışım Oranı:</div>
           <div style="color:var(--ios-text);">${feedNote}</div>
         </div>
         <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px;">
-          <div style="font-weight:900; color:#0284c7; margin-bottom:2px;">💧 Bugün Verilecek İçecek (Suluk) &amp; Doğal Takviye:</div>
+          <div style="font-weight:900; color:#0284c7; margin-bottom:2px;">💧 Takvime Göre Bugün Verilecek İçecek (Suluk) &amp; Takviye:</div>
           <div style="color:var(--ios-text);">${drinkNote}</div>
         </div>
       </div>
@@ -2959,6 +3057,9 @@ function computeBirdPerformanceEBV(box, genWeight = 1.0) {
 let activeLoftFilter = 'ALL';
 
 function switchBirdsViewMode(mode) {
+  if (mode !== 'list' && typeof pushAndroidUserGestureNavStep === 'function') {
+    pushAndroidUserGestureNavStep('birds_' + mode);
+  }
   const listPane = document.getElementById('birdsListViewPane');
   const pedPane = document.getElementById('birdsPedigreeViewPane');
   const nestsPane = document.getElementById('birdsNestsViewPane');
@@ -5330,14 +5431,67 @@ function encodeUtf8ToBase64Safe(str) {
   }
 }
 
+function decodeBase64ToUtf8Safe(b64Str) {
+  try {
+    const bin = atob(String(b64Str || '').trim());
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) {
+      bytes[i] = bin.charCodeAt(i);
+    }
+    return new TextDecoder().decode(bytes);
+  } catch (e) {
+    return '';
+  }
+}
+
+// WhatsApp URL limitini (max ~4KB) aşmadan göndermek için örnek kuşları ve base64 fotoğrafları hariç tutan kompakt yedek paketi üretir
+function buildUserOnlyCompactBackupJson(fullPayload) {
+  try {
+    const userPeds = (fullPayload.pedigrees || []).filter(p => !/^ped_(?:[1-9]|[1-5][0-9]|6[0-4])$/.test(String(p.id || ''))).map(p => {
+      const copy = JSON.parse(JSON.stringify(p));
+      delete copy.pigeonPhotoDataUrl;
+      delete copy.eyePhotoDataUrl;
+      return copy;
+    });
+    const slimPayload = {
+      app: 'AVIGEN',
+      version: fullPayload.version || '5.6.2',
+      exportedAt: fullPayload.exportedAt,
+      loftConfig: fullPayload.loftConfig,
+      pedigrees: userPeds.length > 0 ? userPeds : (fullPayload.pedigrees || []).slice(0, 2).map(p => {
+        const c = JSON.parse(JSON.stringify(p));
+        delete c.pigeonPhotoDataUrl;
+        delete c.eyePhotoDataUrl;
+        return c;
+      }),
+      activePairsList: fullPayload.activePairsList || [],
+      remindersList: fullPayload.remindersList || [],
+      racesList: fullPayload.racesList || [],
+      birdDossierList: fullPayload.birdDossierList || [],
+      notesList: fullPayload.notesList || [],
+      race_tracking_events: fullPayload.race_tracking_events || []
+    };
+    return JSON.stringify(slimPayload);
+  } catch (e) {
+    return '';
+  }
+}
+
 async function saveBackupJsonFileDirectToDevice() {
   const payload = buildFullAvigenSnapshotPayload();
   const jsonStr = JSON.stringify(payload, null, 2);
+  const compactJson = JSON.stringify(payload);
   const safeName = (loftConfig.title || 'AVIGEN').replace(/[^a-zA-Z0-9_-]/g, '_');
   const fileName = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
+  const birdCnt = Array.isArray(payload.pedigrees) ? payload.pedigrees.length : 0;
 
-  await copyTextToClipboardSafe(JSON.stringify(payload));
+  // 1. Panoya ve yerel güvenlik deposuna %100 kaydet
+  await copyTextToClipboardSafe(compactJson);
+  try {
+    localStorage.setItem('avigen_auto_safety_snapshot_v1', compactJson);
+  } catch (e) {}
 
+  // 2. Yeni Android APK (AvigenNativeBridge) varsa doğrudan İndirilenler (Downloads) klasörüne gerçek .JSON dosyası olarak kaydet
   if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.saveBase64FileToDownloads === 'function') {
     try {
       const b64 = encodeUtf8ToBase64Safe(jsonStr);
@@ -5351,6 +5505,7 @@ async function saveBackupJsonFileDirectToDevice() {
   const blob = new Blob([jsonStr], { type: 'application/json' });
   const backupFile = new File([blob], fileName, { type: 'application/json', lastModified: Date.now() });
 
+  // 3. Web Share API dosya paylaşımı destekliyorsa (iOS Safari / Chrome) sistem kaydetme ekranını aç
   if (isCapacitorAndroidApk() && navigator.share) {
     try {
       await navigator.share({
@@ -5361,6 +5516,18 @@ async function saveBackupJsonFileDirectToDevice() {
     } catch (err) {
       if (err && err.name === 'AbortError') return;
     }
+  }
+
+  // 4. Eski APK WebView içindeysek dış Chrome köprüsüyle .JSON dosyasını İndirilenler'e indir veya panoya kopyalandığını bildir
+  if (isCapacitorAndroidApk()) {
+    const slimJson = buildUserOnlyCompactBackupJson(payload);
+    if (slimJson && slimJson.length <= 6500) {
+      const b64 = encodeURIComponent(encodeUtf8ToBase64Safe(slimJson));
+      const extChromeUrl = `https://raw.githack.com/hasanbenzer/avigen/main/index.html?v=562#auto_backup_dl=${b64}`;
+      openExternalUrlSafe(extChromeUrl);
+    }
+    alert(`✅ Kümes yedeğiniz (${birdCnt} güvercin) telefonunuzun panosuna kopyalandı ve güvenlik deposuna kaydedildi!\n\nİsterseniz WhatsApp veya Notlar uygulamasına basılı tutup "Yapıştır" diyerek de saklayabilirsiniz.`);
+    return;
   }
 
   const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
@@ -5401,14 +5568,17 @@ async function shareFullAvigenBackupViaWhatsApp() {
   const compactJson = JSON.stringify(payload);
   const safeName = (loftConfig.title || 'AVIGEN').replace(/[^a-zA-Z0-9_-]/g, '_');
   const fileName = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
+  const birdCnt = Array.isArray(payload.pedigrees) ? payload.pedigrees.length : 0;
   const blob = new Blob([jsonStr], { type: 'application/json' });
   const backupFile = new File([blob], fileName, {
     type: 'application/json',
     lastModified: Date.now()
   });
 
+  // 1. Tüm yedek kodunu telefon panosuna otomatik kopyala (WhatsApp açıldığında tek dokunuşla Yapıştır yapılabilsin)
   await copyTextToClipboardSafe(compactJson);
 
+  // 2. Yeni Android APK (AvigenNativeBridge) varsa gerçek .JSON dosyasını doğrudan WhatsApp'a dosya eki olarak gönder
   if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.shareBase64File === 'function') {
     try {
       const b64 = encodeUtf8ToBase64Safe(jsonStr);
@@ -5424,6 +5594,7 @@ async function shareFullAvigenBackupViaWhatsApp() {
     } catch (e) {}
   }
 
+  // 3. Tarayıcı Web Share API (navigator.share) dosya paylaşımını destekliyorsa gerçek .JSON dosyasını paylaş
   if (navigator.share) {
     try {
       await navigator.share({
@@ -5436,7 +5607,17 @@ async function shareFullAvigenBackupViaWhatsApp() {
     }
   }
 
-  openAndroidBackupAssistModal(true);
+  // 4. Eski APK WebView veya masaüstündeysek: WhatsApp uygulamasını %100 aç!
+  // (460 KB tam JSON URL'ye sığmayacağı için kompakt yedek <=3500 karakterse doğrudan mesaj içine koyar,
+  // daha büyükse tam yedeği panoya kopyalamış olarak WhatsApp'ı açar!)
+  const slimJson = buildUserOnlyCompactBackupJson(payload);
+  let waMessage = '';
+  if (slimJson && slimJson.length <= 3500) {
+    waMessage = `📦 *${loftConfig.title || 'AVIGEN'} KÜMES YEDEK PAKETİ (${new Date().toLocaleDateString('tr-TR')})*\n${slimJson}`;
+  } else {
+    waMessage = `📦 *${loftConfig.title || 'AVIGEN'} TAM KÜMES YEDEĞİ (${birdCnt} Güvercin - ${new Date().toLocaleDateString('tr-TR')})*\n✅ Tüm kümes yedek kodunuz telefonunuzun panosuna otomatik kopyalandı! Şimdi mesaj yazma kutusuna basılı tutup *"Yapıştır"* yaparak yedeğinizi gönderin:`;
+  }
+  openExternalUrlSafe('https://api.whatsapp.com/send?text=' + encodeURIComponent(waMessage));
 }
 
 function importFullAvigenBackup(event) {
@@ -6973,29 +7154,37 @@ function isCapacitorAndroidApk() {
   );
 }
 
-// Android APK (WebView) ve tüm tarayıcılarda WhatsApp / dış bağlantıları güvenle açar (APK içinde WhatsApp donmasını %100 önler)
+// Android APK (WebView) ve tüm tarayıcılarda WhatsApp / dış bağlantıları güvenle açar (APK içinde WhatsApp donmasını ve ERR_UNKNOWN_URL_SCHEME hatasını %100 önler)
 function openExternalUrlSafe(url) {
   if (!url) return;
 
-  // Eğer Android APK veya mobil cihazda https://wa.me/ linki açılıyorsa doğrudan yerel WhatsApp uygulamasını (whatsapp://send) tetikle
-  if (isAndroidOrWebViewDevice() && /^https?:\/\/(wa\.me|api\.whatsapp\.com)/i.test(url)) {
+  let targetUrl = String(url);
+
+  // wa.me bağlantılarını standart api.whatsapp.com/send formatına dönüştür (Capacitor allowNavigation dışında olduğu için Android sistem Intent.ACTION_VIEW ile doğrudan WhatsApp uygulamasını açar)
+  if (/^https?:\/\/wa\.me\//i.test(targetUrl)) {
     try {
-      const parsedUrl = new URL(url);
-      const phonePart = parsedUrl.pathname.replace(/\//g, '').trim();
-      const textParam = parsedUrl.searchParams.get('text') || '';
-      const nativeWaUrl = phonePart
-        ? `whatsapp://send?phone=${encodeURIComponent(phonePart)}&text=${encodeURIComponent(textParam)}`
-        : `whatsapp://send?text=${encodeURIComponent(textParam)}`;
-      window.location.href = nativeWaUrl;
+      const parsed = new URL(targetUrl);
+      const phonePart = parsed.pathname.replace(/\//g, '').trim();
+      const textParam = parsed.searchParams.get('text') || '';
+      targetUrl = phonePart
+        ? `https://api.whatsapp.com/send?phone=${encodeURIComponent(phonePart)}&text=${encodeURIComponent(textParam)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(textParam)}`;
+    } catch (e) {}
+  }
+
+  // Yeni Android APK yerel köprüsü varsa doğrudan Android Intent ile aç
+  if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.openExternalUrl === 'function') {
+    try {
+      window.AvigenNativeBridge.openExternalUrl(targetUrl);
       return;
     } catch (e) {}
   }
 
-  const isSpecialScheme = /^(whatsapp:|mailto:|tel:|intent:)/i.test(url);
+  const isSpecialScheme = /^(whatsapp:|mailto:|tel:|intent:)/i.test(targetUrl);
   if (isCapacitorAndroidApk() || isSpecialScheme) {
     try {
       const a = document.createElement('a');
-      a.href = url;
+      a.href = targetUrl;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       a.style.display = 'none';
@@ -7007,10 +7196,109 @@ function openExternalUrlSafe(url) {
       return;
     } catch (e) {}
   }
-  const win = window.open(url, '_blank');
+  const win = window.open(targetUrl, '_blank');
   if (!win) {
-    window.location.href = url;
+    window.location.href = targetUrl;
   }
+}
+
+// Eski v5.5.3 APK içinden (window.AvigenNativeBridge henüz kurulmamışken) gerçek 2 Sayfalık .PDF dosyasını
+// Android Chrome üzerinden indirmek veya WhatsApp'a dosya olarak paylaşmak için kompakt URL köprüsü
+function buildCompactPedigreeForUrlBridge(ped) {
+  if (!ped) return '';
+  try {
+    const boxes = {};
+    Object.keys(ped.boxes || {}).forEach(k => {
+      const b = ped.boxes[k];
+      if (b && (b.ring || b.name || b.notes)) {
+        boxes[k] = {
+          flag: b.flag || '🇹🇷',
+          ring: b.ring || '',
+          name: b.name || '',
+          color: b.color || '',
+          sex: b.sex || 'M',
+          notes: String(b.notes || '').slice(0, 140)
+        };
+      }
+    });
+    const slim = {
+      id: ped.id || 'ext_ped',
+      title: ped.title || boxes.main?.ring || 'Pedigre',
+      loftTitle: (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN KÜMESİ',
+      loftBreeder: (typeof loftConfig !== 'undefined' && loftConfig.breeder) ? loftConfig.breeder : '',
+      loftAddress: (typeof loftConfig !== 'undefined' && loftConfig.address) ? loftConfig.address : '',
+      loftPhone: (typeof loftConfig !== 'undefined' && loftConfig.phone) ? loftConfig.phone : '',
+      boxes
+    };
+    return encodeUtf8ToBase64Safe(JSON.stringify(slim));
+  } catch (e) {
+    return '';
+  }
+}
+
+function openPedigreePdfInExternalChrome(ped, formatType = 'pdf') {
+  const targetPed = ped || (_lastExportedPedigreeState && _lastExportedPedigreeState.ped) || getActivePedigree();
+  const b64 = buildCompactPedigreeForUrlBridge(targetPed);
+  if (!b64) return false;
+  // raw.githack.com Capacitor'un allowNavigation listesinde olmadığı için eski APK bile bu adresi %100 telefonun harici Android Chrome tarayıcısında açar!
+  const extUrl = `https://raw.githack.com/hasanbenzer/avigen/main/index.html?v=562#auto_ped_pdf=${encodeURIComponent(b64)}&fmt=${encodeURIComponent(formatType)}`;
+  openExternalUrlSafe(extUrl);
+  return true;
+}
+
+function checkAndRunAutoExternalPdfBridge() {
+  try {
+    const hash = window.location.hash || '';
+    if (hash.startsWith('#auto_backup_dl=')) {
+      const b64Param = decodeURIComponent(hash.replace('#auto_backup_dl=', '').split('&')[0] || '');
+      const jsonText = decodeBase64ToUtf8Safe(b64Param);
+      if (jsonText && jsonText.trim().startsWith('{')) {
+        const fileName = `AVIGEN_Kumes_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
+        const blob = new Blob([jsonText], { type: 'application/json' });
+        triggerBlobFileDownload(blob, fileName);
+      }
+      return;
+    }
+
+    if (!hash.startsWith('#auto_ped_pdf=')) return;
+    const params = new URLSearchParams(hash.slice(1));
+    const b64Ped = params.get('auto_ped_pdf') || '';
+    const fmt = params.get('fmt') || 'pdf';
+    if (!b64Ped) return;
+    const rawJson = decodeBase64ToUtf8Safe(b64Ped);
+    if (!rawJson) return;
+    const slimPed = JSON.parse(rawJson);
+    if (!slimPed || !slimPed.boxes) return;
+
+    if (slimPed.loftTitle && typeof loftConfig !== 'undefined') {
+      loftConfig.title = slimPed.loftTitle;
+      if (slimPed.loftBreeder) loftConfig.breeder = slimPed.loftBreeder;
+      if (slimPed.loftAddress) loftConfig.address = slimPed.loftAddress;
+      if (slimPed.loftPhone) loftConfig.phone = slimPed.loftPhone;
+    }
+
+    const existingIdx = pedigrees.findIndex(p => p.id === slimPed.id);
+    if (existingIdx >= 0) {
+      pedigrees[existingIdx] = { ...pedigrees[existingIdx], boxes: slimPed.boxes };
+    } else {
+      pedigrees.unshift({ id: slimPed.id || 'ext_ped', title: slimPed.title || 'Pedigre', boxes: slimPed.boxes });
+    }
+    activePedigreeId = slimPed.id || 'ext_ped';
+
+    setTimeout(() => {
+      const st = preparePedigreeExportAssetsSync(activePedigreeId);
+      // Harici Android Chrome içinde olduğumuz için gerçek 2 Sayfalık .PDF dosyasını anında İndirilenler'e indir!
+      if (fmt === 'png') {
+        triggerBlobFileDownload(st.pngBlob, st.pngFileName, st.pngDataUrl);
+        if (st.page2PngBlob) {
+          setTimeout(() => triggerBlobFileDownload(st.page2PngBlob, st.page2PngFileName, st.page2PngDataUrl), 400);
+        }
+      } else {
+        triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
+      }
+      openPedigreeExportAssistModal('2 Sayfa PDF İndirildi — WhatsApp Dosya Paylaş');
+    }, 250);
+  } catch (e) {}
 }
 
 // Android WebView (window.Capacitor) dahil tüm cihazlarda %100 çalışan Pano Kopyalama yardımcısı
@@ -7209,7 +7497,25 @@ async function shareExportedPedigreeFromAssistModal(formatType = 'pdf') {
     }
   }
 
-  // 3. Yedek olarak PDF yazdırma / kaydetme ekranını tetikle (Asla yazı paylaşımına düşmez!)
+  // 3. Eğer eski bir Android APK WebView içindeysek (window.AvigenNativeBridge henüz yok ve WebView navigator.share({files}) desteklemiyorsa):
+  // Tek dokunuşla telefonun harici Android Chrome tarayıcısında 2 Sayfalık gerçek .PDF dosyasını indirip paylaşma ekranını aç!
+  if (isCapacitorAndroidApk() && (!window.AvigenNativeBridge || typeof window.AvigenNativeBridge.shareBase64File !== 'function')) {
+    if (openPedigreePdfInExternalChrome(st.ped, formatType)) {
+      return;
+    }
+  }
+
+  // 4. Masaüstü / Web tarayıcıda dosya indir ve yazdırma/PDF kaydetme ekranını tetikle (Asla yazı paylaşımına düşmez!)
+  if (!isCapacitorAndroidApk()) {
+    if (formatType === 'png') {
+      triggerBlobFileDownload(st.pngBlob, st.pngFileName, st.pngDataUrl);
+      if (st.page2PngBlob) {
+        setTimeout(() => triggerBlobFileDownload(st.page2PngBlob, st.page2PngFileName, st.page2PngDataUrl), 350);
+      }
+    } else {
+      triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
+    }
+  }
   printOrSavePedigreePdfOnAndroid();
 }
 
@@ -7222,8 +7528,31 @@ function saveExportedPedigreePdfToDevice() {
       return;
     } catch (e) {}
   }
+  if (isCapacitorAndroidApk() && (!window.AvigenNativeBridge || typeof window.AvigenNativeBridge.saveBase64FileToDownloads !== 'function')) {
+    if (openPedigreePdfInExternalChrome(st.ped, 'pdf')) {
+      return;
+    }
+  }
   if (!isCapacitorAndroidApk()) {
     triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
+    return;
+  }
+  printOrSavePedigreePdfOnAndroid();
+}
+
+function handlePrintOrSavePedigreeAction() {
+  if (!_lastExportedPedigreeState) return;
+  const st = _lastExportedPedigreeState;
+  if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.saveBase64FileToDownloads === 'function' && st.pdfBase64) {
+    try {
+      window.AvigenNativeBridge.saveBase64FileToDownloads(st.pdfBase64, st.pdfFileName, 'application/pdf');
+      return;
+    } catch (e) {}
+  }
+  if (isCapacitorAndroidApk() && (!window.AvigenNativeBridge || typeof window.AvigenNativeBridge.saveBase64FileToDownloads !== 'function')) {
+    if (openPedigreePdfInExternalChrome(st.ped, 'pdf')) {
+      return;
+    }
   }
   printOrSavePedigreePdfOnAndroid();
 }
@@ -7263,7 +7592,7 @@ function openPedigreeExportAssistModal(modeLabel = '2 Sayfa PDF İndir & WhatsAp
             📲 WhatsApp'ta PDF Dosyası Paylaş
           </button>
           <button type="button" class="ios-btn ios-btn-primary" style="padding:11px 8px; font-size:11px; font-weight:900;" onclick="saveExportedPedigreePdfToDevice()">
-            📄 Cihaza PDF İndir / Yazdır
+            📄 Cihaza PDF İndir / Kaydet
           </button>
         </div>
 
@@ -7288,7 +7617,7 @@ function openPedigreeExportAssistModal(modeLabel = '2 Sayfa PDF İndir & WhatsAp
           <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 6px; font-size:9.8px; font-weight:800;" onclick="shareExportedPedigreeFromAssistModal('png')">
             🖼️ 1+2 Sayfa Sertifika Görselini Paylaş
           </button>
-          <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 6px; font-size:9.8px; font-weight:800;" onclick="printOrSavePedigreePdfOnAndroid()">
+          <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 6px; font-size:9.8px; font-weight:800;" onclick="handlePrintOrSavePedigreeAction()">
             🖨️ A4 Yazdır / PDF Olarak Kaydet
           </button>
         </div>
@@ -10909,16 +11238,16 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.6.1',
-    localBuild: 561,
-    remoteVersion: '5.6.1',
-    remoteBuild: 561,
-    remoteTitle: "AVIGEN v5.6.1 — WhatsApp Doğrudan 2 Sayfa PDF Dosyası Paylaşımı, Adım Adım Ana Menüye Dönen Geri Tuşu, Tam Genişlik Yarış Koordinat Girişi & Tek Merkez Yedekleme",
+    localVersion: '5.6.2',
+    localBuild: 562,
+    remoteVersion: '5.6.2',
+    remoteBuild: 562,
+    remoteTitle: "AVIGEN v5.6.2 — Pedigri PDF İndirme & WhatsApp Dosya Paylaşımı Tam Düzeltmesi, Adım Adım Ana Menüye Dönen Geri Tuşu, WhatsApp Yedek Gönderimi & Takvim Günlük Yem/Suluk Programı",
     remoteNotes: [
-      "WhatsApp Doğrudan PDF Dosyası Paylaşımı: 'WhatsApp PDF Paylaş' butonu artık yazı yerine doğrudan 2 sayfalık resmi .PDF pedigri ve sicil dosyasını paylaşır",
-      "Adım Adım Ana Menüye Dönen Geri Tuşu: Geri tuşuna basıldığında programdan direkt çıkmaz; önce açık pencereleri ve alt sekmeleri kapatıp Ana Menüye (Ana Sayfa) kadar gelir, yalnızca Ana Menüdeyken basılırsa çıkar",
-      "Akıllı Yarış Simülasyonu Yeni Sıralama & Tam Genişlik Koordinat Hücresi: En üstte 1. Salım Noktası, 2. Varış Noktası (%100 tam genişlikli büyük koordinat kutuları), 3. Harita ve 4. Diğer Bilgiler sıralaması uygulandı",
-      "Tek Merkez Yedekleme & Geri Yükleme: Ayarlar'daki dağınık yedekleme butonları tek bir 'Kümes Yedekleme & Geri Yükleme Merkezi' kartında toplandı"
+      "Pedigri PDF İndir & WhatsApp Paylaş Ekranı Düzeltmesi: Açılan PDF sertifika ekranındaki 'WhatsApp'ta PDF Dosyası Paylaş', 'Cihaza PDF İndir / Kaydet', '1+2 Sayfa Sertifika Görselini Paylaş' ve 'A4 Yazdır / PDF Kaydet' butonları hem eski hem yeni APK'da %100 çalışır hale getirildi",
+      "Android Geri Tuşu Düzeltmesi: Geri tuşuna basıldığında direkt programdan çıkmaz; User-Gesture URL Hash (#adim-N) ve Native KeyEvent köprüsüyle önce açık pencereleri kapatır ve Ana Menüye (Ana Sayfa) döner, yalnızca Ana Menüdeyken basılırsa programdan çıkar",
+      "WhatsApp Yedek Gönderimi & Cihaza Yedek Kaydetme Düzeltmesi: WhatsApp bağlantı ve boyut limiti hatası giderildi; yedek dosyası WhatsApp'a ve telefon hafızasına sorunsuz aktarılır",
+      "Takvime Göre Günlük Yem & Suluk Programı: Ana sayfadaki yem ve içecek önerisi artık haftanın günlerine (Pzt..Paz) ve Takvimdeki aktif kümes gerekliliklerine (yarış, kuluçka/yavru, aşı/kür, tüy, kış) göre günlük reçete sunar"
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',
@@ -11243,15 +11572,21 @@ function handleAndroidBackNavigation() {
 }
 window.handleAndroidBackNavigation = handleAndroidBackNavigation;
 
-let _avigenHistoryGuardCount = 0;
+let _avigenNavDepth = 0;
+let _avigenWasAtRootHomeMenu = true;
+let _avigenHandlingPopState = false;
 
-function ensureUserGestureHistoryGuard() {
+function pushAndroidUserGestureNavStep(stepTag = 'step') {
+  if (_avigenHandlingPopState) return;
   try {
     if (window.history && typeof window.history.pushState === 'function') {
-      if (!isAtRootHomeMenuState() && (!window.history.state || !window.history.state.avigenGuard)) {
-        window.history.pushState({ avigenGuard: true, ts: Date.now() }, '');
-        _avigenHistoryGuardCount++;
-      }
+      _avigenNavDepth++;
+      _avigenWasAtRootHomeMenu = false;
+      window.history.pushState(
+        { avigenGuard: true, stepTag, depth: _avigenNavDepth, ts: Date.now() },
+        '',
+        `#adim-${_avigenNavDepth}`
+      );
     }
   } catch (e) {}
 }
@@ -11259,36 +11594,64 @@ function ensureUserGestureHistoryGuard() {
 function initAndroidHardwareBackButtonSupport() {
   try {
     if (window.history && typeof window.history.pushState === 'function') {
-      window.history.replaceState({ avigenRoot: true }, '');
-      window.history.pushState({ avigenGuard: true, ts: Date.now() }, '');
+      if (!window.location.hash || !window.location.hash.startsWith('#auto_')) {
+        window.history.replaceState({ avigenRoot: true }, '', '#ana-menu');
+      }
 
-      // Kullanıcı ekranda herhangi bir butona/sekmeye dokunduğunda gerçek User Gesture içinde history korumasını tazele
-      document.addEventListener('click', () => {
-        setTimeout(ensureUserGestureHistoryGuard, 20);
-      }, { passive: true });
+      // KRİTİK: Kullanıcı herhangi bir sekmeye, karta veya butona tıkladığında gerçek User Gesture (click capture) içinde
+      // URL hash kaydı (#adim-N) oluştur ki Chromium History Manipulation Intervention asla atlamasın ve WebView.canGoBack() %100 true dönsün!
+      document.addEventListener('click', (ev) => {
+        const target = ev.target && ev.target.closest
+          ? ev.target.closest('button, a, .ios-tab-btn, .sub-pill, .hero-stat-pill, .p-box, .dash-list-left, [onclick]')
+          : null;
+        if (!target) return;
+        if (_avigenNavDepth === 0 || _avigenWasAtRootHomeMenu) {
+          pushAndroidUserGestureNavStep('gesture');
+        }
+        setTimeout(() => {
+          _avigenWasAtRootHomeMenu = isAtRootHomeMenuState();
+          if (!_avigenWasAtRootHomeMenu && (!window.location.hash || window.location.hash === '#ana-menu')) {
+            pushAndroidUserGestureNavStep('subview');
+          }
+        }, 40);
+      }, true);
 
       window.addEventListener('popstate', () => {
-        const handled = handleAndroidBackNavigation();
-        if (handled) {
-          // Eğer hâlâ Ana Menüye (Ana Sayfaya) ulaşmadıysak veya açık pencere varsa yeni koruma kaydı ekle;
-          // Ana Menüye ulaştıysak bile 1 koruma kaydı ekle ki Ana Menüde tekrar Geri'ye basıldığında handleAndroidBackNavigation() false döndürüp çıksın!
-          try {
-            window.history.pushState({ avigenGuard: true, ts: Date.now() }, '');
-          } catch (e) {}
-        } else {
-          // Zaten Ana Menüdeyken Geri tuşuna basıldı -> Programdan çık!
-          if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.exitApp === 'function') {
-            try { window.AvigenNativeBridge.exitApp(); return; } catch (e) {}
+        _avigenHandlingPopState = true;
+        try {
+          // Eğer Geri tuşuna basılmadan önce ZATEN Ana Menüdeysek (ve açık hiçbir pencere yoksa) uygulamadan çık!
+          if (_avigenWasAtRootHomeMenu && isAtRootHomeMenuState()) {
+            if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.exitApp === 'function') {
+              try { window.AvigenNativeBridge.exitApp(); return; } catch (e) {}
+            }
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && typeof window.Capacitor.Plugins.App.exitApp === 'function') {
+              try { window.Capacitor.Plugins.App.exitApp(); return; } catch (e) {}
+            }
+            return;
           }
-          if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && typeof window.Capacitor.Plugins.App.exitApp === 'function') {
-            try { window.Capacitor.Plugins.App.exitApp(); return; } catch (e) {}
+
+          const handled = handleAndroidBackNavigation();
+          _avigenWasAtRootHomeMenu = isAtRootHomeMenuState();
+
+          if (handled && !_avigenWasAtRootHomeMenu) {
+            // Hâlâ bir alt sekmedeyiz -> Bir sonraki Geri tuşu için kayıt tut
+            _avigenNavDepth++;
+            window.history.pushState(
+              { avigenGuard: true, depth: _avigenNavDepth, ts: Date.now() },
+              '',
+              `#adim-${_avigenNavDepth}`
+            );
           }
+        } catch (e) {
+        } finally {
+          _avigenHandlingPopState = false;
         }
       });
     }
 
     document.addEventListener('backbutton', (ev) => {
       const handled = handleAndroidBackNavigation();
+      _avigenWasAtRootHomeMenu = isAtRootHomeMenuState();
       if (handled) {
         if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
       } else {
@@ -11304,6 +11667,7 @@ function initAndroidHardwareBackButtonSupport() {
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && typeof window.Capacitor.Plugins.App.addListener === 'function') {
       window.Capacitor.Plugins.App.addListener('backButton', () => {
         const handled = handleAndroidBackNavigation();
+        _avigenWasAtRootHomeMenu = isAtRootHomeMenuState();
         if (!handled) {
           try { window.Capacitor.Plugins.App.exitApp(); } catch (e) {}
         }
@@ -11356,6 +11720,7 @@ window.addEventListener('DOMContentLoaded', () => {
   renderHomeDashboard();
   initPedigreePinchZoom();
   AvigenUxManager.init();
+  checkAndRunAutoExternalPdfBridge();
 });
 
 window.addEventListener('resize', fitPaperToIphoneScreen);
