@@ -4671,20 +4671,189 @@ function buildFullAvigenSnapshotPayload() {
   };
 }
 
-function exportFullAvigenBackup() {
+function applyRestoredBackupDataObject(data) {
+  if (!data || (!Array.isArray(data.pedigrees) && !data.loftConfig)) {
+    alert('⚠️ Geçersiz yedek şeması: Bu yedek verisi AVIGEN kümes kaydı içermiyor.');
+    return false;
+  }
+
+  // Yıkıcı işlem öncesi mevcut verinin otomatik güvenlik yedeğini (rollback snapshot) kaydet
+  try {
+    localStorage.setItem('avigen_auto_safety_snapshot_v1', JSON.stringify(buildFullAvigenSnapshotPayload()));
+  } catch (snapErr) {}
+
+  if (data.loftConfig) loftConfig = { ...loftConfig, ...data.loftConfig };
+  if (Array.isArray(data.pedigrees) && data.pedigrees.length) {
+    pedigrees = data.pedigrees;
+    activePedigreeId = pedigrees[0].id;
+  }
+  if (Array.isArray(data.remindersList)) remindersList = data.remindersList;
+  if (Array.isArray(data.activePairsList)) activePairsList = data.activePairsList;
+  if (Array.isArray(data.racesList)) racesList = data.racesList;
+  if (Array.isArray(data.birdDossierList)) birdDossierList = data.birdDossierList;
+  if (Array.isArray(data.notesList)) notesList = data.notesList;
+
+  if (Array.isArray(data.scientific_sources) && typeof AvigenScientificLibrary !== 'undefined') {
+    AvigenScientificLibrary.sources = data.scientific_sources;
+    AvigenScientificLibrary.saveSources();
+    AvigenScientificLibrary.renderLibraryUI();
+  }
+  if (Array.isArray(data.genesis_analysis_history) && typeof AvigenGenesisAI !== 'undefined') {
+    AvigenGenesisAI.analysisHistory = data.genesis_analysis_history;
+    AvigenGenesisAI.saveHistory();
+  }
+  if (data.performance_config && typeof AvigenPerformanceEngine !== 'undefined') {
+    AvigenPerformanceEngine.state.distanceLimits = {
+      ...AvigenPerformanceEngine.state.distanceLimits,
+      ...data.performance_config
+    };
+    AvigenPerformanceEngine.saveConfig();
+  }
+  if (data.user_account_state && typeof AvigenUxManager !== 'undefined') {
+    AvigenUxManager.state = { ...AvigenUxManager.state, ...data.user_account_state };
+    AvigenUxManager.saveState();
+  }
+  if (Array.isArray(data.race_tracking_events) && typeof AvigenRaceTracker !== 'undefined') {
+    AvigenRaceTracker.events = data.race_tracking_events.map(ev =>
+      typeof AvigenRaceTracker.normalizeRaceRecord === 'function' ? AvigenRaceTracker.normalizeRaceRecord(ev) : ev
+    );
+    AvigenRaceTracker.saveEvents();
+    AvigenRaceTracker.renderRaceTrackerMainUI();
+    AvigenRaceTracker.renderRaceAiInsightsUI();
+  }
+
+  saveMypedigreData();
+  syncLoftIdentityAcrossUI();
+  renderPedigreeDropdown();
+  selectActivePedigree(activePedigreeId);
+  renderHomeDashboard();
+  renderLoftBirdsDirectory();
+  renderMypedigreNotes();
+  if (typeof AvigenUxManager !== 'undefined') {
+    AvigenUxManager.syncHeaderAndProfileUI();
+    AvigenUxManager.renderBreedingPlanPairsList();
+  }
+  closeLoftHeaderModal();
+  document.getElementById('avigenBackupAssistModal')?.classList.remove('open');
+  alert(`✅ Kümes yedeğiniz (${Array.isArray(data.pedigrees) ? data.pedigrees.length : 0} güvercin, 4 kuşak pedigreler, yuvalar ve yarışlar) başarıyla geri yüklendi!`);
+  return true;
+}
+
+function restoreBackupFromPastedText() {
+  const rawTxt = (document.getElementById('avigenBackupPasteInput')?.value || '').trim();
+  if (!rawTxt) {
+    alert('⚠️ Lütfen kopyaladığınız veya WhatsApp\'tan aldığınız yedek metnini kutuya yapıştırın.');
+    return;
+  }
+  try {
+    // Eğer WhatsApp mesajının başında başlık varsa ilk '{' ile son '}' arasını al
+    const firstBrace = rawTxt.indexOf('{');
+    const lastBrace = rawTxt.lastIndexOf('}');
+    const cleanJson = (firstBrace !== -1 && lastBrace > firstBrace)
+      ? rawTxt.slice(firstBrace, lastBrace + 1)
+      : rawTxt;
+    const parsed = JSON.parse(cleanJson);
+    applyRestoredBackupDataObject(parsed);
+  } catch (e) {
+    alert('⚠️ Yapıştırılan yedek metni okunamadı veya eksik kopyalanmış. Lütfen yedek kodunun tamamını kopyaladığınızdan emin olun.');
+  }
+}
+
+function openAndroidBackupAssistModal(autoCopied = false) {
+  const payload = buildFullAvigenSnapshotPayload();
+  const jsonStr = JSON.stringify(payload);
+  const birdCnt = Array.isArray(payload.pedigrees) ? payload.pedigrees.length : 0;
+  const pairCnt = Array.isArray(payload.activePairsList) ? payload.activePairsList.length : 0;
+  const raceCnt = Array.isArray(payload.race_tracking_events) ? payload.race_tracking_events.length : 0;
+
+  let modal = document.getElementById('avigenBackupAssistModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'avigenBackupAssistModal';
+    modal.className = 'ios-modal-overlay';
+    const hostFrame = document.querySelector('.iphone-frame') || document.body;
+    hostFrame.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div class="ios-sheet" style="max-height:93%;">
+      <div class="ios-card-title" style="margin-bottom:8px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span>💾</span>
+          <span>Android &amp; iPhone Yedekleme / Geri Yükleme Merkezi</span>
+        </div>
+        <button type="button" class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="document.getElementById('avigenBackupAssistModal')?.classList.remove('open')">✖ Kapat</button>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:8px; font-size:10.5px;">
+        <div style="background:#ecfdf5; border:1.5px solid #6ee7b7; border-radius:9px; padding:8px 10px; color:#065f46; line-height:1.4;">
+          ✅ <strong>Kümes Yedeğiniz Hazır ve Panoya Kopyalandı!</strong><br/>
+          • <strong>Kayıtlı Kuş / Pedigri:</strong> ${birdCnt} Adet • <strong>Yuva:</strong> ${pairCnt} • <strong>Yarış:</strong> ${raceCnt}<br/>
+          ${autoCopied ? `<span style="color:#047857; font-weight:800;">📋 Yedek kodunuz telefonunuzun hafızasına (panoya) otomatik kopyalandı!</span>` : ''}
+        </div>
+
+        <!-- 1. ADIM: YEDEĞİ TELEFONA KAYDET VEYA WHATSAPP'TAN KENDİNE GÖNDER -->
+        <div style="background:var(--ios-card-alt); border:1.5px solid #93c5fd; border-radius:10px; padding:9px 10px;">
+          <div style="font-weight:900; color:#0052cc; font-size:11px; margin-bottom:5px;">
+            1️⃣ Yedeği Sakla (Eski APK'yı Silmeden Önce Bunu Yapın)
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
+            <button type="button" class="ios-btn ios-btn-primary" style="padding:9px 6px; font-size:10.5px; font-weight:900;" onclick="copyTextToClipboardSafe(document.getElementById('avigenRawBackupCodeBox')?.value, '✅ Tüm kümes yedek kodunuz panoya kopyalandı! Yeni APK\\'yı kurduktan sonra Yedek Kodu Yapıştır kutusuna yapıştırarak tüm kuşlarınızı geri yükleyebilirsiniz.')">
+              📋 Yedek Kodunu Kopyala
+            </button>
+            <button type="button" class="ios-btn ios-btn-green" style="padding:9px 6px; font-size:10.5px; font-weight:900;" onclick="openExternalUrlSafe('https://wa.me/?text=' + encodeURIComponent(document.getElementById('avigenRawBackupCodeBox')?.value || ''))">
+              📲 WhatsApp'a Gönder
+            </button>
+          </div>
+          <textarea id="avigenRawBackupCodeBox" class="ios-textarea" rows="2" readonly onclick="this.select()" style="font-size:9px; font-family:monospace; background:var(--ios-card); color:var(--ios-subtext);">${escapeHtml(jsonStr)}</textarea>
+        </div>
+
+        <!-- 2. ADIM: YENİ APK KURULDUKTAN SONRA YEDEĞİ GERİ YÜKLE (KOD YAPIŞTIR VEYA DOSYA SEÇ) -->
+        <div style="background:var(--ios-card-alt); border:1.5px solid #c4b5fd; border-radius:10px; padding:9px 10px;">
+          <div style="font-weight:900; color:#5b21b6; font-size:11px; margin-bottom:4px;">
+            2️⃣ Yedeği Geri Yükle (Kopyalanan Kodu Yapıştır veya Dosya Seç)
+          </div>
+          <textarea id="avigenBackupPasteInput" class="ios-textarea" rows="3" placeholder="Kopyaladığınız veya WhatsApp'tan aldığınız yedek kodunu buraya basılı tutup 'Yapıştır' yapın..." style="font-size:10px; margin-bottom:6px;"></textarea>
+          <div style="display:grid; grid-template-columns:1.25fr 1fr; gap:6px;">
+            <button type="button" class="ios-btn ios-btn-purple" style="padding:9px 6px; font-size:10.5px; font-weight:900;" onclick="restoreBackupFromPastedText()">
+              📥 Yapıştırılan Yedeği Yükle
+            </button>
+            <label class="ios-btn ios-btn-outline" style="padding:9px 6px; font-size:10px; font-weight:800; cursor:pointer; text-align:center; display:flex; align-items:center; justify-content:center;">
+              📁 .JSON Dosya Seç
+              <input type="file" accept=".json,application/json,text/plain" style="display:none;" onchange="importFullAvigenBackup(event)" />
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  modal.classList.add('open');
+}
+
+async function exportFullAvigenBackup() {
   const payload = buildFullAvigenSnapshotPayload();
   const jsonStr = JSON.stringify(payload, null, 2);
   const blob = new Blob([jsonStr], { type: 'application/json' });
   const safeName = (loftConfig.title || 'AVIGEN').replace(/[^a-zA-Z0-9_-]/g, '_');
   const fileName = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
   const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
+
+  // 1. Hem panoya otomatik kopyala (Android APK'da dosya inmese bile panoda %100 hazır olur!)
+  await copyTextToClipboardSafe(JSON.stringify(payload));
+
+  // 2. Standart dosya indirmeyi tetikle
   triggerBlobFileDownload(blob, fileName, dataUrl);
+
+  // 3. Android / Mobil cihazlarda Yedekleme & Kopyalama/Yapıştırma Asistan Penceresini aç
+  openAndroidBackupAssistModal(true);
 }
 
 // AVIGEN v4.0 — Tek Tuşla Kümes Yedeğini (.json) WhatsApp, Google Drive veya E-Posta İle Paylaşma
 async function shareFullAvigenBackupViaWhatsApp() {
   const payload = buildFullAvigenSnapshotPayload();
   const jsonStr = JSON.stringify(payload, null, 2);
+  const compactJson = JSON.stringify(payload);
   const safeName = (loftConfig.title || 'AVIGEN').replace(/[^a-zA-Z0-9_-]/g, '_');
   const fileName = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
   const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -4692,6 +4861,8 @@ async function shareFullAvigenBackupViaWhatsApp() {
     type: 'application/json',
     lastModified: Date.now()
   });
+
+  await copyTextToClipboardSafe(compactJson);
 
   if (navigator.share) {
     try {
@@ -4702,23 +4873,17 @@ async function shareFullAvigenBackupViaWhatsApp() {
         });
         return;
       }
-      // Bazı Android WebView sürümlerinde .json dosya paylaşımı engellenirse metin yedeği olarak paylaş
-      const birdCnt = Array.isArray(payload.pedigrees) ? payload.pedigrees.length : 0;
-      const summaryTxt = `📦 *${loftConfig.title || 'AVIGEN'} Kümes Yedek Özeti (${new Date().toLocaleDateString('tr-TR')})*\n• Kayıtlı Kuş / Pedigri: ${birdCnt}\n• Aktif Yuva: ${(payload.activePairsList || []).length}\n• Yarış Kaydı: ${(payload.race_tracking_events || []).length}`;
       await navigator.share({
-        title: `${loftConfig.title || 'AVIGEN'} Kümes Yedeği`,
-        text: summaryTxt
+        title: `${loftConfig.title || 'AVIGEN'} Kümes Yedek Kodu`,
+        text: compactJson
       });
-      exportFullAvigenBackup();
       return;
     } catch (err) {
       if (err && err.name === 'AbortError') return;
     }
   }
 
-  exportFullAvigenBackup();
-  await copyTextToClipboardSafe(jsonStr);
-  alert(`💾 "${fileName}" yedek dosyanız cihazınıza indirildi (ve yedek verisi panoya kopyalandı)!\n\nWhatsApp'ta kendinize veya bir sohbete girip ataç (📎 Belge) simgesinden bu .json dosyasını göndererek bulutta saklayabilirsiniz.`);
+  openAndroidBackupAssistModal(true);
 }
 
 function importFullAvigenBackup(event) {
@@ -4728,69 +4893,7 @@ function importFullAvigenBackup(event) {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
-      if (!data || (!Array.isArray(data.pedigrees) && !data.loftConfig)) {
-        alert('⚠️ Geçersiz yedek şeması: Seçilen JSON dosyası AVIGEN kümes verisi içermiyor.');
-        return;
-      }
-
-      // Yıkıcı işlem öncesi mevcut verinin otomatik güvenlik yedeğini (rollback snapshot) kaydet
-      try {
-        localStorage.setItem('avigen_auto_safety_snapshot_v1', JSON.stringify(buildFullAvigenSnapshotPayload()));
-      } catch (snapErr) {}
-
-      if (data.loftConfig) loftConfig = { ...loftConfig, ...data.loftConfig };
-      if (Array.isArray(data.pedigrees) && data.pedigrees.length) {
-        pedigrees = data.pedigrees;
-        activePedigreeId = pedigrees[0].id;
-      }
-      if (Array.isArray(data.remindersList)) remindersList = data.remindersList;
-      if (Array.isArray(data.activePairsList)) activePairsList = data.activePairsList;
-      if (Array.isArray(data.racesList)) racesList = data.racesList;
-      if (Array.isArray(data.birdDossierList)) birdDossierList = data.birdDossierList;
-      if (Array.isArray(data.notesList)) notesList = data.notesList;
-
-      if (Array.isArray(data.scientific_sources) && typeof AvigenScientificLibrary !== 'undefined') {
-        AvigenScientificLibrary.sources = data.scientific_sources;
-        AvigenScientificLibrary.saveSources();
-        AvigenScientificLibrary.renderLibraryUI();
-      }
-      if (Array.isArray(data.genesis_analysis_history) && typeof AvigenGenesisAI !== 'undefined') {
-        AvigenGenesisAI.analysisHistory = data.genesis_analysis_history;
-        AvigenGenesisAI.saveHistory();
-      }
-      if (data.performance_config && typeof AvigenPerformanceEngine !== 'undefined') {
-        AvigenPerformanceEngine.state.distanceLimits = {
-          ...AvigenPerformanceEngine.state.distanceLimits,
-          ...data.performance_config
-        };
-        AvigenPerformanceEngine.saveConfig();
-      }
-      if (data.user_account_state && typeof AvigenUxManager !== 'undefined') {
-        AvigenUxManager.state = { ...AvigenUxManager.state, ...data.user_account_state };
-        AvigenUxManager.saveState();
-      }
-      if (Array.isArray(data.race_tracking_events) && typeof AvigenRaceTracker !== 'undefined') {
-        AvigenRaceTracker.events = data.race_tracking_events.map(ev =>
-          typeof AvigenRaceTracker.normalizeRaceRecord === 'function' ? AvigenRaceTracker.normalizeRaceRecord(ev) : ev
-        );
-        AvigenRaceTracker.saveEvents();
-        AvigenRaceTracker.renderRaceTrackerMainUI();
-        AvigenRaceTracker.renderRaceAiInsightsUI();
-      }
-
-      saveMypedigreData();
-      syncLoftIdentityAcrossUI();
-      renderPedigreeDropdown();
-      selectActivePedigree(activePedigreeId);
-      renderHomeDashboard();
-      renderLoftBirdsDirectory();
-      renderMypedigreNotes();
-      if (typeof AvigenUxManager !== 'undefined') {
-        AvigenUxManager.syncHeaderAndProfileUI();
-        AvigenUxManager.renderBreedingPlanPairsList();
-      }
-      closeLoftHeaderModal();
-      alert('✅ Kümes yedek dosyanız (güvercinler, 4 kuşak pedigreler, yuvalar, yarışlar, siciller, global izinler ve analiz geçmişi) başarıyla geri yüklendi!');
+      applyRestoredBackupDataObject(data);
     } catch (err) {
       alert('Geçersiz veya bozuk yedek dosyası!');
     }
@@ -8878,20 +8981,25 @@ const AvigenUxManager = {
             <span class="gene-badge gene-green">Tam Veri Koruması</span>
           </div>
           <div style="font-size:10px; color:var(--ios-subtext); margin-bottom:8px; line-height:1.35;">
-            Tüm kuşlarınızı, 4 kuşak pedigrelerinizi, yuvalarınızı ve yarış kayıtlarınızı tek dokunuşla yedekleyin veya WhatsApp'tan kendinize gönderin:
+            Tüm kuşlarınızı, 4 kuşak pedigrelerinizi, yuvalarınızı ve yarış kayıtlarınızı tek dokunuşla yedekleyin, WhatsApp'a gönderin veya kopyaladığınız yedek kodunu yapıştırarak geri yükleyin:
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:7px;">
             <button type="button" class="ios-btn ios-btn-green" style="padding:9px 8px; font-size:10.5px;" onclick="shareFullAvigenBackupViaWhatsApp()">
               📲 WhatsApp Yedek Gönder
             </button>
             <button type="button" class="ios-btn ios-btn-primary" style="padding:9px 8px; font-size:10.5px;" onclick="exportFullAvigenBackup()">
-              ⬇️ Cihaza Yedek İndir (.JSON)
+              ⬇️ Yedeği İndir / Kopyala
             </button>
           </div>
-          <label class="ios-btn ios-btn-outline" style="width:100%; padding:8px; font-size:10.5px; cursor:pointer; text-align:center; display:block; margin-bottom:6px;">
-            ⬆️ Kayıtlı Yedek Dosyasını (.JSON) Geri Yükle
-            <input type="file" accept=".json" style="display:none;" onchange="importFullAvigenBackup(event)" />
-          </label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:6px;">
+            <button type="button" class="ios-btn ios-btn-purple" style="padding:8px 6px; font-size:10px; font-weight:900;" onclick="openAndroidBackupAssistModal(false)">
+              📋 Yedek Kodu Yapıştır / Yükle
+            </button>
+            <label class="ios-btn ios-btn-outline" style="padding:8px 6px; font-size:10px; cursor:pointer; text-align:center; display:flex; align-items:center; justify-content:center;">
+              📁 .JSON Dosya Seç &amp; Yükle
+              <input type="file" accept=".json,application/json,text/plain" style="display:none;" onchange="importFullAvigenBackup(event)" />
+            </label>
+          </div>
           <button type="button" class="ios-btn ios-btn-outline" style="width:100%; padding:7px; font-size:9.8px; color:#b45309; border-color:#fcd34d; background:#fffbeb; margin-bottom:5px;" onclick="restoreAutoSafetySnapshot()">
             ⏪ Son Silme / Yükleme İşlemini Geri Al (Otomatik Güvenlik Yedeği)
           </button>
@@ -9816,16 +9924,15 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.5.1',
-    localBuild: 551,
-    remoteVersion: '5.5.1',
-    remoteBuild: 551,
-    remoteTitle: "AVIGEN v5.5.1 — Canlı Bulut Bağlantılı Android APK (APK Kurulumu & Paket Çakışması Olmadan Otomatik Canlı Güncelleme) + Tam Android Uyumluluğu",
+    localVersion: '5.5.2',
+    localBuild: 552,
+    remoteVersion: '5.5.2',
+    remoteBuild: 552,
+    remoteTitle: "AVIGEN v5.5.2 — Android & iPhone Kopyala/Yapıştır Yedekleme Asistanı, Canlı Bulut Bağlantılı Android APK & Tam Android Uyumluluğu",
     remoteNotes: [
+      "Android & iPhone Kopyala/Yapıştır Yedekleme Asistanı: Dosya indirmeye izin vermeyen eski Android APK sürümlerinde tek tuşla yedek kodunu panoya kopyalama, WhatsApp'a gönderme ve yeni sürüme yapıştırarak geri yükleme ekranı eklendi",
       "Canlı Bulut Bağlantılı Android APK: Yeni AVIGEN.apk artık her açılışta doğrudan canlı sunucudan (hasanbenzer.github.io/avigen) güncellenir; bir kez kurulduktan sonra bir daha APK indirmeye veya paket çakışmasına gerek kalmaz",
-      "Android Fiziksel / Kaydırmalı Geri Tuşu Desteği: Android telefonlarda geri tuşuna basıldığında uygulamadan çıkmak yerine açık pencereyi kapatır veya bir önceki sekmeye döner",
-      "Android APK Kamera, GPS ve Depolama İzinleri: AndroidManifest.xml içine GPS konum, kamera, galeri ve ağ izinleri ile çift aşamalı (GPS + Ağ/Wi-Fi) konum yakalayıcı eklendi",
-      "Android WebView İndirme, Pano Kopyalama, Kamera Fotoğraf Sıkıştırma & WhatsApp/PDF Köprüsü"
+      "Android Fiziksel / Kaydırmalı Geri Tuşu Desteği, APK Kamera/GPS/Depolama İzinleri ve Kamera Fotoğraf Sıkıştırma"
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',
@@ -10007,7 +10114,8 @@ const AvigenAutoUpdater = {
       }
     } catch (e) {}
 
-    // 3. Eğer Capacitor APK içindeysek ve uzak sunucuda daha yeni bir sürüm varsa, verileri koruyarak canlı güncellemeyi uygula
+    // 3. Eğer eski bir yerel Capacitor APK içindeysek (localhost) ve henüz canlı sunucuya geçmemişse:
+    // Kullanıcının mevcut tüm kümes verisini (veya URL'ye sığan yedek paketini) koruyarak canlı güncellemeyi uygula
     const isCapacitorApk = Boolean(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
     if (isCapacitorApk && this.state.remoteBuild > this.state.localBuild) {
       this.applySavedOtaBundleIfNewer();
@@ -10019,11 +10127,15 @@ const AvigenAutoUpdater = {
     window.location.replace(`${cleanUrl}?v=${Date.now()}`);
   },
 
-  downloadLatestApk() {
-    // GÜVENLİK KORUMASI: Kullanıcı yeni APK indirmeden 1 saniye önce tüm kümes verisini otomatik olarak (.JSON) cihazına yedekler!
+  async downloadLatestApk() {
+    // GÜVENLİK KORUMASI: Kullanıcı yeni APK indirmeden önce tüm kümes verisini hem panoya otomatik kopyalar hem de yedek penceresini açar!
     try {
-      if (typeof exportFullAvigenBackup === 'function') {
-        exportFullAvigenBackup();
+      if (typeof buildFullAvigenSnapshotPayload === 'function') {
+        const payload = buildFullAvigenSnapshotPayload();
+        await copyTextToClipboardSafe(JSON.stringify(payload));
+        if (typeof openAndroidBackupAssistModal === 'function') {
+          openAndroidBackupAssistModal(true);
+        }
       }
     } catch (e) {}
     const url = `${this.state.apkUrl}?t=${Date.now()}`;

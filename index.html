@@ -833,21 +833,29 @@
           </div>
           <button class="ios-btn ios-btn-gold" style="width:100%; padding:10px; margin-bottom:12px;" onclick="saveLoftHeaderModal()">💾 Kümes Bilgilerini Kaydet</button>
 
-          <!-- Tam Kümes Yedekleme & Cihazlar Arası (Bilgisayar <-> iPhone) Aktarım -->
+          <!-- Tam Kümes Yedekleme & Cihazlar Arası (Bilgisayar <-> iPhone <-> Android) Aktarım -->
           <div style="border-top:1px solid var(--ios-border); padding-top:10px;">
             <div style="font-size:11.5px; font-weight:800; color:var(--ios-text); margin-bottom:4px;">
               💾 Kümes Verilerini Yedekle / Cihaza Aktar
             </div>
             <div style="font-size:10px; color:var(--ios-subtext); margin-bottom:8px; line-height:1.35;">
-              Tüm güvercinlerinizi, pedigreleri, çiftleri, hatırlatmaları ve sicil kayıtlarını tek dosyada yedekleyip telefonunuza veya bilgisayarınıza aktarabilirsiniz.
+              Tüm güvercinlerinizi, pedigreleri, çiftleri, hatırlatmaları ve sicil kayıtlarını tek tuşla yedekleyip kopyalayabilir, WhatsApp'a gönderebilir veya geri yükleyebilirsiniz.
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:7px;">
+              <button type="button" class="ios-btn ios-btn-green" style="padding:9px 8px; font-size:10.5px;" onclick="shareFullAvigenBackupViaWhatsApp()">
+                📲 WhatsApp Yedek Gönder
+              </button>
+              <button type="button" class="ios-btn ios-btn-primary" style="padding:9px 8px; font-size:10.5px;" onclick="exportFullAvigenBackup()">
+                ⬇️ Yedeği İndir / Kopyala
+              </button>
             </div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-              <button type="button" class="ios-btn ios-btn-primary" style="padding:9px 8px; font-size:11px;" onclick="exportFullAvigenBackup()">
-                ⬇️ Yedeği İndir (.JSON)
+              <button type="button" class="ios-btn ios-btn-purple" style="padding:9px 8px; font-size:10.5px; font-weight:900;" onclick="openAndroidBackupAssistModal(false)">
+                📋 Yedek Kodu Yapıştır
               </button>
-              <label class="ios-btn ios-btn-outline" style="padding:9px 8px; font-size:11px; cursor:pointer; text-align:center;">
-                ⬆️ Yedeği Geri Yükle
-                <input type="file" accept=".json" style="display:none;" onchange="importFullAvigenBackup(event)" />
+              <label class="ios-btn ios-btn-outline" style="padding:9px 8px; font-size:10.5px; cursor:pointer; text-align:center;">
+                ⬆️ .JSON Dosya Yükle
+                <input type="file" accept=".json,application/json,text/plain" style="display:none;" onchange="importFullAvigenBackup(event)" />
               </label>
             </div>
           </div>
@@ -1065,7 +1073,7 @@
   <script>
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=5.5.1').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=5.5.2').then((reg) => {
           if (reg && typeof reg.update === 'function') {
             reg.update().catch(() => {});
           }
