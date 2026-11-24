@@ -160,7 +160,21 @@ jobs:
               fs.writeFileSync(manifestPath, mf, "utf8");
               console.log("Injected Android GPS, Camera and Storage permissions into AndroidManifest.xml");
             }
+
+            // Capacitor Android APK'nın her açılışta GitHub Pages üzerindeki en güncel canlı sürümü (hasanbenzer.github.io/avigen) çalıştırmasını sağla
+            const capCfgPath = "/tmp/avigen_cap/capacitor.config.json";
+            if (fs.existsSync(capCfgPath)) {
+              const capCfg = JSON.parse(fs.readFileSync(capCfgPath, "utf8"));
+              capCfg.server = {
+                url: "https://hasanbenzer.github.io/avigen/",
+                cleartext: true,
+                allowNavigation: ["hasanbenzer.github.io", "*.github.io", "*.openstreetmap.org", "*.google.com", "api.open-meteo.com"]
+              };
+              fs.writeFileSync(capCfgPath, JSON.stringify(capCfg, null, 2), "utf8");
+              console.log("Configured Capacitor server.url to live GitHub Pages for zero-APK-install auto updates");
+            }
           '
+          npx cap sync android
 
           # 2. Sabit Android İmza Anahtarı (avigen-release.keystore): Depoda varsa onu kullan, yoksa ilk kez oluşturup depoya kaydet!
           # Böylece bundan sonraki tüm APK güncellemeleri aynı dijital imzaya sahip olur ve eski APK silinmeden (veriler kaybolmadan) doğrudan üzerine kurulur!
