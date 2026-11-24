@@ -6347,18 +6347,138 @@ const AvigenGenesisAI = {
 
         out.innerHTML = `
           <div class="sr-sim-container">
-            <!-- 1. İNTERAKTİF TÜRKİYE HARİTASI -->
+            <!-- 1. EN ÜSTTE: SALIM NOKTASI VE VARIŞ (KÜMES) NOKTASI TAM GENİŞLİK KOORDİNAT GİRİŞ MERKEZİ -->
+            <div class="sr-form-card" style="margin-bottom:8px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                <div>
+                  <div style="font-size:12.5px; font-weight:900; color:var(--ios-text);">
+                    🧭 1. Salım Noktası &amp; 2. Varış (Kümes) Noktası Koordinat Girişi
+                  </div>
+                  <div style="font-size:9.3px; color:var(--ios-subtext);">
+                    Koordinatı doğrudan tam genişlikli kutuya yazın/yapıştırın veya il/ilçe seçin.
+                  </div>
+                </div>
+                <div class="sr-distance-badge-box" style="font-size:11px; padding:4px 10px; height:auto;">
+                  <span>📏 ${r.crowFliesKm} km</span>
+                </div>
+              </div>
+
+              <!-- 1. SALIM NOKTASI (EN ÜSTTE • KOORDİNAT HÜCRESİ %100 TAM GENİŞLİKTE) -->
+              <div style="background:#fff5f5; border:2px solid #ef4444; border-radius:11px; padding:10px 11px; margin-bottom:9px;">
+                <div style="font-size:12px; font-weight:900; color:#b91c1c; margin-bottom:6px;">
+                  🔴 1. SALIM NOKTASI KOORDİNATI (Kuşların Salındığı Yer)
+                </div>
+
+                <!-- TAM GENİŞLİKLİ (%100) BÜYÜK KOORDİNAT GİRİŞ HÜCRESİ -->
+                <input type="text" id="srReleaseCoordInput" class="sr-field-input" style="width:100%; box-sizing:border-box; height:46px; font-size:16px; font-weight:900; letter-spacing:0.4px; padding:8px 12px; border:2.5px solid #dc2626; border-radius:9px; background:#ffffff; color:#0f172a; margin-bottom:7px;" placeholder="Örn: 39.58420, 32.14720 (Enlem, Boylam)" value="${r.relNode?.lat && r.relNode?.lon ? `${Number(r.relNode.lat).toFixed(5)}, ${Number(r.relNode.lon).toFixed(5)}` : ''}" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.applySmartRaceManualCoordinate('release');}" />
+
+                <!-- KOORDİNAT İŞLEM BUTONLARI (ALT SATIRDA GENİŞ VE RAHAT) -->
+                <div style="display:grid; grid-template-columns:1.15fr 1fr 0.9fr; gap:6px; margin-bottom:8px;">
+                  <button type="button" class="ios-btn ios-btn-danger" style="padding:8px 6px; font-size:10.5px; font-weight:900;" onclick="AvigenGenesisAI.applySmartRaceManualCoordinate('release')">
+                    ✅ Koordinatı Uygula
+                  </button>
+                  <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 6px; font-size:10px; font-weight:900; color:#b91c1c; border-color:#f87171; background:#fff;" onclick="AvigenGenesisAI.pasteSmartRaceCoordinate('release')">
+                    📋 Konum Yapıştır
+                  </button>
+                  <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 6px; font-size:10px; font-weight:900; color:#b91c1c; border-color:#f87171; background:#fff;" onclick="AvigenGenesisAI.captureSmartRaceGpsLocation('release')" title="Telefonun GPS konumunu salım noktası yap">
+                    🛰️ GPS'ten Al
+                  </button>
+                </div>
+
+                <!-- HIZLI İL / İLÇE SEÇİMİ -->
+                <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px;">
+                  <div style="min-width:0;">
+                    <span style="font-size:9px; font-weight:800; color:#7f1d1d; display:block; margin-bottom:2px;">Veya Hızlı Salım İli Seçin (81 İl)</span>
+                    <select id="srReleaseCitySelect" class="sr-field-select" style="height:36px; font-size:11px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceEventId='custom'; AvigenGenesisAI.state.smartRaceCustomReleaseCoord=null; AvigenGenesisAI.onSmartRaceControlChange('release_city')">
+                      ${this.SMART_RACE_GEO_NODES.map(n => `
+                        <option value="${n.id}" ${(n.id === (this.state.smartRaceReleaseCityId || r.relNode.id)) ? 'selected' : ''}>
+                          ${escapeHtml(n.name.split(' (')[0])}
+                        </option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  <div style="min-width:0;">
+                    <span style="font-size:9px; font-weight:800; color:#7f1d1d; display:block; margin-bottom:2px;">Salım İlçesi / Mevki</span>
+                    <select id="srReleaseDistrictSelect" class="sr-field-select" style="height:36px; font-size:11px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceEventId='custom'; AvigenGenesisAI.state.smartRaceCustomReleaseCoord=null; AvigenGenesisAI.onSmartRaceControlChange('release_district')">
+                      ${this.state.smartRaceCustomReleaseCoord ? `
+                        <option value="custom_coord" selected>📍 ${escapeHtml(this.state.smartRaceCustomReleaseCoord.name)}</option>
+                      ` : ''}
+                      ${this.getDistrictsForProvince(this.state.smartRaceReleaseCityId || r.relNode.id).map(d => `
+                        <option value="${d.id}" ${(!this.state.smartRaceCustomReleaseCoord && d.id === (this.state.smartRaceReleaseDistrictId || r.relNode.districtId)) ? 'selected' : ''}>
+                          ${escapeHtml(d.name)} (${d.altM}m)
+                        </option>
+                      `).join('')}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. VARIŞ NOKTASI / KÜMES (İKİNCİ SIRADA • KOORDİNAT HÜCRESİ %100 TAM GENİŞLİKTE) -->
+              <div style="background:#ecfdf5; border:2px solid #10b981; border-radius:11px; padding:10px 11px;">
+                <div style="font-size:12px; font-weight:900; color:#047857; margin-bottom:6px;">
+                  🟢 2. VARIŞ NOKTASI / KÜMES KOORDİNATI (Dönüş Kümesi)
+                </div>
+
+                <!-- TAM GENİŞLİKLİ (%100) BÜYÜK KOORDİNAT GİRİŞ HÜCRESİ -->
+                <input type="text" id="srLoftCoordInput" class="sr-field-input" style="width:100%; box-sizing:border-box; height:46px; font-size:16px; font-weight:900; letter-spacing:0.4px; padding:8px 12px; border:2.5px solid #059669; border-radius:9px; background:#ffffff; color:#0f172a; margin-bottom:7px;" placeholder="Örn: 40.21410, 28.36110 (Enlem, Boylam)" value="${r.loftNode?.lat && r.loftNode?.lon ? `${Number(r.loftNode.lat).toFixed(5)}, ${Number(r.loftNode.lon).toFixed(5)}` : ''}" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.applySmartRaceManualCoordinate('arrival');}" />
+
+                <!-- KOORDİNAT İŞLEM BUTONLARI (ALT SATIRDA GENİŞ VE RAHAT) -->
+                <div style="display:grid; grid-template-columns:1.1fr 0.95fr 0.95fr 0.7fr; gap:5px; margin-bottom:8px;">
+                  <button type="button" class="ios-btn ios-btn-green" style="padding:8px 5px; font-size:10px; font-weight:900;" onclick="AvigenGenesisAI.applySmartRaceManualCoordinate('arrival')">
+                    ✅ Koordinat Uygula
+                  </button>
+                  <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 5px; font-size:9.8px; font-weight:900; color:#047857; border-color:#34d399; background:#fff;" onclick="AvigenGenesisAI.pasteSmartRaceCoordinate('arrival')">
+                    📋 Yapıştır
+                  </button>
+                  <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 5px; font-size:9.8px; font-weight:900; color:#047857; border-color:#34d399; background:#fff;" onclick="AvigenGenesisAI.captureSmartRaceGpsLocation('arrival')" title="Telefonumun GPS konumunu kümesim olarak al">
+                    🛰️ Kümes GPS
+                  </button>
+                  <button type="button" class="ios-btn ios-btn-outline" style="padding:8px 5px; font-size:9.5px; font-weight:900; color:#047857; border-color:#34d399; background:#fff;" onclick="AvigenGenesisAI.pinCurrentLoftLocation()" title="Bu konumu kalıcı kümes konumunuz olarak kaydet">
+                    🏠 Sabitle
+                  </button>
+                </div>
+
+                <!-- HIZLI İL / İLÇE SEÇİMİ -->
+                <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px;">
+                  <div style="min-width:0;">
+                    <span style="font-size:9px; font-weight:800; color:#065f46; display:block; margin-bottom:2px;">Veya Hızlı Kümes İli Seçin (81 İl)</span>
+                    <select id="srLoftCitySelect" class="sr-field-select" style="height:36px; font-size:11px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceCustomLoftCoord=null; AvigenGenesisAI.onSmartRaceControlChange('loft_city')">
+                      ${this.SMART_RACE_GEO_NODES.map(n => `
+                        <option value="${n.id}" ${(n.id === (this.state.smartRaceLoftCityId || r.loftNode.id)) ? 'selected' : ''}>
+                          ${escapeHtml(n.name.split(' (')[0])}
+                        </option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  <div style="min-width:0;">
+                    <span style="font-size:9px; font-weight:800; color:#065f46; display:block; margin-bottom:2px;">Kümes İlçesi / Mevki</span>
+                    <select id="srLoftDistrictSelect" class="sr-field-select" style="height:36px; font-size:11px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceCustomLoftCoord=null; AvigenGenesisAI.onSmartRaceControlChange('loft_district')">
+                      ${this.state.smartRaceCustomLoftCoord ? `
+                        <option value="custom_coord" selected>📍 ${escapeHtml(this.state.smartRaceCustomLoftCoord.name)}</option>
+                      ` : ''}
+                      ${this.getDistrictsForProvince(this.state.smartRaceLoftCityId || r.loftNode.id).map(d => `
+                        <option value="${d.id}" ${(!this.state.smartRaceCustomLoftCoord && d.id === (this.state.smartRaceLoftDistrictId || r.loftNode.districtId)) ? 'selected' : ''}>
+                          ${escapeHtml(d.name)} (${d.altM}m)
+                        </option>
+                      `).join('')}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. ÜÇÜNCÜ SIRADA: İNTERAKTİF TÜRKİYE VE ROTA HARİTASI -->
             ${this.renderInteractiveTurkeyMap(sr, false)}
 
-            <!-- 2. MODERN VE DÜZENLİ YARIŞ BİLGİLERİ VERİ GİRİŞ PANELİ -->
+            <!-- 3. DÖRDÜNCÜ SIRADA: DİĞER YARIŞ BİLGİLERİ (AD, MESAFE, TARİH, SAAT VE KATILACAK KUŞLAR) -->
             <div class="sr-form-card">
               <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
                 <div>
                   <div style="font-size:12px; font-weight:900; color:var(--ios-text);">
-                    🏁 Yarış Bilgileri ve Rota Parametreleri
+                    🏁 Yarış Bilgileri, Tarih &amp; Katılacak Kuşlar
                   </div>
                   <div style="font-size:9.3px; color:var(--ios-subtext);">
-                    Kümes ve kuş bilgileriniz otomatik yüklendi. Haritadan veya listeden rotanızı belirleyip simülasyonu başlatın.
+                    Salım tarihini, saatini ve yarışa katılacak kuşlarınızı kontrol edip simülasyonu başlatın.
                   </div>
                 </div>
                 ${sr.trackerEvents.length > 0 ? `
@@ -6386,101 +6506,6 @@ const AvigenGenesisAI = {
                   <div class="sr-distance-badge-box" style="font-size:10.5px; padding:0 8px;">
                     <span>📏 ${r.crowFliesKm} km</span>
                     <span style="font-size:8.6px; font-weight:700; color:#6d28d9;">Koridor: ${r.actualCorridorMinKm}–${r.actualCorridorMaxKm} km</span>
-                  </div>
-                </div>
-
-                <!-- Salım Noktası (Tam Genişlik Satır • Büyük GPS Koordinat Girişi + İl/İlçe Hızlı Seçimi) -->
-                <div class="sr-field-box" style="grid-column: 1 / -1; background:#fff5f5; border:2px solid #ef4444; border-radius:10px; padding:10px;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
-                    <label class="sr-field-label" style="color:#b91c1c; font-size:11.5px; font-weight:900; margin:0;">🔴 1. SALIM NOKTASI GPS KOORDİNATI (Kuşların Salındığı Yer)</label>
-                    <div style="display:flex; gap:5px;">
-                      <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 9px; font-size:9.5px; font-weight:900; color:#b91c1c; border-color:#f87171; background:#fff;" onclick="AvigenGenesisAI.pasteSmartRaceCoordinate('release')">
-                        📋 Konum Yapıştır
-                      </button>
-                      <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 9px; font-size:9.5px; font-weight:900; color:#b91c1c; border-color:#f87171; background:#fff;" onclick="AvigenGenesisAI.captureSmartRaceGpsLocation('release')" title="Telefonun GPS konumunu salım noktası yap">
-                        🛰️ GPS'ten Al
-                      </button>
-                    </div>
-                  </div>
-                  <div style="display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center; margin-bottom:7px;">
-                    <input type="text" id="srReleaseCoordInput" class="sr-field-input" style="height:42px; font-size:14px; font-weight:900; padding:6px 10px; border:2px solid #dc2626; background:#ffffff; color:#0f172a;" placeholder="📍 Salım Koordinatını Yazın veya Yapıştırın (Örn: 39.5842, 32.1472)" value="${r.relNode?.lat && r.relNode?.lon ? `${Number(r.relNode.lat).toFixed(4)}, ${Number(r.relNode.lon).toFixed(4)}` : ''}" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.applySmartRaceManualCoordinate('release');}" />
-                    <button type="button" class="ios-btn ios-btn-danger" style="height:42px; padding:0 12px; font-size:10.5px; font-weight:900;" onclick="AvigenGenesisAI.applySmartRaceManualCoordinate('release')">
-                      📍 Koordinatı Uygula
-                    </button>
-                  </div>
-                  <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px;">
-                    <div style="min-width:0;">
-                      <span style="font-size:8.6px; font-weight:800; color:#7f1d1d; display:block; margin-bottom:2px;">Veya Hızlı Salım İli Seçin (81 İl)</span>
-                      <select id="srReleaseCitySelect" class="sr-field-select" style="height:34px; font-size:10.5px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceEventId='custom'; AvigenGenesisAI.state.smartRaceCustomReleaseCoord=null; AvigenGenesisAI.onSmartRaceControlChange('release_city')">
-                        ${this.SMART_RACE_GEO_NODES.map(n => `
-                          <option value="${n.id}" ${(n.id === (this.state.smartRaceReleaseCityId || r.relNode.id)) ? 'selected' : ''}>
-                            ${escapeHtml(n.name.split(' (')[0])}
-                          </option>
-                        `).join('')}
-                      </select>
-                    </div>
-                    <div style="min-width:0;">
-                      <span style="font-size:8.6px; font-weight:800; color:#7f1d1d; display:block; margin-bottom:2px;">Salım İlçesi / Mevki</span>
-                      <select id="srReleaseDistrictSelect" class="sr-field-select" style="height:34px; font-size:10.5px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceEventId='custom'; AvigenGenesisAI.state.smartRaceCustomReleaseCoord=null; AvigenGenesisAI.onSmartRaceControlChange('release_district')">
-                        ${this.state.smartRaceCustomReleaseCoord ? `
-                          <option value="custom_coord" selected>📍 ${escapeHtml(this.state.smartRaceCustomReleaseCoord.name)}</option>
-                        ` : ''}
-                        ${this.getDistrictsForProvince(this.state.smartRaceReleaseCityId || r.relNode.id).map(d => `
-                          <option value="${d.id}" ${(!this.state.smartRaceCustomReleaseCoord && d.id === (this.state.smartRaceReleaseDistrictId || r.relNode.districtId)) ? 'selected' : ''}>
-                            ${escapeHtml(d.name)} (${d.altM}m)
-                          </option>
-                        `).join('')}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Varış Noktası / Kümes (Tam Genişlik Satır • Büyük Kümes GPS Koordinat Girişi + İl/İlçe Seçimi) -->
-                <div class="sr-field-box" style="grid-column: 1 / -1; background:#ecfdf5; border:2px solid #10b981; border-radius:10px; padding:10px;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:6px;">
-                    <label class="sr-field-label" style="color:#047857; font-size:11.5px; font-weight:900; margin:0;">🟢 2. VARIŞ NOKTASI / KÜMES GPS KOORDİNATI (Dönüş Kümesi)</label>
-                    <div style="display:flex; gap:5px;">
-                      <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 9px; font-size:9.5px; font-weight:900; color:#047857; border-color:#34d399; background:#fff;" onclick="AvigenGenesisAI.pasteSmartRaceCoordinate('arrival')">
-                        📋 Konum Yapıştır
-                      </button>
-                      <button type="button" class="ios-btn ios-btn-green" style="padding:5px 9px; font-size:9.5px; font-weight:900;" onclick="AvigenGenesisAI.captureSmartRaceGpsLocation('arrival')" title="Telefonumun GPS konumunu kümesim olarak al">
-                        🛰️ Kümes GPS'im
-                      </button>
-                      <button type="button" class="ios-btn ios-btn-outline" style="padding:5px 8px; font-size:9px; font-weight:900; color:#047857; border-color:#34d399; background:#fff;" onclick="AvigenGenesisAI.pinCurrentLoftLocation()" title="Bu konumu kalıcı kümes konumunuz olarak kaydet">
-                        🏠 Sabitle
-                      </button>
-                    </div>
-                  </div>
-                  <div style="display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center; margin-bottom:7px;">
-                    <input type="text" id="srLoftCoordInput" class="sr-field-input" style="height:42px; font-size:14px; font-weight:900; padding:6px 10px; border:2px solid #059669; background:#ffffff; color:#0f172a;" placeholder="📍 Kümes / Varış Koordinatını Yazın veya Yapıştırın (Örn: 40.2141, 28.3611)" value="${r.loftNode?.lat && r.loftNode?.lon ? `${Number(r.loftNode.lat).toFixed(4)}, ${Number(r.loftNode.lon).toFixed(4)}` : ''}" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.applySmartRaceManualCoordinate('arrival');}" />
-                    <button type="button" class="ios-btn ios-btn-green" style="height:42px; padding:0 12px; font-size:10.5px; font-weight:900;" onclick="AvigenGenesisAI.applySmartRaceManualCoordinate('arrival')">
-                      📍 Koordinatı Uygula
-                    </button>
-                  </div>
-                  <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px;">
-                    <div style="min-width:0;">
-                      <span style="font-size:8.6px; font-weight:800; color:#065f46; display:block; margin-bottom:2px;">Veya Hızlı Kümes İli Seçin (81 İl)</span>
-                      <select id="srLoftCitySelect" class="sr-field-select" style="height:34px; font-size:10.5px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceCustomLoftCoord=null; AvigenGenesisAI.onSmartRaceControlChange('loft_city')">
-                        ${this.SMART_RACE_GEO_NODES.map(n => `
-                          <option value="${n.id}" ${(n.id === (this.state.smartRaceLoftCityId || r.loftNode.id)) ? 'selected' : ''}>
-                            ${escapeHtml(n.name.split(' (')[0])}
-                          </option>
-                        `).join('')}
-                      </select>
-                    </div>
-                    <div style="min-width:0;">
-                      <span style="font-size:8.6px; font-weight:800; color:#065f46; display:block; margin-bottom:2px;">Kümes İlçesi / Mevki</span>
-                      <select id="srLoftDistrictSelect" class="sr-field-select" style="height:34px; font-size:10.5px; padding:4px 7px;" onchange="AvigenGenesisAI.state.smartRaceCustomLoftCoord=null; AvigenGenesisAI.onSmartRaceControlChange('loft_district')">
-                        ${this.state.smartRaceCustomLoftCoord ? `
-                          <option value="custom_coord" selected>📍 ${escapeHtml(this.state.smartRaceCustomLoftCoord.name)}</option>
-                        ` : ''}
-                        ${this.getDistrictsForProvince(this.state.smartRaceLoftCityId || r.loftNode.id).map(d => `
-                          <option value="${d.id}" ${(!this.state.smartRaceCustomLoftCoord && d.id === (this.state.smartRaceLoftDistrictId || r.loftNode.districtId)) ? 'selected' : ''}>
-                            ${escapeHtml(d.name)} (${d.altM}m)
-                          </option>
-                        `).join('')}
-                      </select>
-                    </div>
                   </div>
                 </div>
 

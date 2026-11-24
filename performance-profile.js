@@ -2856,26 +2856,26 @@ const AvigenRaceTracker = {
           </div>
         </div>
 
-        <!-- SALIM NOKTASI VE KOORDİNAT GİRİŞİ (BÜYÜK VE KOLAY ANLAŞILIR) -->
+        <!-- SALIM NOKTASI VE KOORDİNAT GİRİŞİ (TAM GENİŞLİK • BÜYÜK VE KOLAY ANLAŞILIR) -->
         <div style="background:linear-gradient(135deg,#fffbeb,#fef2f2); border:2px solid #f59e0b; border-radius:10px; padding:9px 10px; display:flex; flex-direction:column; gap:7px;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
             <span style="font-size:11px; font-weight:900; color:#b45309;">🧭 DERBY / BÜYÜK YARIŞ SALIM &amp; VARIŞ (KÜMES) KOORDİNATLARI</span>
             <span id="newRaceLiveCoordKmText" style="font-size:11.5px; font-weight:900; color:#047857;">📏 ${prefillData?.distanceKm || 505} km</span>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px;">
-            <div style="background:#fff5f5; border:1.5px solid #ef4444; border-radius:8px; padding:7px 8px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <label style="font-size:10px; font-weight:900; color:#b91c1c;">🔴 1. Salım Noktası Koordinatı</label>
-                <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:8.8px; font-weight:900; color:#b91c1c; border-color:#f87171;" onclick="AvigenRaceTracker.pasteCoordinateToField('newRaceReleaseCoords')">📋 Yapıştır</button>
+          <div style="display:flex; flex-direction:column; gap:7px;">
+            <div style="background:#fff5f5; border:1.5px solid #ef4444; border-radius:8px; padding:8px 9px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <label style="font-size:10.8px; font-weight:900; color:#b91c1c;">🔴 1. Salım Noktası Koordinatı (Enlem, Boylam)</label>
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:4px 9px; font-size:9.5px; font-weight:900; color:#b91c1c; border-color:#f87171; background:#fff;" onclick="AvigenRaceTracker.pasteCoordinateToField('newRaceReleaseCoords')">📋 Konum Yapıştır</button>
               </div>
-              <input type="text" id="newRaceReleaseCoords" class="ios-input" style="height:38px; font-size:13px; font-weight:900; border:1.8px solid #dc2626;" placeholder="Örn: 39.7477, 37.0179" value="${escapeHtml(prefillData?.releaseCoords || '')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+              <input type="text" id="newRaceReleaseCoords" class="ios-input" style="width:100%; box-sizing:border-box; height:44px; font-size:15.5px; font-weight:900; border:2px solid #dc2626; background:#fff;" placeholder="Örn: 39.74770, 37.01790" value="${escapeHtml(prefillData?.releaseCoords || '')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
             </div>
-            <div style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:8px; padding:7px 8px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <label style="font-size:10px; font-weight:900; color:#047857;">🟢 2. Derby Kümes Koordinatı</label>
-                <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:8.8px; font-weight:900; color:#047857; border-color:#34d399;" onclick="AvigenRaceTracker.pasteCoordinateToField('newRaceLoftCoords')">📋 Yapıştır</button>
+            <div style="background:#ecfdf5; border:1.5px solid #10b981; border-radius:8px; padding:8px 9px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <label style="font-size:10.8px; font-weight:900; color:#047857;">🟢 2. Varış Noktası / Derby Kümes Koordinatı</label>
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:4px 9px; font-size:9.5px; font-weight:900; color:#047857; border-color:#34d399; background:#fff;" onclick="AvigenRaceTracker.pasteCoordinateToField('newRaceLoftCoords')">📋 Konum Yapıştır</button>
               </div>
-              <input type="text" id="newRaceLoftCoords" class="ios-input" style="height:38px; font-size:13px; font-weight:900; border:1.8px solid #059669;" placeholder="Örn: 41.0082, 28.9784" value="${escapeHtml(prefillData?.loftCoords || '')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
+              <input type="text" id="newRaceLoftCoords" class="ios-input" style="width:100%; box-sizing:border-box; height:44px; font-size:15.5px; font-weight:900; border:2px solid #059669; background:#fff;" placeholder="Örn: 41.00820, 28.97840" value="${escapeHtml(prefillData?.loftCoords || '')}" oninput="AvigenRaceTracker.onCreateRaceCoordinateInput()" />
             </div>
           </div>
           <div>
