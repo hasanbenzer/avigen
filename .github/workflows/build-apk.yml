@@ -161,7 +161,7 @@ jobs:
               console.log("Injected Android GPS, Camera and Storage permissions into AndroidManifest.xml");
             }
 
-            // Capacitor Android APK'nın her açılışta GitHub Pages üzerindeki en güncel canlı sürümü (hasanbenzer.github.io/avigen) çalıştırmasını sağla
+            // Capacitor Android APK paketinin her acilista GitHub Pages uzerindeki en guncel canli surumu calistirmasini sagla
             const capCfgPath = "/tmp/avigen_cap/capacitor.config.json";
             if (fs.existsSync(capCfgPath)) {
               const capCfg = JSON.parse(fs.readFileSync(capCfgPath, "utf8"));
