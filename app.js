@@ -5435,7 +5435,6 @@ async function shareFullAvigenBackupViaWhatsApp() {
       if (err && err.name === 'AbortError') return;
     }
   }
-  }
 
   openAndroidBackupAssistModal(true);
 }
