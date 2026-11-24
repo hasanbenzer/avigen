@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avigen-pwa-v25';
+const CACHE_NAME = 'avigen-pwa-v26';
 const ASSETS = [
   './',
   './index.html',
@@ -34,12 +34,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-store' })
       .then((res) => {
         const clone = res.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         return res;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(event.request, { ignoreSearch: true }))
   );
 });

@@ -8704,8 +8704,18 @@ const AvigenUxManager = {
           </div>
         </div>
 
-        <!-- REHBER VE HATA / ÖNERİ BİLDİRİM HIZLI ERİŞİM ŞERİDİ -->
+        <!-- HIZLI YEDEK İNDİR / KOPYALA & YEDEK KODU YAPIŞTIR / YÜKLE ŞERİDİ (EN ÜSTTE DOĞRUDAN ERİŞİM) -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--ios-border);">
+          <button type="button" class="ios-btn ios-btn-primary" style="padding:8px 8px; font-size:10.5px; font-weight:900;" onclick="exportFullAvigenBackup()">
+            ⬇️ Yedeği İndir / Kopyala
+          </button>
+          <button type="button" class="ios-btn ios-btn-purple" style="padding:8px 8px; font-size:10.5px; font-weight:900;" onclick="openAndroidBackupAssistModal(false)">
+            📋 Yedek Kodu Yapıştır / Yükle
+          </button>
+        </div>
+
+        <!-- REHBER VE HATA / ÖNERİ BİLDİRİM HIZLI ERİŞİM ŞERİDİ -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:6px;">
           <button type="button" class="ios-btn ios-btn-outline" style="padding:7px 8px; font-size:10px; font-weight:900; color:#0052cc; border-color:#93c5fd; background:#eff6ff;" onclick="AvigenUxManager.openUserGuideModal()" title="Nasıl Kullanılır? Kuşçu Kullanım Rehberi">
             📖 Kullanım Rehberi (Nasıl Kullanılır?)
           </button>
@@ -8903,8 +8913,8 @@ const AvigenUxManager = {
           </div>
           <div style="margin-top:7px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 8px; font-size:9.2px; color:#92400e; line-height:1.36;">
             💡 <strong>Android APK "Paket Çakışması" Çözümü:</strong> Telefonunuzda çok eski bir APK kuruluysa ve İndirilenler'den yeni APK kurarken <em>"Mevcut paket ile çakıştığından güncellenemedi"</em> uyarısı alırsanız:<br/>
-            1️⃣ Önce alttaki <strong>⬇️ Cihaza Yedek İndir (.JSON)</strong> veya <strong>📲 WhatsApp Yedek Gönder</strong> butonuna basın.<br/>
-            2️⃣ Eski AVIGEN uygulamasını telefondan kaldırıp İndirilenler'deki yeni <strong>AVIGEN.apk</strong> dosyasını kurun ve <strong>⬆️ Yedek Dosyasını Geri Yükle</strong> ile tüm kuşlarınızı geri yükleyin. (Bu işlemden sonraki tüm güncellemeler çakışma olmadan doğrudan üzerine kurulur!)
+            1️⃣ Önce <strong>⬇️ Yedeği İndir / Kopyala</strong> veya <strong>📲 WhatsApp Yedek Gönder</strong> butonuna basın.<br/>
+            2️⃣ Eski AVIGEN uygulamasını telefondan kaldırıp İndirilenler'deki yeni <strong>AVIGEN.apk</strong> dosyasını kurun ve <strong>📋 Yedek Kodu Yapıştır / Yükle</strong> ile tüm kuşlarınızı geri yükleyin. (Bu işlemden sonraki tüm güncellemeler çakışma olmadan doğrudan üzerine kurulur!)
           </div>
         </div>
 
@@ -9924,15 +9934,15 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.5.2',
-    localBuild: 552,
-    remoteVersion: '5.5.2',
-    remoteBuild: 552,
-    remoteTitle: "AVIGEN v5.5.2 — Android & iPhone Kopyala/Yapıştır Yedekleme Asistanı, Canlı Bulut Bağlantılı Android APK & Tam Android Uyumluluğu",
+    localVersion: '5.5.3',
+    localBuild: 553,
+    remoteVersion: '5.5.3',
+    remoteBuild: 553,
+    remoteTitle: "AVIGEN v5.5.3 — Önbellek Kırıcı (Cache-Busting) Canlı Güncelleme & Üst Bar Yedekleme/Kopyalama Merkezi",
     remoteNotes: [
-      "Android & iPhone Kopyala/Yapıştır Yedekleme Asistanı: Dosya indirmeye izin vermeyen eski Android APK sürümlerinde tek tuşla yedek kodunu panoya kopyalama, WhatsApp'a gönderme ve yeni sürüme yapıştırarak geri yükleme ekranı eklendi",
-      "Canlı Bulut Bağlantılı Android APK: Yeni AVIGEN.apk artık her açılışta doğrudan canlı sunucudan (hasanbenzer.github.io/avigen) güncellenir; bir kez kurulduktan sonra bir daha APK indirmeye veya paket çakışmasına gerek kalmaz",
-      "Android Fiziksel / Kaydırmalı Geri Tuşu Desteği, APK Kamera/GPS/Depolama İzinleri ve Kamera Fotoğraf Sıkıştırma"
+      "Android WebView & Tarayıcı Önbellek Kırıcı (?v=5.5.3): Eski app.js dosyasının telefon önbelleğinde takılı kalmasını önleyen zorunlu sürüm parametresi eklendi",
+      "Profil & Ayarlar En Üst Kartına Tek Tuşla '⬇️ Yedeği İndir / Kopyala' ve '📋 Yedek Kodu Yapıştır / Yükle' Hızlı Erişim Butonları eklendi",
+      "Android & iPhone Kopyala/Yapıştır Yedekleme Asistanı, Canlı Bulut Bağlantılı Android APK ve Tam Android Uyumluluğu"
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',
@@ -9981,8 +9991,6 @@ const AvigenAutoUpdater = {
         }
         st.textContent = bundle.css;
       }
-      this.state.localVersion = bundle.version || this.state.localVersion;
-      this.state.localBuild = Number(bundle.build) || this.state.localBuild;
     } catch (e) {}
   },
 
@@ -10042,6 +10050,18 @@ const AvigenAutoUpdater = {
 
     if (typeof AvigenUxManager !== 'undefined' && document.getElementById('page-notes')?.classList.contains('active')) {
       AvigenUxManager.renderProfileAccountSection();
+    }
+
+    // Eğer arka planda yeni sürüm tespit edildiyse ve henüz bu derlemeye (build) otomatik yenileme yapılmadıysa, verileri koruyarak otomatik canlı güncelle
+    if (!showFeedback && this.state.hasNewUpdate) {
+      try {
+        const lastAutoReloadBuild = sessionStorage.getItem('avigen_auto_updated_to_build');
+        if (lastAutoReloadBuild !== String(this.state.remoteBuild)) {
+          sessionStorage.setItem('avigen_auto_updated_to_build', String(this.state.remoteBuild));
+          this.applyWebLiveUpdate();
+          return;
+        }
+      } catch (e) {}
     }
 
     if (showFeedback) {
