@@ -8775,7 +8775,7 @@ const AvigenUxManager = {
       const updState = typeof AvigenAutoUpdater !== 'undefined' ? AvigenAutoUpdater.state : null;
 
       root.innerHTML = `
-        <!-- 0. UYGULAMA SÜRÜMÜ & TELEFONDAN TEK TUŞLA CANLI GÜNCELLEME MERKEZİ -->
+          <!-- 0. UYGULAMA SÜRÜMÜ & TELEFONDAN TEK TUŞLA CANLI GÜNCELLEME MERKEZİ -->
         <div class="ios-card" style="padding:11px 12px; border-top:3px solid #059669;">
           <div class="ios-card-title" style="margin-bottom:6px;">
             <span>🚀 Uygulama Sürümü &amp; Canlı Güncelleme</span>
@@ -8785,18 +8785,23 @@ const AvigenUxManager = {
           </div>
           <div style="font-size:10px; color:var(--ios-subtext); line-height:1.4; margin-bottom:8px;">
             Yüklü Sürüm: <strong>v${escapeHtml(updState?.localVersion || '2.0.0')} (Build ${updState?.localBuild || 200})</strong> • Sunucu Son Sürüm: <strong>v${escapeHtml(updState?.remoteVersion || '2.0.0')}</strong>.<br/>
-            Güncelleme işlemi telefonunuzdaki kayıtlı güvercinleri, pedigreleri, yuvaları ve yarışları <strong>hiç silmeden</strong> yalnızca yeni özellikleri yükler.
+            <span style="color:#059669; font-weight:800;">✅ Önerilen:</span> Yeni APK dosyası kurmanıza veya eski uygulamayı silmenize gerek kalmadan <strong>"⚡ Şimdi Güncelle (Uygulama İçi Canlı)"</strong> butonuna basarak tüm yeni özellikleri <strong>verileriniz hiç silinmeden</strong> anında yükleyebilirsiniz.
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
-            <button type="button" class="ios-btn ios-btn-outline" style="padding:7px 6px; font-size:10px;" onclick="AvigenAutoUpdater.checkForUpdates(true)">
-              🔍 Sürüm Kontrol Et
+          <div style="display:grid; grid-template-columns:1fr 1.35fr 0.9fr; gap:6px;">
+            <button type="button" class="ios-btn ios-btn-outline" style="padding:7px 6px; font-size:9.8px;" onclick="AvigenAutoUpdater.checkForUpdates(true)">
+              🔍 Sürüm Kontrol
             </button>
-            <button type="button" class="ios-btn ios-btn-primary" style="padding:7px 6px; font-size:10px;" onclick="AvigenAutoUpdater.applyWebLiveUpdate()">
-              ⚡ Şimdi Güncelle (Web/PWA)
+            <button type="button" class="ios-btn ios-btn-primary" style="padding:7px 6px; font-size:10px; font-weight:900;" onclick="AvigenAutoUpdater.applyWebLiveUpdate()">
+              ⚡ Şimdi Güncelle (Canlı)
             </button>
-            <button type="button" class="ios-btn ios-btn-green" style="padding:7px 6px; font-size:10px;" onclick="AvigenAutoUpdater.downloadLatestApk()">
-              📦 Yeni APK İndir
+            <button type="button" class="ios-btn ios-btn-green" style="padding:7px 6px; font-size:9.6px;" onclick="AvigenAutoUpdater.downloadLatestApk()">
+              📦 APK İndir
             </button>
+          </div>
+          <div style="margin-top:7px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 8px; font-size:9.2px; color:#92400e; line-height:1.36;">
+            💡 <strong>Android APK "Paket Çakışması" Çözümü:</strong> Telefonunuzda çok eski bir APK kuruluysa ve İndirilenler'den yeni APK kurarken <em>"Mevcut paket ile çakıştığından güncellenemedi"</em> uyarısı alırsanız:<br/>
+            1️⃣ Önce alttaki <strong>⬇️ Cihaza Yedek İndir (.JSON)</strong> veya <strong>📲 WhatsApp Yedek Gönder</strong> butonuna basın.<br/>
+            2️⃣ Eski AVIGEN uygulamasını telefondan kaldırıp İndirilenler'deki yeni <strong>AVIGEN.apk</strong> dosyasını kurun ve <strong>⬆️ Yedek Dosyasını Geri Yükle</strong> ile tüm kuşlarınızı geri yükleyin. (Bu işlemden sonraki tüm güncellemeler çakışma olmadan doğrudan üzerine kurulur!)
           </div>
         </div>
 
@@ -9811,16 +9816,16 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.5.0',
-    localBuild: 550,
-    remoteVersion: '5.5.0',
-    remoteBuild: 550,
-    remoteTitle: "AVIGEN v5.5 — Tam Android (APK & Chrome) Uyumluluk Paketi: Fiziksel Geri Tuşu, Kamera/GPS/Depolama İzinleri, Hızlı Fotoğraf Sıkıştırma & WhatsApp/PDF Köprüsü",
+    localVersion: '5.5.1',
+    localBuild: 551,
+    remoteVersion: '5.5.1',
+    remoteBuild: 551,
+    remoteTitle: "AVIGEN v5.5.1 — Canlı Bulut Bağlantılı Android APK (APK Kurulumu & Paket Çakışması Olmadan Otomatik Canlı Güncelleme) + Tam Android Uyumluluğu",
     remoteNotes: [
+      "Canlı Bulut Bağlantılı Android APK: Yeni AVIGEN.apk artık her açılışta doğrudan canlı sunucudan (hasanbenzer.github.io/avigen) güncellenir; bir kez kurulduktan sonra bir daha APK indirmeye veya paket çakışmasına gerek kalmaz",
       "Android Fiziksel / Kaydırmalı Geri Tuşu Desteği: Android telefonlarda geri tuşuna basıldığında uygulamadan çıkmak yerine açık pencereyi kapatır veya bir önceki sekmeye döner",
       "Android APK Kamera, GPS ve Depolama İzinleri: AndroidManifest.xml içine GPS konum, kamera, galeri ve ağ izinleri ile çift aşamalı (GPS + Ağ/Wi-Fi) konum yakalayıcı eklendi",
-      "Android WebView İndirme, Pano Kopyalama & WhatsApp Köprüsü: Cihaz kodu kopyalama, JSON yedek paylaşımı, WhatsApp bağlantıları ve Pedigri PDF/PNG kaydetme motoru tüm Android cihazlarla %100 uyumlu hale getirildi",
-      "Android Kamera Fotoğraf Sıkıştırma & Alt Menü Koruması: Yüksek çözünürlüklü telefon kamerası fotoğraflarını otomatik sıkıştırarak hafıza dolmasını önler; alt sıradaki kuşların 'İşlemler ▾' menüsünü otomatik yukarı doğru açar"
+      "Android WebView İndirme, Pano Kopyalama, Kamera Fotoğraf Sıkıştırma & WhatsApp/PDF Köprüsü"
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',
