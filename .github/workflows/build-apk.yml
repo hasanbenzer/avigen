@@ -188,6 +188,7 @@ jobs:
           import android.os.Environment;
           import android.provider.MediaStore;
           import android.util.Base64;
+          import android.view.KeyEvent;
           import android.webkit.JavascriptInterface;
           import android.webkit.WebView;
           import android.widget.Toast;
@@ -199,6 +200,23 @@ jobs:
           import java.io.OutputStream;
 
           public class MainActivity extends BridgeActivity {
+              private void evaluateAndroidBackOrFinish() {
+                  if (getBridge() != null && getBridge().getWebView() != null) {
+                      getBridge().getWebView().evaluateJavascript(
+                          "(function(){ try { return (window.handleAndroidBackNavigation && window.handleAndroidBackNavigation()) ? 'HANDLED' : 'EXIT'; } catch(e) { return 'EXIT'; } })()",
+                          value -> {
+                              if (value != null && value.contains("HANDLED")) {
+                                  // Stay in app (navigated toward Ana Sayfa)
+                              } else {
+                                  finish();
+                              }
+                          }
+                      );
+                  } else {
+                      finish();
+                  }
+              }
+
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
@@ -213,28 +231,40 @@ jobs:
                   getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
                       @Override
                       public void handleOnBackPressed() {
-                          if (getBridge() != null && getBridge().getWebView() != null) {
-                              getBridge().getWebView().evaluateJavascript(
-                                  "(function(){ try { return (window.handleAndroidBackNavigation && window.handleAndroidBackNavigation()) ? 'HANDLED' : 'EXIT'; } catch(e) { return 'EXIT'; } })()",
-                                  value -> {
-                                      if (value != null && value.contains("HANDLED")) {
-                                          // Stay in app
-                                      } else {
-                                          finish();
-                                      }
-                                  }
-                              );
-                          } else {
-                              finish();
-                          }
+                          evaluateAndroidBackOrFinish();
                       }
                   });
+              }
+
+              @Override
+              public boolean dispatchKeyEvent(KeyEvent event) {
+                  if (event != null && event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+                      if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+                          evaluateAndroidBackOrFinish();
+                      }
+                      return true;
+                  }
+                  return super.dispatchKeyEvent(event);
               }
 
               public class AvigenJsBridge {
                   @JavascriptInterface
                   public void exitApp() {
                       runOnUiThread(() -> finish());
+                  }
+
+                  @JavascriptInterface
+                  public void openExternalUrl(String url) {
+                      runOnUiThread(() -> {
+                          try {
+                              if (url == null || url.isEmpty()) return;
+                              Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                              startActivity(intent);
+                          } catch (Exception e) {
+                              Toast.makeText(MainActivity.this, "Baglanti acilamadi: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                          }
+                      });
                   }
 
                   @JavascriptInterface
