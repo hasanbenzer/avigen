@@ -775,11 +775,14 @@ function getInitialPedigrees() {
   ];
 }
 
-// Yardımcı: Bugünden N gün öncesinin YYYY-MM-DD tarihini üretir
+// Yardımcı: Bugünden N gün öncesinin yerel saat dilimine (UTC kaymasız!) göre YYYY-MM-DD tarihini üretir
 function getIsoDateDaysAgo(daysAgo) {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
-  return d.toISOString().slice(0, 10);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 // ============================================================================
@@ -1357,6 +1360,14 @@ function openIosTab(tabId, btnEl, resetSubView) {
   // Açık kalan herhangi bir modal veya açılır menü varsa kapat ki sekme geçişi hiçbir zaman kilitlenmesin
   document.querySelectorAll('.ios-modal-overlay.open').forEach(m => m.classList.remove('open'));
   if (typeof closeAllBirdActionPopups === 'function') closeAllBirdActionPopups();
+
+  if (tabId !== 'home' && window.history && typeof window.history.pushState === 'function') {
+    try {
+      if (!window.history.state || window.history.state.avigenTab !== tabId) {
+        window.history.pushState({ avigenGuard: true, avigenTab: tabId }, '');
+      }
+    } catch (e) {}
+  }
 
   document.querySelectorAll('.ios-tab-page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-' + tabId);
