@@ -1218,6 +1218,11 @@ const AvigenPerformanceEngine = {
           </div>
         </details>
       `}
+
+      <!-- EN ALT MİKRO BİLİMSEL & HUKUKİ SORUMLULUK NOTU -->
+      <div style="font-size:8px; line-height:1.3; color:var(--ios-subtext); opacity:0.85; border-top:1px dashed var(--ios-border); padding-top:4px; margin-top:4px; text-align:center;">
+        ⚖️ <strong>Bilimsel &amp; Hukuki Not:</strong> Bu genetik profil ve performans hesaplamaları; kullanıcı tarafından girilen bireysel verilere, bireysel veri bulunmadığında ise üst ataların (pedigri) kayıtlarına dayalı olasılıksal bilimsel tahminlerdir; kesinlik içermez ve verilerin doğruluğundan kaydı düzenleyen kişi sorumludur.
+      </div>
     `;
   }
 };

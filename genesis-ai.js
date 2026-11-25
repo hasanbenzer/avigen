@@ -5472,6 +5472,11 @@ const AvigenGenesisAI = {
             ${cfg.expertHtml || ''}
           </div>
         </details>
+
+        <!-- EN ALT MİKRO BİLİMSEL & HUKUKİ SORUMLULUK NOTU -->
+        <div style="font-size:8px; line-height:1.3; color:var(--ios-subtext); opacity:0.85; border-top:1px dashed var(--ios-border); padding-top:4px; text-align:center;">
+          ⚖️ <strong>Bilimsel &amp; Hukuki Not:</strong> Bu genetik analiz ve performans öngörüleri; kullanıcı tarafından girilen bireysel verilere, bireysel veri bulunmadığında ise üst ataların (pedigri) kayıtlarına dayalı olasılıksal bilimsel hesaplamalardır; kesinlik veya yarış/üreme garantisi içermez.
+        </div>
       </div>
     `;
   },
@@ -5515,12 +5520,12 @@ const AvigenGenesisAI = {
             <button class="ios-btn ios-btn-purple" style="padding:10px 8px; font-size:11px; font-weight:900;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.openSubscriptionModal('checkout')">
               🔑 Lisans Kodu Gir
             </button>
-            <button class="ios-btn ios-btn-green" style="padding:10px 8px; font-size:11px; font-weight:900;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.requestLicenseViaWhatsApp('3.990 TL', 'Yıllık (365 Gün)')">
+            <button class="ios-btn ios-btn-green" style="padding:10px 8px; font-size:11px; font-weight:900;" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.requestLicenseViaWhatsApp('8.990 TL', 'Yıllık (365 Gün)')">
               📲 Kod İste (0532 782 03 85)
             </button>
           </div>
           <button class="ios-btn ios-btn-outline" style="width:100%; padding:8px; font-size:10.5px; color:#ffffff; border-color:rgba(255,255,255,0.35); background:rgba(255,255,255,0.08);" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.openSubscriptionModal('plans')">
-            👑 Paketleri İncele (AVIGEN FREE &amp; GENESIS AI)
+            👑 Paketleri İncele (Standart 399 TL/ay • GENESIS AI 899 TL/ay)
           </button>
         </div>
       `;
