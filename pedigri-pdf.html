@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <title>AVIGEN — 2 Sayfa Resmi Pedigri PDF İndir &amp; WhatsApp Paylaş</title>
+  <link rel="icon" type="image/svg+xml" href="https://hasanbenzer.github.io/avigen/avigen-logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #090d16 0%, #0f172a 100%);
+      color: #f8fafc;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .ios-btn {
+      border: none;
+      border-radius: 11px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .ios-btn:active { transform: scale(0.98); }
+    .ios-btn-green {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: #ffffff;
+    }
+    .ios-btn-primary {
+      background: linear-gradient(135deg, #1d4ed8, #0284c7);
+      color: #ffffff;
+    }
+    .ios-btn-outline {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border: 1.5px solid #93c5fd;
+    }
+  </style>
+</head>
+<body>
+  <div id="avigenExternalPdfShareBridgePage" style="min-height:100vh; width:100%; padding:16px 12px 36px 12px;">
+    <div style="max-width:680px; margin:24px auto; text-align:center; background:rgba(15,23,42,0.85); border:2px solid #38bdf8; border-radius:14px; padding:24px 16px;">
+      <div style="font-size:28px; margin-bottom:8px;">📄</div>
+      <div style="font-size:15px; font-weight:900; color:#fde047;">2 Sayfalık Resmi Pedigri PDF Dosyanız Hazırlanıyor...</div>
+      <div style="font-size:11.5px; color:#cbd5e1; margin-top:6px;">Lütfen 1 saniye bekleyin, PDF sertifikanız otomatik olarak oluşturuluyor.</div>
+    </div>
+  </div>
+
+  <script>
+    window.AVIGEN_STANDALONE_PDF_BRIDGE_MODE = true;
+    (function() {
+      var ts = Date.now();
+      var base = 'https://hasanbenzer.github.io/avigen/';
+      var s1 = document.createElement('script');
+      s1.src = base + 'performance-profile.js?t=' + ts;
+      s1.onload = function() {
+        var s2 = document.createElement('script');
+        s2.src = base + 'app.js?t=' + ts;
+        document.body.appendChild(s2);
+      };
+      s1.onerror = function() {
+        var s2 = document.createElement('script');
+        s2.src = base + 'app.js?t=' + ts;
+        document.body.appendChild(s2);
+      };
+      document.body.appendChild(s1);
+    })();
+  </script>
+</body>
+</html>

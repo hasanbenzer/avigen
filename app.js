@@ -8560,11 +8560,20 @@ function openPedigreePdfInExternalChrome(ped, formatType = 'pdf') {
   const targetPed = ped || (_lastExportedPedigreeState && _lastExportedPedigreeState.ped) || getActivePedigree();
   const b64 = buildCompactPedigreeForUrlBridge(targetPed);
   if (!b64) return false;
-  // raw.githack.com Capacitor'un allowNavigation listesinde olmadığı için eski APK bile bu adresi %100 telefonun harici Android Chrome / Samsung tarayıcısında açar!
-  // ÖNEMLİ: "?v=..." KULLANILMAZ (QR doğrulama parametresiyle çakışmaması ve önbelleğe takılmaması için "?pdfbridge=..." kullanılır!)
-  const extUrl = `https://raw.githack.com/hasanbenzer/avigen/main/index.html?pdfbridge=${Date.now()}#auto_ped_pdf=${encodeURIComponent(b64)}&fmt=${encodeURIComponent(formatType)}`;
+  // ÖNEMLİ: ASLA index.html (ana program) açılmaz! Yalnızca bağımsız tek ekranlık "pedigri-pdf.html" PDF & WhatsApp paylaşım sayfası açılır!
+  const extUrl = `https://raw.githack.com/hasanbenzer/avigen/main/pedigri-pdf.html?t=${Date.now()}#auto_ped_pdf=${encodeURIComponent(b64)}&fmt=${encodeURIComponent(formatType)}`;
   openExternalUrlSafe(extUrl);
   return true;
+}
+
+// Tarayıcı açmadan doğrudan WhatsApp uygulamasını açarak kuşun Resmi Dijital Doğrulamalı Pedigri Sertifikasını (1. ve 2. Sayfa Görseli + PDF İndirme Linkli) gönderir
+function shareVerifiedPedigreeCertificateDirectToWhatsApp(pedOpt) {
+  const ped = pedOpt || (_lastExportedPedigreeState && _lastExportedPedigreeState.ped) || getActivePedigree();
+  if (!ped) return;
+  const summaryTxt = buildPedigreeWhatsAppSummaryText(ped);
+  const verifyUrl = encodeFullPedigreeQrPayload(ped);
+  const fullWaMsg = `${summaryTxt}\n\n🛡️ *Resmi Dijital Doğrulama Sertifikası, 1. ve 2. Sayfa Tam Pedigri Görüntüsü & PDF İndirme Bağlantısı:*\n${verifyUrl}`;
+  openExternalUrlSafe(`https://api.whatsapp.com/send?text=${encodeURIComponent(fullWaMsg)}`);
 }
 
 function renderStandaloneExternalPdfSharePage(st) {
@@ -8596,6 +8605,9 @@ function renderStandaloneExternalPdfSharePage(st) {
         <div style="display:flex; flex-direction:column; gap:8px; max-width:460px; margin:0 auto;">
           <button type="button" class="ios-btn ios-btn-green" style="width:100%; padding:13px 16px; font-size:13px; font-weight:900; box-shadow:0 4px 14px rgba(16,185,129,0.4);" onclick="shareExportedPedigreeFromAssistModal('pdf')">
             📲 WhatsApp'ı Aç ve 2 Sayfa PDF Dosyasını Gönder
+          </button>
+          <button type="button" class="ios-btn ios-btn-outline" style="width:100%; padding:11px 14px; font-size:11.5px; font-weight:900; background:rgba(16,185,129,0.16); color:#a7f3d0; border-color:#10b981;" onclick="shareVerifiedPedigreeCertificateDirectToWhatsApp()">
+            🔗 WhatsApp'a Dijital Doğrulamalı Pedigri Sertifikası Gönder (Anında)
           </button>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
             <button type="button" class="ios-btn ios-btn-primary" style="padding:10px; font-size:11px; font-weight:900;" onclick="triggerBlobFileDownload(_lastExportedPedigreeState.pdfBlob, _lastExportedPedigreeState.pdfFileName)">
@@ -8970,6 +8982,10 @@ function openPedigreeExportAssistModal(modeLabel = '2 Sayfa PDF İndir & WhatsAp
             📄 Cihaza PDF İndir / Kaydet
           </button>
         </div>
+
+        <button type="button" class="ios-btn ios-btn-outline" style="width:100%; padding:9px 10px; font-size:10.5px; font-weight:900; color:#047857; border-color:#6ee7b7; background:#ecfdf5;" onclick="shareVerifiedPedigreeCertificateDirectToWhatsApp()">
+          🔗 WhatsApp'a Dijital Doğrulamalı Pedigri Sertifikası Gönder (Tarayıcısız Anında)
+        </button>
 
         <!-- 1. SAYFA VE 2. SAYFA CANLI YÜKSEK ÇÖZÜNÜRLÜKLÜ ÖNİZLEME (Basılı Tutup Kaydetme Destekli) -->
         <div style="background:#0f172a; border:2px solid #1d4ed8; border-radius:10px; padding:6px; text-align:center; display:flex; flex-direction:column; gap:7px; max-height:310px; overflow-y:auto;">
@@ -12931,11 +12947,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.7.3',
-    localBuild: 573,
-    remoteVersion: '5.7.3',
-    remoteBuild: 573,
-    remoteTitle: "AVIGEN v5.7.3 — Samsung / Android Harici Tarayıcı WhatsApp 2 Sayfa PDF Paylaşım Köprüsü Düzeltmesi (?v=562 Çakışması Giderildi)",
+    localVersion: '5.7.4',
+    localBuild: 574,
+    remoteVersion: '5.7.4',
+    remoteBuild: 574,
+    remoteTitle: "AVIGEN v5.7.4 — Bağımsız Tek Ekran PDF/WhatsApp Köprüsü (pedigri-pdf.html) & Tarayıcısız Anında WhatsApp Dijital Sertifika Gönderimi",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
@@ -13471,6 +13487,15 @@ window.addEventListener('DOMContentLoaded', () => {
   checkAndRunAutoExternalPdfBridge();
   checkAndShowPedigreeQrVerifyModal();
 });
+
+// Eğer bağımsız pedigri-pdf.html sayfası üzerinden dinamik script olarak yüklendiysek (DOMContentLoaded zaten geçmişse) hemen PDF köprüsünü çalıştır!
+if (window.AVIGEN_STANDALONE_PDF_BRIDGE_MODE) {
+  setTimeout(() => {
+    try {
+      checkAndRunAutoExternalPdfBridge();
+    } catch (e) {}
+  }, 40);
+}
 
 window.addEventListener('resize', fitPaperToIphoneScreen);
 

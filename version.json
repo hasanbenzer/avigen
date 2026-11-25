@@ -1,11 +1,11 @@
 {
-  "version": "5.7.3",
-  "build": 573,
+  "version": "5.7.4",
+  "build": 574,
   "releaseDate": "2026-11-26",
-  "title": "AVIGEN v5.7.3 — Samsung / Android Harici Tarayıcı WhatsApp 2 Sayfa PDF Paylaşım Köprüsü Düzeltmesi (?v=562 Çakışması Giderildi)",
+  "title": "AVIGEN v5.7.4 — Bağımsız Tek Ekran PDF/WhatsApp Köprüsü (pedigri-pdf.html) & Tarayıcısız Anında WhatsApp Dijital Sertifika Gönderimi",
   "notes": [
-    "Samsung / Android WhatsApp PDF Paylaşım Köprüsü Düzeltmesi: Harici tarayıcıya (raw.githack.com) aktarımdaki '?v=562' parametresinin QR Doğrulama Merkezi ile çakışması giderildi ('?pdfbridge=...' olarak güncellendi)",
-    "Harici Tarayıcıda Tam Ekran 2 Sayfa PDF İndirme & WhatsApp Gönderim Ekranı: Köprü açıldığında 2 sayfa PDF otomatik indirilir ve tek tuşla '📲 WhatsApp'ı Aç ve 2 Sayfa PDF Dosyasını Gönder' ekranı açılır",
+    "Bağımsız Tek Ekran PDF Köprüsü (pedigri-pdf.html): Samsung/Android harici tarayıcıda artık ana program (index.html) ASLA açılmaz; yalnızca 2 Sayfa PDF İndirme ve WhatsApp PDF Gönderim ekranı açılır ve her zaman GitHub Pages üzerindeki en güncel canlı kodu çalıştırır",
+    "Tarayıcısız Anında WhatsApp Dijital Sertifika Gönderimi: '🔗 WhatsApp'a Dijital Doğrulamalı Pedigri Sertifikası Gönder (Tarayıcısız Anında)' butonu ile hiç tarayıcı açmadan doğrudan WhatsApp'a resmi 4 kuşak künye ve tam ekran 1+2 sayfa pedigri/PDF linki gönderilir",
     "Android Geri Tuşu 11 Kademeli Menü Koruması (Uygulamayı Kapatmaz) & 4 Sekmeli Kullanım / API Anahtarı Rehberi aktif",
     "Uygulama İçi 'Kayıtlı Yedeklerim' Tek Tuşla Geri Yükleme Kasası & 25/25 Otomatik Test aktif"
   ],
