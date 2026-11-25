@@ -5061,18 +5061,48 @@ function encodeFullPedigreeQrPayload(ped) {
   return `https://hasanbenzer.github.io/avigen/?v=${encodeURIComponent(compact)}`;
 }
 
-// Hiç AVIGEN yüklü olmayan bir telefon veya bilgisayarda QR kod okutulup https://hasanbenzer.github.io/avigen/?v=... açıldığında
-// ekrana otomatik çıkan "🛡️ AVIGEN RESMİ DİJİTAL PEDİGRİ DOĞRULAMA & TANITIM SERTİFİKASI" penceresi
+// Barkod / QR kod okutulduğunda programın kendisini AÇMADAN, yalnızca okutulan kuşa ait
+// Tam Ekran "🛡️ AVIGEN RESMİ DİJİTAL PEDİGRİ GÖRÜNTÜSÜ & DOĞRULAMA SERTİFİKASI" sayfasını gösterir.
+// Kullanıcı yalnızca en alttaki "📲 AVIGEN GENESIS AI Uygulamasını İndir / 90 Gün Ücretsiz Dene" butonuna kendi isteğiyle basarsa programa geçer!
 let _pendingVerifiedQrBird = null;
+let _verifiedStandAlonePedObj = null;
+
+function enterAvigenAppFromVerifyPage() {
+  const page = document.getElementById('avigenStandaloneQrVerifyPage');
+  if (page) page.style.display = 'none';
+  const helperBar = document.querySelector('.desktop-helper-bar');
+  const devStage = document.querySelector('.device-stage');
+  if (helperBar) helperBar.style.display = '';
+  if (devStage) devStage.style.display = '';
+  try {
+    const cleanUrl = window.location.pathname || './';
+    window.history.replaceState({}, document.title, cleanUrl);
+  } catch (e) {}
+  setTimeout(fitPaperToIphoneScreen, 30);
+}
+
+function downloadVerifiedPedigreePdfFromVerifyPage() {
+  if (!_verifiedStandAlonePedObj) return;
+  try {
+    const c1 = drawNativePedigreeCertificateCanvas(_verifiedStandAlonePedObj);
+    const c2 = drawNativePedigreePage2Canvas(_verifiedStandAlonePedObj);
+    const j1 = c1.toDataURL('image/jpeg', 0.92);
+    const j2 = c2.toDataURL('image/jpeg', 0.92);
+    const pdfBlob = convertPedigreeCanvasToPdfBlob(c1, c2, j1, j2);
+    const ringClean = (_verifiedStandAlonePedObj.boxes?.main?.ring || 'Pedigre').replace(/[^a-zA-Z0-9_-]/g, '_');
+    triggerBlobFileDownload(pdfBlob, `AVIGEN_${ringClean}_Dogrulanmis_Pedigre_2Sayfa.pdf`);
+  } catch (e) {}
+}
 
 function checkAndShowPedigreeQrVerifyModal() {
   try {
     const searchStr = window.location.search || '';
     if (!searchStr.includes('verify=1') && !searchStr.includes('v=')) return;
     const params = new URLSearchParams(searchStr);
-    const vCompact = params.get('v') || '';
+    const vCompact = (params.get('v') || '').trim();
+    const isCacheBustOrVer = /^\d{9,15}$/.test(vCompact) || /^\d+\.\d+(\.\d+)?$/.test(vCompact);
     const isVerify1 = params.get('verify') === '1';
-    if (!isVerify1 && !vCompact) return;
+    if (!isVerify1 && (!vCompact || isCacheBustOrVer)) return;
 
     let ring = (params.get('r') || 'TR-2026-0001').trim();
     let name = (params.get('n') || '').trim();
@@ -5088,17 +5118,40 @@ function checkAndShowPedigreeQrVerifyModal() {
       if (parts[2] && !dam) dam = parts[2];
     }
 
-    // Eğer bu halka numarası kümeste / sistemde kayıtlıysa tüm isim, baba, anne ve kümes detaylarını otomatik doldur
+    // 1. Eğer bu halka numarası sistemde kayıtlıysa tam 31 kutulu soyağacını al; değilse QR parametrelerinden tam pedigri nesnesini oluştur
     const cleanUp = ring.toUpperCase();
+    let foundPed = null;
     if (Array.isArray(pedigrees)) {
-      const foundPed = pedigrees.find(p => (p?.boxes?.main?.ring || '').trim().toUpperCase() === cleanUp);
-      if (foundPed && foundPed.boxes) {
-        const fm = foundPed.boxes.main || {};
-        if (!name && fm.name) name = fm.name;
-        if (fm.sex) sex = fm.sex === 'F' ? 'F' : 'M';
-        if (!sire && foundPed.boxes.sire?.ring) sire = foundPed.boxes.sire.ring;
-        if (!dam && foundPed.boxes.dam?.ring) dam = foundPed.boxes.dam.ring;
+      foundPed = pedigrees.find(p => (p?.boxes?.main?.ring || '').trim().toUpperCase() === cleanUp);
+    }
+
+    const flag = typeof detectFlagFromRing === 'function' ? detectFlagFromRing(ring) : '🇹🇷';
+    if (foundPed && foundPed.boxes) {
+      const fm = foundPed.boxes.main || {};
+      if (!name && fm.name) name = fm.name;
+      if (fm.sex) sex = fm.sex === 'F' ? 'F' : 'M';
+      if (!sire && foundPed.boxes.sire?.ring) sire = foundPed.boxes.sire.ring;
+      if (!dam && foundPed.boxes.dam?.ring) dam = foundPed.boxes.dam.ring;
+      _verifiedStandAlonePedObj = foundPed;
+    } else {
+      if (!name) name = 'Resmi Pedigri Kayıtlı Güvercin';
+      const customBoxes = {};
+      if (typeof BOX_SLOTS !== 'undefined' && Array.isArray(BOX_SLOTS)) {
+        BOX_SLOTS.forEach(s => {
+          customBoxes[s.key] = { flag: '🇹🇷', ring: '', name: '', color: '', notes: '', photo: '' };
+        });
       }
+      customBoxes.main = { flag, ring, name, color: 'Mavi Çakmaklı', sex, notes: 'AVIGEN Dijital Doğrulamalı Pedigri Kaydı' };
+      if (sire && sire !== '-') {
+        customBoxes.sire = { flag: typeof detectFlagFromRing === 'function' ? detectFlagFromRing(sire) : '🇹🇷', ring: sire, name: '1. Kuşak Baba (Sire)', color: '', sex: 'M', notes: '' };
+      }
+      if (dam && dam !== '-') {
+        customBoxes.dam = { flag: typeof detectFlagFromRing === 'function' ? detectFlagFromRing(dam) : '🇹🇷', ring: dam, name: '1. Kuşak Anne (Dam)', color: '', sex: 'F', notes: '' };
+      }
+      _verifiedStandAlonePedObj = {
+        id: 'qr_verified_ped',
+        boxes: customBoxes
+      };
     }
 
     if (!name) name = 'Resmi Pedigri Kayıtlı Güvercin';
@@ -5106,85 +5159,134 @@ function checkAndShowPedigreeQrVerifyModal() {
     if (!dam) dam = '-';
     if (!loft) loft = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN Üye Kümesi';
 
-    const flag = typeof detectFlagFromRing === 'function' ? detectFlagFromRing(ring) : '🇹🇷';
     const certCode = `#AVG-${ring.replace(/[^A-Z0-9]/gi, '').slice(-6).toUpperCase()}`;
-
+    const todayStr = new Date().toLocaleDateString('tr-TR');
     _pendingVerifiedQrBird = { flag, ring, name, sex, sire, dam, loft };
 
-    let modal = document.getElementById('avigenQrVerifyCertModal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'avigenQrVerifyCertModal';
-      modal.className = 'ios-modal-overlay';
-      const hostFrame = document.querySelector('.iphone-frame') || document.body;
-      hostFrame.appendChild(modal);
+    // 2. Pedigrinin Tam Görselini (Sayfa 1: 4 Kuşak Soyağacı + Sayfa 2: Performans & Sicil) Yüksek Çözünürlüklü Üret
+    let page1ImgUrl = '';
+    let page2ImgUrl = '';
+    try {
+      const c1 = drawNativePedigreeCertificateCanvas(_verifiedStandAlonePedObj);
+      const c2 = drawNativePedigreePage2Canvas(_verifiedStandAlonePedObj);
+      page1ImgUrl = c1.toDataURL('image/jpeg', 0.93);
+      page2ImgUrl = c2.toDataURL('image/jpeg', 0.93);
+    } catch (e) {}
+
+    // 3. Arkadaki Programı ve Örnek Kuşları Tamamen Gizle (Kullanıcı Sadece Doğrulama Sayfasını ve Pedigriyi Görür!)
+    const helperBar = document.querySelector('.desktop-helper-bar');
+    const devStage = document.querySelector('.device-stage');
+    if (helperBar) helperBar.style.display = 'none';
+    if (devStage) devStage.style.display = 'none';
+
+    let verifyPage = document.getElementById('avigenStandaloneQrVerifyPage');
+    if (!verifyPage) {
+      verifyPage = document.createElement('div');
+      verifyPage.id = 'avigenStandaloneQrVerifyPage';
+      document.body.appendChild(verifyPage);
     }
+    verifyPage.style.cssText = 'min-height:100vh; width:100%; background:linear-gradient(180deg,#090d16 0%,#0f172a 100%); color:#f8fafc; font-family:Inter,sans-serif; padding:14px 10px 36px 10px; box-sizing:border-box; overflow-y:auto;';
 
-    modal.innerHTML = `
-      <div class="ios-sheet" style="max-height:92%; border-top:3px solid #f59e0b;">
-        <div class="ios-card-title" style="margin-bottom:8px;">
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span>🛡️</span>
-            <span>AVIGEN Dijital Pedigri Doğrulama</span>
-          </div>
-          <button type="button" class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="document.getElementById('avigenQrVerifyCertModal')?.classList.remove('open')">✖ Kapat</button>
-        </div>
+    verifyPage.innerHTML = `
+      <div style="max-width:860px; margin:0 auto; display:flex; flex-direction:column; gap:14px;">
 
-        <div style="display:flex; flex-direction:column; gap:9px; font-size:11px;">
-          <!-- Altın Mühürlü Resmi Doğrulama Başlığı -->
-          <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 65%,#3b0764 100%); border:1.5px solid #f59e0b; border-radius:10px; padding:10px 12px; color:#ffffff; text-align:center;">
-            <div style="display:inline-block; background:#f59e0b; color:#0f172a; font-size:9px; font-weight:900; padding:2px 8px; border-radius:99px; margin-bottom:5px;">
-              ✅ AVIGEN DİJİTAL SOYAĞACI SERTİFİKASI DOĞRULANDI
+        <!-- 1. BÖLÜM: RESMİ DİJİTAL PEDİGRİ DOĞRULAMA SERTİFİKASI BAŞLIĞI -->
+        <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 60%,#3b0764 100%); border:2px solid #f59e0b; border-radius:14px; padding:14px 16px; box-shadow:0 8px 24px rgba(0,0,0,0.35);">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; border-bottom:1px solid rgba(255,255,255,0.16); padding-bottom:10px; margin-bottom:10px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="avigen-logo.svg" alt="AVIGEN" style="width:36px; height:32px; background:#fff; padding:3px; border-radius:8px;" />
+              <div>
+                <div style="font-size:13px; font-weight:900; color:#fde047; letter-spacing:0.4px;">AVIGEN RESMİ DİJİTAL PEDİGRİ DOĞRULAMA MERKEZİ</div>
+                <div style="font-size:10px; color:#bae6fd;">International FCI / 4-Generation Official Racing Pigeon Certificate Verification</div>
+              </div>
             </div>
-            <div style="font-size:16px; font-weight:900; color:#fde047; letter-spacing:0.3px;">
-              ${flag} ${escapeHtml(ring)}
-            </div>
-            <div style="font-size:12.5px; font-weight:800; color:#ffffff; margin-top:2px;">
-              ${escapeHtml(name)} (${sex === 'F' ? '♀ Dişi' : '♂ Erkek'})
-            </div>
-            <div style="font-size:9.5px; color:#bae6fd; margin-top:4px;">
-              Düzenleyen Kümes: <strong>${escapeHtml(loft)}</strong> • Belge Kodu: <strong>${escapeHtml(certCode)}</strong>
-            </div>
+            <span style="background:#10b981; color:#052e16; font-size:10.5px; font-weight:900; padding:4px 10px; border-radius:99px;">
+              ✅ RESMİ BELGE DOĞRULANDI (${escapeHtml(certCode)})
+            </span>
           </div>
 
-          <!-- Anne ve Baba Soyağacı Özeti -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-            <div style="background:#eff6ff; border:1.2px solid #93c5fd; border-left:4px solid #1d4ed8; border-radius:8px; padding:7px 9px;">
-              <div style="font-size:8.5px; font-weight:900; color:#1e40af;">♂ 1. KUŞAK BABA (SIRE)</div>
-              <div style="font-size:11.5px; font-weight:900; color:#0f172a; margin-top:2px;">${escapeHtml(sire)}</div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px; font-size:11.5px;">
+            <div style="background:rgba(15,23,42,0.55); border:1px solid rgba(147,197,253,0.35); border-radius:9px; padding:8px 10px;">
+              <div style="font-size:9px; font-weight:800; color:#93c5fd;">🕊️ GÜVERCİN HALKA NO &amp; İSİM</div>
+              <div style="font-size:14px; font-weight:900; color:#fde047; margin-top:2px;">${flag} ${escapeHtml(ring)}</div>
+              <div style="font-size:11px; font-weight:700; color:#ffffff;">${escapeHtml(name)} (${sex === 'F' ? '♀ Dişi / Hen' : '♂ Erkek / Cock'})</div>
             </div>
-            <div style="background:#fdf2f8; border:1.2px solid #f9a8d4; border-left:4px solid #db2777; border-radius:8px; padding:7px 9px;">
-              <div style="font-size:8.5px; font-weight:900; color:#9d174d;">♀ 1. KUŞAK ANNE (DAM)</div>
-              <div style="font-size:11.5px; font-weight:900; color:#0f172a; margin-top:2px;">${escapeHtml(dam)}</div>
+            <div style="background:rgba(15,23,42,0.55); border:1px solid rgba(147,197,253,0.35); border-radius:9px; padding:8px 10px;">
+              <div style="font-size:9px; font-weight:800; color:#93c5fd;">♂ 1. KUŞAK BABA (SIRE)</div>
+              <div style="font-size:13px; font-weight:900; color:#ffffff; margin-top:3px;">${escapeHtml(sire)}</div>
+              <div style="font-size:9.5px; color:#cbd5e1;">Baba Soy Hattı Doğrulandı</div>
             </div>
-          </div>
-
-          <!-- Alıcı İçin Tek Tuşla Kümese Aktarma ve AVIGEN Tanıtım Kartı -->
-          <button type="button" class="ios-btn ios-btn-green" style="padding:11px 10px; font-size:11.5px; font-weight:900; width:100%;" onclick="importVerifiedQrBirdToMyLoft()">
-            📥 Bu Kuşun Soyağacını AVIGEN Kümesime Kaydet
-          </button>
-
-          <div style="background:#fffbeb; border:1.2px solid #fcd34d; border-radius:9px; padding:8px 10px; color:#92400e; line-height:1.4; font-size:10px;">
-            🕊️ <strong>Siz de Kümesinizi AVIGEN GENESIS AI ile Yönetin!</strong><br/>
-            4 Kuşak Resmi Pedigri Sertifikası, 5 Nesil Wright COI Genetik Eşleştirme, Yarış Takibi ve 7 Günlük Yem/İçecek Programını <strong>90 Gün (3 Ay) Tamamen Ücretsiz</strong> kullanmaya hemen başlayabilirsiniz.
-          </div>
-
-          <button type="button" class="ios-btn ios-btn-primary" style="padding:10px; font-size:11px; font-weight:900; width:100%;" onclick="document.getElementById('avigenQrVerifyCertModal')?.classList.remove('open')">
-            🚀 AVIGEN GENESIS AI Uygulamasını Keşfet (90 Gün Ücretsiz)
-          </button>
-
-          <div style="font-size:7.5px; color:#64748b; text-align:center; line-height:1.25;">
-            ⚖️ Yasal Not: Bu dijital sertifikadaki soyağacı bilgileri belgeyi düzenleyen yetiştirici (${escapeHtml(loft)}) tarafından beyan edilmiştir.
+            <div style="background:rgba(15,23,42,0.55); border:1px solid rgba(249,168,212,0.35); border-radius:9px; padding:8px 10px;">
+              <div style="font-size:9px; font-weight:800; color:#f9a8d4;">♀ 1. KUŞAK ANNE (DAM)</div>
+              <div style="font-size:13px; font-weight:900; color:#ffffff; margin-top:3px;">${escapeHtml(dam)}</div>
+              <div style="font-size:9.5px; color:#cbd5e1;">Anne Soy Hattı Doğrulandı</div>
+            </div>
+            <div style="background:rgba(15,23,42,0.55); border:1px solid rgba(253,224,71,0.35); border-radius:9px; padding:8px 10px;">
+              <div style="font-size:9px; font-weight:800; color:#fde047;">🏠 DÜZENLEYEN KÜMES &amp; TARİH</div>
+              <div style="font-size:12.5px; font-weight:900; color:#ffffff; margin-top:3px;">${escapeHtml(loft)}</div>
+              <div style="font-size:9.5px; color:#cbd5e1;">Doğrulama: ${todayStr}</div>
+            </div>
           </div>
         </div>
+
+        <!-- 2. BÖLÜM: PEDİGRİ SERTİFİKASININ TAM GÖRÜNTÜSÜ (SAYFA 1 & SAYFA 2) -->
+        <div style="background:#ffffff; color:#0f172a; border:2px solid #1d4ed8; border-radius:14px; padding:12px; box-shadow:0 8px 24px rgba(0,0,0,0.3);">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; border-bottom:1.5px solid #e2e8f0; padding-bottom:8px;">
+            <div>
+              <div style="font-size:13px; font-weight:900; color:#1e3a8a;">📜 Resmi Pedigri Sertifikasının Tam Görüntüsü (Sayfa 1 &amp; Sayfa 2)</div>
+              <div style="font-size:10px; color:#475569;">Sertifika görsellerine dokunup büyütebilir veya 2 sayfalık orijinal PDF olarak indirebilirsiniz.</div>
+            </div>
+            <button type="button" class="ios-btn ios-btn-primary" style="padding:8px 14px; font-size:11px; font-weight:900;" onclick="downloadVerifiedPedigreePdfFromVerifyPage()">
+              📄 2 Sayfa Resmi PDF İndir
+            </button>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${page1ImgUrl ? `
+              <div>
+                <div style="font-size:10.5px; font-weight:900; color:#1d4ed8; margin-bottom:4px;">1. SAYFA: 4 KUŞAK (31 KUTU) ULUSLARARASI FCI SOYAĞACI SERTİFİKASI</div>
+                <img src="${page1ImgUrl}" alt="${escapeHtml(ring)} Sayfa 1 Pedigri" style="width:100%; height:auto; border-radius:8px; border:1px solid #cbd5e1; display:block;" />
+              </div>
+            ` : ''}
+            ${page2ImgUrl ? `
+              <div style="border-top:2px dashed #93c5fd; padding-top:10px;">
+                <div style="font-size:10.5px; font-weight:900; color:#047857; margin-bottom:4px;">2. SAYFA: BİREYSEL PERFORMANS, GENETİK PROFİL &amp; KİŞİSEL SİCİL DOSYASI</div>
+                <img src="${page2ImgUrl}" alt="${escapeHtml(ring)} Sayfa 2 Performans ve Sicil" style="width:100%; height:auto; border-radius:8px; border:1px solid #cbd5e1; display:block;" />
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- 3. BÖLÜM: EN ALTTA TANITIM VE UYGULAMAYA GEÇİŞ KUTUSU (KULLANICI BASARSA PROGRAMA GEÇER) -->
+        <div style="background:linear-gradient(135deg,#0a1938 0%,#1e3a8a 55%,#3b0764 100%); border:2px solid #f59e0b; border-radius:14px; padding:16px; text-align:center; box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+          <div style="font-size:14.5px; font-weight:900; color:#fde047; line-height:1.35; margin-bottom:6px;">
+            "Siz de kendi kümesinizin soyağacı ve genetik eşleştirmelerini profesyonelce yönetmek ister misiniz?"
+          </div>
+          <div style="font-size:11px; color:#e2e8f0; line-height:1.45; max-width:640px; margin:0 auto 12px auto;">
+            <strong>AVIGEN GENESIS AI</strong> ile 4 Kuşak Uluslararası FCI Pedigri Sertifikası, 5 Nesil Wright COI Genetik Eşleştirme, Haritalı Yarış Simülasyonu ve 7 Günlük Akıllı Yem/Suluk Takvimini <strong>90 Gün (3 Ay) Tamamen Ücretsiz</strong> kullanabilirsiniz.
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px;">
+            <button type="button" class="ios-btn ios-btn-green" style="padding:12px 18px; font-size:12.5px; font-weight:900; box-shadow:0 4px 12px rgba(16,185,129,0.35);" onclick="enterAvigenAppFromVerifyPage()">
+              📲 AVIGEN GENESIS AI Uygulamasını İndir / 90 Gün Ücretsiz Dene
+            </button>
+            <button type="button" class="ios-btn ios-btn-outline" style="padding:12px 14px; font-size:11.5px; font-weight:900; background:rgba(255,255,255,0.1); color:#ffffff; border-color:#93c5fd;" onclick="importVerifiedQrBirdToMyLoft()">
+              📥 Bu Kuşu AVIGEN Kümesime Kaydet
+            </button>
+          </div>
+
+          <div style="font-size:8.5px; color:#94a3b8; margin-top:10px; line-height:1.3;">
+            ⚖️ Yasal Bilgilendirme: Bu belgedeki soyağacı, halka numarası ve yarış derecesi kayıtları ilgili yetiştirici (${escapeHtml(loft)}) tarafından beyan edilmiş olup doğruluğundan münhasıran belgeyi düzenleyen kişi sorumludur.
+          </div>
+        </div>
+
       </div>
     `;
-
-    modal.classList.add('open');
   } catch (e) {}
 }
 
 function importVerifiedQrBirdToMyLoft() {
+  enterAvigenAppFromVerifyPage();
   if (!_pendingVerifiedQrBird) return;
   const v = _pendingVerifiedQrBird;
   const packed = [
@@ -5195,7 +5297,6 @@ function importVerifiedQrBirdToMyLoft() {
 
   onBarcodeValueDecoded(`AVIGEN_FULL||${packed}`);
   confirmAddBirdFromBarcode();
-  document.getElementById('avigenQrVerifyCertModal')?.classList.remove('open');
   alert(`✅ ${v.flag} ${v.ring} (${v.name}) ve ebeveyn kaydı kümesinize başarıyla eklendi!`);
 }
 
@@ -12438,11 +12539,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.6.7',
-    localBuild: 567,
-    remoteVersion: '5.6.7',
-    remoteBuild: 567,
-    remoteTitle: "AVIGEN v5.6.7 — Uluslararası FCI Pedigri Standardı, Sağ Üst Rozetin Kaldırılması ve Yüksek Kontrastlı Büyük Kamera-Okunabilir QR Kod",
+    localVersion: '5.6.8',
+    localBuild: 568,
+    remoteVersion: '5.6.8',
+    remoteBuild: 568,
+    remoteTitle: "AVIGEN v5.6.8 — QR Okutulduğunda Bağımsız Tam Ekran Pedigri Görüntüsü, Doğrulama Sertifikası & Tanıtım Kutusu",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
@@ -12654,7 +12755,7 @@ const AvigenAutoUpdater = {
 
     // Kullanıcının localStorage verilerine (pedigreler, kuşlar, yuvalar, yarışlar) HİÇ DOKUNMADAN sayfayı yenile
     const cleanUrl = window.location.href.split('?')[0].split('#')[0];
-    window.location.replace(`${cleanUrl}?v=${Date.now()}`);
+    window.location.replace(`${cleanUrl}?upd=${Date.now()}`);
   },
 
   async downloadLatestApk() {
@@ -12800,7 +12901,7 @@ function initAndroidHardwareBackButtonSupport() {
   try {
     if (window.history && typeof window.history.pushState === 'function') {
       if (!window.location.hash || !window.location.hash.startsWith('#auto_')) {
-        window.history.replaceState({ avigenRoot: true }, '', '#ana-menu');
+        window.history.replaceState({ avigenRoot: true }, '', (window.location.search || '') + '#ana-menu');
       }
 
       // KRİTİK: Kullanıcı herhangi bir sekmeye, karta veya butona tıkladığında gerçek User Gesture (click capture) içinde
