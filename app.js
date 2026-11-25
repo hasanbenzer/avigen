@@ -5866,11 +5866,31 @@ function saveLoftHeaderModal() {
 // ============================================================================
 // TAM KÜMES VERİ YEDEKLEME & CİHAZLAR ARASI (PC <-> iPHONE) AKTARIM (12 VERİ KATMANI)
 // ============================================================================
+function computeInstallOriginTamperSig(originIso, maxTs) {
+  const raw = `AVG_ORIGIN_LOCK_2026||${originIso || ''}||${maxTs || 0}`;
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < raw.length; i++) {
+    h ^= raw.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h.toString(36).toUpperCase();
+}
+
 function buildFullAvigenSnapshotPayload() {
+  const originIso = (typeof AvigenUxManager !== 'undefined' && AvigenUxManager.state?.trialStartedAt)
+    || localStorage.getItem('avigen_90day_full_trial_start_v1')
+    || new Date().toISOString();
+  const maxObsTs = (typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.getTrustedNowMs === 'function')
+    ? AvigenUxManager.getTrustedNowMs()
+    : Date.now();
+
   return {
     app: 'AVIGEN_PREMIUM_RACING_PIGEON_APP',
     version: '2.5',
-    exportedAt: new Date().toISOString(),
+    exportedAt: new Date(maxObsTs).toISOString(),
+    _installOriginIso: originIso,
+    _maxObservedTs: maxObsTs,
+    _originSig: computeInstallOriginTamperSig(originIso, maxObsTs),
     loftConfig,
     pedigrees,
     remindersList,
@@ -5897,6 +5917,15 @@ function applyRestoredBackupDataObject(data) {
   try {
     localStorage.setItem('avigen_auto_safety_snapshot_v1', JSON.stringify(buildFullAvigenSnapshotPayload()));
   } catch (snapErr) {}
+
+  // GÜVENLİK KİLİDİ 1 ("Yedek Al -> Uygulamayı Sil/Sıfırla -> Yedeği Yükle" ile 90 Gün Sıfırlama Hilesini Engelle):
+  // Cihazdaki mevcut başlangıç tarihi ile yedekteki başlangıç tarihlerinden EN ESKİ olanı ve en yüksek gözlenen zaman damgasını koru!
+  const currentDeviceId = (typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.getOrCreateDeviceId === 'function')
+    ? AvigenUxManager.getOrCreateDeviceId()
+    : '';
+  const currentTrialStartIso = (typeof AvigenUxManager !== 'undefined' && AvigenUxManager.state?.trialStartedAt)
+    || localStorage.getItem('avigen_90day_full_trial_start_v1');
+  const currentMaxTs = Number(localStorage.getItem('avigen_monotonic_max_ts_v1') || 0);
 
   if (data.loftConfig) loftConfig = { ...loftConfig, ...data.loftConfig };
   if (Array.isArray(data.pedigrees) && data.pedigrees.length) {
@@ -5925,8 +5954,65 @@ function applyRestoredBackupDataObject(data) {
     };
     AvigenPerformanceEngine.saveConfig();
   }
-  if (data.user_account_state && typeof AvigenUxManager !== 'undefined') {
-    AvigenUxManager.state = { ...AvigenUxManager.state, ...data.user_account_state };
+  if (typeof AvigenUxManager !== 'undefined') {
+    if (data.user_account_state) {
+      AvigenUxManager.state = { ...AvigenUxManager.state, ...data.user_account_state };
+    }
+    // Cihaz Kimliğini koru (başkasının yedeği yüklense bile bu cihazın kendi Device ID'si korunur ve imza doğrulanır)
+    if (currentDeviceId) {
+      AvigenUxManager.state.deviceId = currentDeviceId;
+      try { localStorage.setItem('avigen_hardware_device_id_v1', currentDeviceId); } catch (e) {}
+    }
+
+    // Yedek dosyasındaki ve cihazdaki tüm olası başlangıç tarihlerinden EN ESKİSİNİ bul
+    const candidateTimestamps = [];
+    const pushValidDateMs = (isoStr) => {
+      if (!isoStr) return;
+      const ms = new Date(isoStr).getTime();
+      if (!isNaN(ms) && ms > 1700000000000) candidateTimestamps.push(ms);
+    };
+    pushValidDateMs(currentTrialStartIso);
+    pushValidDateMs(data._installOriginIso);
+    pushValidDateMs(data.user_account_state?.trialStartedAt);
+    pushValidDateMs(data.exportedAt);
+
+    // Eğer kullanıcı .json yedeğini Not Defteri ile açıp _installOriginIso tarihini değiştirmeye çalıştıysa (_originSig uyuşmazsa),
+    // veya pedigri ID'lerinde (ped_17...) daha eski bir üretim zamanı varsa onu da kontrol et
+    if (data._installOriginIso && data._originSig) {
+      const expectedSig = computeInstallOriginTamperSig(data._installOriginIso, data._maxObservedTs || 0);
+      if (expectedSig !== data._originSig) {
+        // Dosya kurcalanmışsa deneme süresini otomatik 91 gün öncesine çekerek hileyi geçersiz kıl
+        candidateTimestamps.push(Date.now() - 91 * 24 * 60 * 60 * 1000);
+      }
+    }
+    if (Array.isArray(data.pedigrees)) {
+      data.pedigrees.forEach(p => {
+        const m = String(p?.id || '').match(/(\d{13})/);
+        if (m) {
+          const idMs = Number(m[1]);
+          if (idMs > 1700000000000 && idMs <= Date.now() + 86400000) {
+            candidateTimestamps.push(idMs);
+          }
+        }
+      });
+    }
+
+    const earliestStartMs = candidateTimestamps.length > 0 ? Math.min(...candidateTimestamps) : Date.now();
+    const earliestIso = new Date(earliestStartMs).toISOString();
+    AvigenUxManager.state.trialStartedAt = earliestIso;
+    try {
+      localStorage.setItem('avigen_90day_full_trial_start_v1', earliestIso);
+    } catch (e) {}
+
+    // İleri yönlü zaman kilidini (maxObservedTimestamp) koru
+    const backupMaxTs = Number(data._maxObservedTs || data.user_account_state?.maxObservedTimestamp || 0);
+    const highestTs = Math.max(Date.now(), currentMaxTs, backupMaxTs);
+    AvigenUxManager.state.maxObservedTimestamp = highestTs;
+    try {
+      localStorage.setItem('avigen_monotonic_max_ts_v1', String(highestTs));
+    } catch (e) {}
+
+    AvigenUxManager.ensureFreeTrialStarted();
     AvigenUxManager.saveState();
   }
   if (Array.isArray(data.race_tracking_events) && typeof AvigenRaceTracker !== 'undefined') {
@@ -10555,12 +10641,68 @@ const AvigenUxManager = {
     language: 'tr'
   },
 
+  MONOTONIC_CLOCK_KEY: 'avigen_monotonic_max_ts_v1',
+
+  // GÜVENLİK KİLİDİ 2 (Telefon Tarihini / Saatini Geri Alma Hilesini Engelleme):
+  // Cihazda veya internet sunucusunda gözlenen en ileri tarihi (high-water mark) kaydeder; saat geri alınsa bile zaman asla geriye akmaz!
+  getTrustedNowMs() {
+    const sysNow = Date.now();
+    let maxObs = Number(this.state.maxObservedTimestamp || 0);
+    try {
+      const saved = Number(localStorage.getItem(this.MONOTONIC_CLOCK_KEY) || 0);
+      if (saved > maxObs) maxObs = saved;
+    } catch (e) {}
+
+    if (sysNow > maxObs) {
+      maxObs = sysNow;
+      this.state.maxObservedTimestamp = maxObs;
+      try {
+        localStorage.setItem(this.MONOTONIC_CLOCK_KEY, String(maxObs));
+      } catch (e) {}
+    }
+    return Math.max(sysNow, maxObs);
+  },
+
+  recordNetworkServerTime(dateStrOrMs) {
+    if (!dateStrOrMs) return;
+    const ms = typeof dateStrOrMs === 'number' ? dateStrOrMs : new Date(dateStrOrMs).getTime();
+    if (isNaN(ms) || ms < 1700000000000) return;
+    const curMax = this.getTrustedNowMs();
+    if (ms > curMax) {
+      this.state.maxObservedTimestamp = ms;
+      try {
+        localStorage.setItem(this.MONOTONIC_CLOCK_KEY, String(ms));
+      } catch (e) {}
+    }
+  },
+
+  isSystemClockRolledBack() {
+    const sysNow = Date.now();
+    let maxObs = Number(this.state.maxObservedTimestamp || 0);
+    try {
+      const saved = Number(localStorage.getItem(this.MONOTONIC_CLOCK_KEY) || 0);
+      if (saved > maxObs) maxObs = saved;
+    } catch (e) {}
+    // Eğer telefon saati daha önce kaydedilen zamandan 36 saatten fazla geriye alınmışsa saat hilesi tespit edilir
+    return maxObs > 0 && (maxObs - sysNow) > (36 * 60 * 60 * 1000);
+  },
+
   // İlk 90 Günlük (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI Dahil) Deneme Süresini Başlatır ve Kontrol Eder
   ensureFreeTrialStarted() {
     const TRIAL_KEY = 'avigen_90day_full_trial_start_v1';
+    const trustedNow = this.getTrustedNowMs();
     let startIso = this.state.trialStartedAt || localStorage.getItem(TRIAL_KEY);
+    const savedLocalIso = localStorage.getItem(TRIAL_KEY);
+    // Eğer hem state hem localStorage varsa ikisinden daha eski olanı koru
+    if (startIso && savedLocalIso) {
+      const m1 = new Date(startIso).getTime();
+      const m2 = new Date(savedLocalIso).getTime();
+      if (!isNaN(m1) && !isNaN(m2)) {
+        startIso = new Date(Math.min(m1, m2)).toISOString();
+      }
+    }
     if (!startIso || isNaN(new Date(startIso).getTime())) {
-      startIso = new Date().toISOString();
+      startIso = new Date(trustedNow).toISOString();
     }
     try {
       localStorage.setItem(TRIAL_KEY, startIso);
@@ -10576,27 +10718,33 @@ const AvigenUxManager = {
 
   checkFreeTrialStatus() {
     this.ensureFreeTrialStarted();
+    const trustedNow = this.getTrustedNowMs();
+    const clockRolledBack = this.isSystemClockRolledBack();
     const expDate = new Date(this.state.trialExpiresAt);
-    const diffMs = expDate.getTime() - Date.now();
-    const daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    const diffMs = expDate.getTime() - trustedNow;
+    const daysLeft = clockRolledBack ? 0 : Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
     const dateLabel = expDate.toLocaleDateString('tr-TR');
     return {
-      isTrialActive: daysLeft > 0,
+      isTrialActive: daysLeft > 0 && !clockRolledBack,
+      clockRolledBack,
       daysLeft,
       expiresDateLabel: dateLabel,
-      label: daysLeft > 0
-        ? `🎁 3 Aylık Ücretsiz Tam Sürüm (${daysLeft} Gün Kaldı • Bitiş: ${dateLabel})`
-        : `Ücretsiz 90 Günlük Deneme Süresi Doldu (${dateLabel})`
+      label: clockRolledBack
+        ? `⚠️ Cihaz Tarihi Geri Alınmış (Lütfen Telefon Tarihini Otomatik Yapın)`
+        : (daysLeft > 0
+          ? `🎁 3 Aylık Ücretsiz Tam Sürüm (${daysLeft} Gün Kaldı • Bitiş: ${dateLabel})`
+          : `Ücretsiz 90 Günlük Deneme Süresi Doldu (${dateLabel})`)
     };
   },
 
   hasValidPaidDeviceLicense() {
     if (!this.state.activatedLicenseKey) return false;
     if (!this.verifySignedLicenseKey(this.state.activatedLicenseKey)) return false;
+    if (this.isSystemClockRolledBack()) return false;
     if (!this.state.licenseExpiresAt || this.state.licenseType === 'UNLIMITED') return true;
     const expDate = new Date(this.state.licenseExpiresAt);
     if (isNaN(expDate.getTime())) return false;
-    return (expDate.getTime() - Date.now()) > 0;
+    return (expDate.getTime() - this.getTrustedNowMs()) > 0;
   },
 
   // Merkezi Yetkilendirme Motoru (Central Entitlement Check & Lisans / 90 Günlük Deneme Süresi Kontrolü)
@@ -10606,7 +10754,7 @@ const AvigenUxManager = {
         return { isExpired: false, isTrial: false, daysLeft: null, label: 'Süresiz / VIP Lisans' };
       }
       const expDate = new Date(this.state.licenseExpiresAt);
-      const diffMs = expDate.getTime() - Date.now();
+      const diffMs = expDate.getTime() - this.getTrustedNowMs();
       const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
       const dateLabel = expDate.toLocaleDateString('tr-TR');
       return { isExpired: false, isTrial: false, daysLeft, label: `${daysLeft} Gün Kaldı (Bitiş: ${dateLabel})` };
@@ -10667,6 +10815,14 @@ const AvigenUxManager = {
   requireActiveSubscriptionOrTrial(actionTitle = 'Bu işlemi yapmak') {
     if (this.hasStandardAppAccess()) return true;
     const trial = this.checkFreeTrialStatus();
+    if (trial.clockRolledBack) {
+      alert(
+        `⚠️ Cihaz Tarihi / Saati Geri Alınmış Görünüyor!\n\n` +
+        `Güvenlik kilidi gereği telefon veya bilgisayarınızın tarihi geri alındığında işlem yapılamaz.\n` +
+        `Lütfen cihazınızın Tarih ve Saat ayarını "Otomatik (Ağ Saati)" konuma getirip uygulamayı yenileyin.`
+      );
+      return false;
+    }
     this.openSubscriptionModal('plans');
     alert(
       `🎁 90 Günlük (3 Aylık) Ücretsiz Tam Sürüm Deneme Süreniz Tamamlandı (${trial.expiresDateLabel})!\n\n` +
@@ -11063,7 +11219,12 @@ const AvigenUxManager = {
           </div>
           <div style="background:#f5f3ff; border:1.5px solid #c4b5fd; border-radius:9px; padding:7px 9px; font-size:9.8px; color:#4c1d95; margin-bottom:8px; line-height:1.4;">
             🎁 <strong>İlk 3 Ay (90 Gün) GENESIS AI Dahil Tam Sürüm Ücretsiz!</strong><br/>
-            Durum: <strong>${escapeHtml(licExp.label)}</strong>. 90 günlük ücretsiz tam sürüm süreniz sonrasında <strong>AVIGEN Standart (399 TL/ay)</strong> veya <strong>AVIGEN GENESIS AI (899 TL/ay)</strong> lisans kodunuzla kesintisiz devam edebilirsiniz:
+            Durum: <strong>${escapeHtml(licExp.label)}</strong>. 90 günlük ücretsiz tam sürüm süreniz sonrasında <strong>AVIGEN Standart (399 TL/ay)</strong> veya <strong>AVIGEN GENESIS AI (899 TL/ay)</strong> lisans kodunuzla kesintisiz devam edebilirsiniz.
+            <div style="margin-top:6px;">
+              <button type="button" class="ios-btn ios-btn-green" style="width:100%; padding:6px 8px; font-size:9.6px; font-weight:900;" onclick="AvigenUxManager.notifyFreeTrialRegistrationViaWhatsApp()">
+                📲 90 Günlük Ücretsiz Kümes Kaydımı WhatsApp İle Onayla / Bildir
+              </button>
+            </div>
           </div>
 
           <div style="display:flex; flex-direction:column; gap:6px;">
@@ -12179,6 +12340,24 @@ const AvigenUxManager = {
       `Merhaba, ${tierObj.name} (${cycleText || 'Yıllık (365 Gün)'} - ${priceText || tierObj.yearlyPrice}) paketi için cihazıma özel Lisans Aktivasyon Kodu almak istiyorum.\n\n📱 Cihaz Kimlik Kodu (Cihaz ID): ${myDevId}\n🏠 Kümes Adı: ${loftTitle}\n✉️ İletişim: ${this.state.memberPhone || this.state.memberEmail || '-'}`
     );
     openExternalUrlSafe(`https://wa.me/${this.LICENSE_WHATSAPP_NUMBER}?text=${msg}`);
+  },
+
+  notifyFreeTrialRegistrationViaWhatsApp() {
+    const loftTitle = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN Kümesi';
+    const myDevId = this.getOrCreateDeviceId();
+    const trial = this.checkFreeTrialStatus();
+    const birdCount = Array.isArray(pedigrees) ? pedigrees.length : 0;
+    const city = (typeof AvigenLiveWeather !== 'undefined' && AvigenLiveWeather.state?.cityName) ? AvigenLiveWeather.state.cityName : 'Türkiye';
+    const msg = encodeURIComponent(
+      `🎁 *AVIGEN GENESIS AI — 90 GÜNLÜK ÜCRETSİZ DENEME KAYDI*\n\n` +
+      `Merhaba, AVIGEN GENESIS AI uygulamasını kurdum ve 90 günlük ücretsiz tam sürüm deneme kaydımı bildiriyorum:\n\n` +
+      `🏠 Kümes Adı: ${loftTitle}\n` +
+      `👤 Yetiştirici: ${this.state.memberName || loftTitle}\n` +
+      `📍 Şehir: ${city} (${birdCount} Kuş)\n` +
+      `📱 Cihaz Kimlik Kodu (Cihaz ID): ${myDevId}\n` +
+      `📅 Deneme Bitiş Tarihi: ${trial.expiresDateLabel} (${trial.daysLeft} Gün Kaldı)`
+    );
+    openExternalUrlSafe(`https://wa.me/${this.LICENSE_WHATSAPP_NUMBER}?text=${msg}`);
   }
 };
 
@@ -12196,11 +12375,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.6.5',
-    localBuild: 565,
-    remoteVersion: '5.6.5',
-    remoteBuild: 565,
-    remoteTitle: "AVIGEN v5.6.5 — 90 Gün Ücretsiz GENESIS AI Deneme Süresi, Kraliyet Pedigri & 2. Sayfa Tasarımı, Gerçek QR Kod/Barkod Doğrulama ve Yasal/Bilimsel Bildirimler",
+    localVersion: '5.6.6',
+    localBuild: 566,
+    remoteVersion: '5.6.6',
+    remoteBuild: 566,
+    remoteTitle: "AVIGEN v5.6.6 — Yedek & Saat Hilesi Koruması (Anti-Cheat 1 & 2) ve 90 Günlük Ücretsiz Kümes Kayıt Bildirimi",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
@@ -12270,6 +12449,10 @@ const AvigenAutoUpdater = {
       try {
         const res = await fetch(url, { cache: 'no-store' });
         if (res.ok) {
+          const srvDate = res.headers?.get ? res.headers.get('date') : null;
+          if (srvDate && typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.recordNetworkServerTime === 'function') {
+            AvigenUxManager.recordNetworkServerTime(srvDate);
+          }
           const parsed = await res.json();
           if (parsed && parsed.build) {
             data = parsed;
