@@ -5520,7 +5520,7 @@ const AvigenGenesisAI = {
             </button>
           </div>
           <button class="ios-btn ios-btn-outline" style="width:100%; padding:8px; font-size:10.5px; color:#ffffff; border-color:rgba(255,255,255,0.35); background:rgba(255,255,255,0.08);" onclick="if(typeof AvigenUxManager!=='undefined') AvigenUxManager.openSubscriptionModal('plans')">
-            👑 Paketleri İncele (AVIGEN AI &amp; AVIGEN GLOBAL)
+            👑 Paketleri İncele (AVIGEN FREE &amp; GENESIS AI)
           </button>
         </div>
       `;

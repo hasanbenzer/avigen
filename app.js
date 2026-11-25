@@ -9659,10 +9659,9 @@ const AvigenUxManager = {
   LICENSE_WHATSAPP_NUMBER: '905327820385',
   LICENSE_WHATSAPP_DISPLAY: '0 532 782 03 85',
 
-  // 3 Kademeli Resmi AVIGEN Ürün & Abonelik Mimarisi:
+  // 2 Kademeli Resmi AVIGEN Ürün & Abonelik Mimarisi (Tüm yapay zekâ ve analiz özellikleri GENESIS AI içinde toplanmıştır):
   // 1. 'FREE'        -> AVIGEN FREE (0 TL - Sınırsız kuş, kümes, 4 kuşak 31 kutu soy ağacı, yuva ve 3 kategorili yarış yönetimi)
-  // 2. 'GENETICS_AI' -> AVIGEN AI (399 TL/ay - 3.990 TL/yıl - GENESIS AI destekli 5 Nesil Akıllı Eşleştirme, GENESIS AI'ya Sor, Haritalı Yarış Simülasyonu & Akıllı Yem/Maliyet)
-  // 3. 'GLOBAL'      -> AVIGEN GLOBAL (599 TL/ay - 5.990 TL/yıl - AVIGEN AI + Ortak gen havuzu ve izin verilen veriler üzerinden küresel soy araştırması)
+  // 2. 'GENETICS_AI' -> AVIGEN AI / GENESIS AI (399 TL/ay - 3.990 TL/yıl - GENESIS AI destekli 5 Nesil Akıllı Eşleştirme, GENESIS AI'ya Sor, Haritalı Yarış Simülasyonu & Akıllı Yem/Maliyet)
   TIERS: {
     FREE: {
       id: 'FREE',
@@ -9677,27 +9676,17 @@ const AvigenUxManager = {
     GENETICS_AI: {
       id: 'GENETICS_AI',
       name: 'AVIGEN AI',
-      badgeText: '🧬 AVIGEN AI',
+      badgeText: '🧬 GENESIS AI',
       badgeClass: 'gene-purple',
       monthlyPrice: '399 TL',
       yearlyPrice: '3.990 TL',
       maxPedigreesLimit: 99999,
       tagline: 'GENESIS AI destekli 5 Nesil Akıllı Eşleştirme, GENESIS AI\'ya Sor, Haritalı Yarış Simülasyonu ve Akıllı Yem/Maliyet'
-    },
-    GLOBAL: {
-      id: 'GLOBAL',
-      name: 'AVIGEN GLOBAL',
-      badgeText: '🌍 AVIGEN GLOBAL',
-      badgeClass: 'gene-gold',
-      monthlyPrice: '599 TL',
-      yearlyPrice: '5.990 TL',
-      maxPedigreesLimit: 99999,
-      tagline: 'AVIGEN AI + Ortak gen havuzu ve izinli veriler üzerinden küresel soy araştırması'
     }
   },
 
   state: {
-    membershipTier: 'FREE', // 'FREE' | 'GENETICS_AI' | 'GLOBAL'
+    membershipTier: 'FREE', // 'FREE' | 'GENETICS_AI'
     experienceMode: 'easy', // 'easy' (Kolay Mod) | 'expert' (Uzman Mod)
     isRegisteredMember: true,
     isLoggedIn: true,
@@ -9738,8 +9727,11 @@ const AvigenUxManager = {
   },
 
   getCurrentTier() {
+    if (this.state.membershipTier !== 'FREE' && this.state.membershipTier !== 'GENETICS_AI') {
+      this.state.membershipTier = 'GENETICS_AI';
+    }
     const exp = this.checkLicenseExpirationStatus();
-    if (exp.isExpired && (this.state.membershipTier === 'GENETICS_AI' || this.state.membershipTier === 'GLOBAL')) {
+    if (exp.isExpired && this.state.membershipTier === 'GENETICS_AI') {
       this.state.membershipTier = 'FREE';
       this.saveState();
     }
@@ -9747,11 +9739,11 @@ const AvigenUxManager = {
   },
 
   hasGeneticsAiAccess() {
-    return this.state.membershipTier === 'GENETICS_AI' || this.state.membershipTier === 'GLOBAL';
+    return this.state.membershipTier === 'GENETICS_AI';
   },
 
   hasGlobalPoolAccess() {
-    return this.state.membershipTier === 'GLOBAL';
+    return this.state.membershipTier === 'GENETICS_AI';
   },
 
   setMembershipTier(tierId) {
@@ -9819,7 +9811,10 @@ const AvigenUxManager = {
       this.verifySignedLicenseKey(this.state.activatedLicenseKey) &&
       !this.checkLicenseExpirationStatus().isExpired
     );
-    if (!hasValidDeviceLicense && (this.state.membershipTier === 'GENETICS_AI' || this.state.membershipTier === 'GLOBAL')) {
+    if (this.state.membershipTier !== 'FREE' && this.state.membershipTier !== 'GENETICS_AI') {
+      this.state.membershipTier = 'GENETICS_AI';
+    }
+    if (!hasValidDeviceLicense && this.state.membershipTier === 'GENETICS_AI') {
       this.state.membershipTier = 'FREE';
     }
     this.saveState();
@@ -9868,8 +9863,8 @@ const AvigenUxManager = {
     const memBtn = document.getElementById('navMembershipBtn');
     const tier = this.getCurrentTier();
     if (memBtn) {
-      memBtn.innerHTML = tier.id === 'GLOBAL' ? '🌍 GLOBAL' : (tier.id === 'GENETICS_AI' ? '🧬 AVIGEN AI' : '🔓 FREE');
-      memBtn.className = tier.id === 'GLOBAL' ? 'ios-btn ios-btn-gold' : (tier.id === 'GENETICS_AI' ? 'ios-btn ios-btn-purple' : 'ios-btn ios-btn-primary');
+      memBtn.innerHTML = tier.id === 'GENETICS_AI' ? '🧬 GENESIS AI' : '🔓 FREE';
+      memBtn.className = tier.id === 'GENETICS_AI' ? 'ios-btn ios-btn-purple' : 'ios-btn ios-btn-primary';
     }
 
     this.renderProfileAccountSection();
@@ -10141,25 +10136,12 @@ const AvigenUxManager = {
             <!-- AVIGEN AI (GENESIS AI) -->
             <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1.5px solid ${curTier.id === 'GENETICS_AI' ? '#7c3aed' : 'var(--ios-border)'}; border-radius:9px; padding:7px 9px;">
               <div>
-                <div style="font-size:11px; font-weight:900; color:#7c3aed;">2. AVIGEN AI (399 TL/ay • 3.990 TL/yıl)</div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">GENESIS AI 5 nesil akıllı eşleştirme, haritalı yarış simülasyonu ve akıllı yem/maliyet sistemi</div>
+                <div style="font-size:11px; font-weight:900; color:#7c3aed;">2. AVIGEN AI / GENESIS AI (399 TL/ay • 3.990 TL/yıl)</div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">GENESIS AI 5 nesil akıllı eşleştirme, GENESIS AI'ya Sor, haritalı yarış simülasyonu ve akıllı yem/maliyet sistemi</div>
               </div>
               <div style="display:flex; gap:4px; flex-shrink:0;">
                 <button class="ios-btn ios-btn-purple" style="padding:5px 9px; font-size:9.5px;" onclick="AvigenUxManager.openCheckoutForTier('GENETICS_AI')">
                   ${curTier.id === 'GENETICS_AI' ? '🔑 Lisans / Süre Uzat' : '🔑 Lisans Kodu İle Aç'}
-                </button>
-              </div>
-            </div>
-
-            <!-- AVIGEN GLOBAL -->
-            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ios-card-alt); border:1.5px solid ${curTier.id === 'GLOBAL' ? '#d97706' : 'var(--ios-border)'}; border-radius:9px; padding:7px 9px;">
-              <div>
-                <div style="font-size:11px; font-weight:900; color:#b45309;">3. AVIGEN GLOBAL (599 TL/ay • 5.990 TL/yıl)</div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">AVIGEN AI + Ortak gen havuzu ve kullanıcıların izin verdiği veriler üzerinden küresel soy araştırması</div>
-              </div>
-              <div style="display:flex; gap:4px; flex-shrink:0;">
-                <button class="ios-btn ios-btn-gold" style="padding:5px 9px; font-size:9.5px;" onclick="AvigenUxManager.openCheckoutForTier('GLOBAL')">
-                  ${curTier.id === 'GLOBAL' ? '🔑 Lisans / Süre Uzat' : '🔑 Lisans Kodu İle Aç'}
                 </button>
               </div>
             </div>
@@ -10627,8 +10609,8 @@ const AvigenUxManager = {
           <div style="border:2px solid ${curTier.id === 'GENETICS_AI' ? '#7c3aed' : '#c4b5fd'}; background:var(--ios-card-alt); border-radius:11px; padding:9px 11px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <div style="font-size:12.5px; font-weight:900; color:#7c3aed;">2. AVIGEN AI <span class="gene-badge gene-purple" style="font-size:8.5px;">GENESIS AI</span></div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">GENESIS AI: 5 Nesil Akıllı Eşleştirme, GENESIS AI'ya Sor, Haritalı Yarış Simülasyonu &amp; Akıllı Yem</div>
+                <div style="font-size:12.5px; font-weight:900; color:#7c3aed;">2. AVIGEN AI <span class="gene-badge gene-purple" style="font-size:8.5px;">GENESIS AI (Tüm Özellikler)</span></div>
+                <div style="font-size:9.5px; color:var(--ios-subtext);">GENESIS AI: 5 Nesil Akıllı Eşleştirme, GENESIS AI'ya Sor, Haritalı Yarış Simülasyonu &amp; Akıllı Yem/Maliyet</div>
               </div>
               <div style="text-align:right;">
                 <div style="font-size:14px; font-weight:900; color:#7c3aed;">${isYearly ? '3.990 TL/yıl' : '399 TL/ay'}</div>
@@ -10637,23 +10619,6 @@ const AvigenUxManager = {
             </div>
             <button class="ios-btn ios-btn-purple" style="width:100%; padding:7px; font-size:11px; margin-top:6px;" onclick="AvigenUxManager.openCheckoutForTier('GENETICS_AI')">
               ${curTier.id === 'GENETICS_AI' ? `🔑 Aktif (${escapeHtml(licExp.label)}) — Lisans / Süre Uzat` : '🔑 Lisans Kodu Gir / Kod İste (0532 782 03 85)'}
-            </button>
-          </div>
-
-          <!-- 3. PAKET: AVIGEN GLOBAL -->
-          <div style="border:2px solid ${curTier.id === 'GLOBAL' ? '#d97706' : '#fde68a'}; background:var(--ios-card-alt); border-radius:11px; padding:9px 11px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <div style="font-size:12.5px; font-weight:900; color:#b45309;">3. AVIGEN GLOBAL <span class="gene-badge gene-gold" style="font-size:8.5px;">Küresel Soy Havuzu</span></div>
-                <div style="font-size:9.5px; color:var(--ios-subtext);">AVIGEN AI + Ortak gen havuzu ve izin verilen veriler üzerinden küresel soy araştırması</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:14px; font-weight:900; color:#b45309;">${isYearly ? '5.990 TL/yıl' : '599 TL/ay'}</div>
-                <div style="font-size:8.5px; color:#059669; font-weight:700;">${isYearly ? '365 Günlük Lisans' : '30 Günlük Lisans'}</div>
-              </div>
-            </div>
-            <button class="ios-btn ios-btn-gold" style="width:100%; padding:7px; font-size:11px; margin-top:6px;" onclick="AvigenUxManager.openCheckoutForTier('GLOBAL')">
-              ${curTier.id === 'GLOBAL' ? `🔑 Aktif (${escapeHtml(licExp.label)}) — Lisans / Süre Uzat` : '🔑 Lisans Kodu Gir / Kod İste (0532 782 03 85)'}
             </button>
           </div>
         `)}
@@ -11181,8 +11146,8 @@ const AvigenUxManager = {
       return;
     }
 
-    const targetTierId = this.state.checkoutTierId === 'GLOBAL' ? 'GLOBAL' : 'GENETICS_AI';
-    const tierObj = this.TIERS[targetTierId] || this.TIERS.GENETICS_AI;
+    const targetTierId = 'GENETICS_AI';
+    const tierObj = this.TIERS.GENETICS_AI;
     let durationDays = 365;
     let licenseType = 'YEARLY';
     let durationLabel = '365 Gün (1 Yıl)';
@@ -11267,16 +11232,16 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.6.3',
-    localBuild: 563,
-    remoteVersion: '5.6.3',
-    remoteBuild: 563,
-    remoteTitle: "AVIGEN v5.6.3 — Ana Sayfa Görevler / Takvim Tam Görünüm & Kaydırma Düzeltmesi, Pedigri PDF Paylaşımı & Android Geri Tuşu",
+    localVersion: '5.6.4',
+    localBuild: 564,
+    remoteVersion: '5.6.4',
+    remoteBuild: 564,
+    remoteTitle: "AVIGEN v5.6.4 — AVIGEN GLOBAL Paketinin Tamamen Kaldırılıp Tüm Özelliklerin GENESIS AI Çatısında Toplanması & Ana Sayfa Görevler Tam Görünümü",
     remoteNotes: [
-      "Ana Sayfa Görevler / Takvim Tam Görünüm Düzeltmesi: Ana sayfanın en altında kalan Görevler / Takvim kartının yüksekliği serbest bırakıldı; yeni görev eklendiğinde sayfa aşağı sıkışmaz, tüm görev başlıkları ve detay notları tam satır olarak görüntülenir ve otomatik olarak görünür alana kaydırılır",
-      "Pedigri PDF İndir & WhatsApp Paylaş Ekranı Düzeltmesi: Açılan PDF sertifika ekranındaki 'WhatsApp'ta PDF Dosyası Paylaş', 'Cihaza PDF İndir / Kaydet', '1+2 Sayfa Sertifika Görselini Paylaş' ve 'A4 Yazdır / PDF Kaydet' butonları hem eski hem yeni APK'da %100 çalışır",
-      "Android Geri Tuşu Düzeltmesi: Geri tuşuna basıldığında direkt programdan çıkmaz; önce açık pencereleri kapatır ve Ana Menüye (Ana Sayfa) döner, yalnızca Ana Menüdeyken basılırsa programdan çıkar",
-      "Takvime Göre Günlük Yem & Suluk Programı: Ana sayfadaki yem ve içecek önerisi haftanın günlerine (Pzt..Paz) ve Takvimdeki aktif kümes gerekliliklerine göre günlük reçete sunar"
+      "Tüm Özellikler Tek GENESIS AI Paketinde Toplandı: 'AVIGEN GLOBAL' paketi tüm üyelik, profil ve lisans ekranlarından tamamen kaldırıldı; artık yalnızca 'AVIGEN FREE' (Ücretsiz) ve tüm yapay zekâ özelliklerini içeren 'AVIGEN AI / GENESIS AI' paketi bulunmaktadır",
+      "Ana Sayfa Görevler / Takvim Tam Görünüm Düzeltmesi: Ana sayfanın en altında kalan Görevler / Takvim kartının yüksekliği serbest bırakıldı; yeni görev eklendiğinde sayfa aşağı sıkışmaz ve tüm görev detayları tam satır olarak görüntülenir",
+      "Pedigri PDF İndir & WhatsApp Paylaş Ekranı Düzeltmesi: Açılan PDF sertifika ekranındaki tüm paylaşma ve indirme butonları Android APK'da %100 çalışır",
+      "Android Geri Tuşu & Takvime Göre Günlük Yem/Suluk Programı: Geri tuşu önce açık pencereyi kapatıp Ana Menüye döner; ana sayfadaki yem önerisi takvimde günün gerekliliğine göre reçete sunar"
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',
@@ -11885,13 +11850,13 @@ const AvigenSystemAuditQA = {
     const doiVerified = kolvenbag && kolvenbag.doi === '10.1007/s13353-022-00697-w' && kolvenbag.pmid === '35505002';
     assert('T16', 'Bilimsel Kütüphane', '6 Birincil Hakemli Makale & DOI/PMID Doğrulaması', sciCount >= 6 && doiVerified, `${sciCount} doğrulanmış yayın • Kolvenbag 2022 DOI & PMID aktif.`);
 
-    // 17. 3 Kademeli Üyelik ve Yetkilendirme (AVIGEN FREE Sınırsız Kuş, AVIGEN AI & AVIGEN GLOBAL + 0 532 782 03 85 Lisans Hattı)
+    // 17. 2 Kademeli Üyelik ve Yetkilendirme (AVIGEN FREE Sınırsız Kuş & AVIGEN AI / GENESIS AI + 0 532 782 03 85 Lisans Hattı)
     const tiersOk = AvigenUxManager.TIERS.FREE.maxPedigreesLimit >= 99999 &&
                     AvigenUxManager.TIERS.GENETICS_AI.name === 'AVIGEN AI' &&
-                    AvigenUxManager.TIERS.GLOBAL.name === 'AVIGEN GLOBAL' &&
+                    !AvigenUxManager.TIERS.GLOBAL &&
                     AvigenUxManager.LICENSE_WHATSAPP_NUMBER === '905327820385' &&
-                    Object.keys(AvigenUxManager.TIERS).length === 3;
-    assert('T17', 'Ticari Paketler', 'AVIGEN FREE (Sınırsız Kuş), AVIGEN AI (399 TL), AVIGEN GLOBAL (599 TL) & 0532 782 03 85 Lisans Hattı', tiersOk, 'AVIGEN FREE sınırsız kuş + GENESIS AI abonelik kilidi ve 0 532 782 03 85 WhatsApp lisans hattı doğrulandı.');
+                    Object.keys(AvigenUxManager.TIERS).length === 2;
+    assert('T17', 'Ticari Paketler', 'AVIGEN FREE (Sınırsız Kuş) & AVIGEN AI / GENESIS AI (399 TL) & 0532 782 03 85 Lisans Hattı', tiersOk, 'AVIGEN FREE sınırsız kuş + tüm özellikleri tek çatı altında toplayan GENESIS AI aboneliği ve 0 532 782 03 85 WhatsApp lisans hattı doğrulandı.');
 
     // 18. Tam JSON Yedekleme Şeması Doğrulaması
     const snap = buildFullAvigenSnapshotPayload();

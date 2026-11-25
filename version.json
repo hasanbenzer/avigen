@@ -1,13 +1,13 @@
 {
-  "version": "5.6.3",
-  "build": 563,
+  "version": "5.6.4",
+  "build": 564,
   "releaseDate": "2026-11-25",
-  "title": "AVIGEN v5.6.3 — Ana Sayfa Görevler / Takvim Tam Görünüm & Kaydırma Düzeltmesi, Pedigri PDF Paylaşımı & Android Geri Tuşu",
+  "title": "AVIGEN v5.6.4 — AVIGEN GLOBAL Paketinin Tamamen Kaldırılıp Tüm Özelliklerin GENESIS AI Çatısında Toplanması & Ana Sayfa Görevler Tam Görünümü",
   "notes": [
-    "Ana Sayfa Görevler / Takvim Tam Görünüm Düzeltmesi: Ana sayfanın en altında kalan Görevler / Takvim kartının yüksekliği serbest bırakıldı; yeni görev eklendiğinde sayfa aşağı sıkışmaz, tüm görev başlıkları ve detay notları tam satır olarak görüntülenir ve otomatik olarak görünür alana kaydırılır",
-    "Pedigri PDF İndir & WhatsApp Paylaş Ekranı Düzeltmesi: Açılan PDF sertifika ekranındaki 'WhatsApp'ta PDF Dosyası Paylaş', 'Cihaza PDF İndir / Kaydet', '1+2 Sayfa Sertifika Görselini Paylaş' ve 'A4 Yazdır / PDF Kaydet' butonları hem eski hem yeni APK'da %100 çalışır",
-    "Android Geri Tuşu Düzeltmesi: Geri tuşuna basıldığında direkt programdan çıkmaz; önce açık pencereleri kapatır ve Ana Menüye (Ana Sayfa) döner, yalnızca Ana Menüdeyken basılırsa programdan çıkar",
-    "Takvime Göre Günlük Yem & Suluk Programı: Ana sayfadaki yem ve içecek önerisi haftanın günlerine (Pzt..Paz) ve Takvimdeki aktif kümes gerekliliklerine göre günlük reçete sunar"
+    "Tüm Özellikler Tek GENESIS AI Paketinde Toplandı: 'AVIGEN GLOBAL' paketi tüm üyelik, profil ve lisans ekranlarından tamamen kaldırıldı; artık yalnızca 'AVIGEN FREE' (Ücretsiz) ve tüm yapay zekâ özelliklerini içeren 'AVIGEN AI / GENESIS AI' paketi bulunmaktadır",
+    "Ana Sayfa Görevler / Takvim Tam Görünüm Düzeltmesi: Ana sayfanın en altında kalan Görevler / Takvim kartının yüksekliği serbest bırakıldı; yeni görev eklendiğinde sayfa aşağı sıkışmaz ve tüm görev detayları tam satır olarak görüntülenir",
+    "Pedigri PDF İndir & WhatsApp Paylaş Ekranı Düzeltmesi: Açılan PDF sertifika ekranındaki tüm paylaşma ve indirme butonları Android APK'da %100 çalışır",
+    "Android Geri Tuşu & Takvime Göre Günlük Yem/Suluk Programı: Geri tuşu önce açık pencereyi kapatıp Ana Menüye döner; ana sayfadaki yem önerisi takvimde günün gerekliliğine göre reçete sunar"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"
