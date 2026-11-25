@@ -4178,10 +4178,10 @@ function generateCode128BModules(ringStr) {
   return modules;
 }
 
-function makeQrSvg(str) {
+function makeQrSvg(str, sizePx = 56) {
   const mat = generateIsoQrMatrix(str);
   const size = mat.length;
-  const quiet = 2;
+  const quiet = 4; // ISO/IEC 18004 standart 4 modüllük beyaz sessiz bölge (Quiet Zone)
   const total = size + quiet * 2;
   let pathD = '';
   for (let r = 0; r < size; r++) {
@@ -4191,7 +4191,42 @@ function makeQrSvg(str) {
       }
     }
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="36" height="36" shape-rendering="crispEdges" style="background:#fff;border-radius:4px;border:1px solid #cbd5e1;flex-shrink:0;" title="Telefon Kamerasıyla Okutarak Dijital Pedigriyi Doğrulayın"><path d="${pathD}" fill="#0f172a"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="${sizePx}" height="${sizePx}" shape-rendering="crispEdges" onclick="event.stopPropagation(); openLargePedigreeQrModal();" style="background:#ffffff;border-radius:4px;border:1px solid #cbd5e1;flex-shrink:0;cursor:pointer;display:block;" title="Telefon Kamerasıyla Okutun veya Büyük QR Kod İçin Dokunun"><rect width="${total}" height="${total}" fill="#ffffff"/><path d="${pathD}" fill="#000000"/></svg>`;
+}
+
+function openLargePedigreeQrModal() {
+  const ped = getActivePedigree();
+  if (!ped) return;
+  const main = ped.boxes?.main || {};
+  const qrUrl = encodeFullPedigreeQrPayload(ped);
+  let modal = document.getElementById('avigenLargeQrScanModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'avigenLargeQrScanModal';
+    modal.className = 'ios-modal-overlay';
+    const hostFrame = document.querySelector('.iphone-frame') || document.body;
+    hostFrame.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div class="ios-sheet" style="max-height:90%; text-align:center;">
+      <div class="ios-card-title" style="margin-bottom:8px;">
+        <span>📲 Resmi Pedigri QR Doğrulama Kodu</span>
+        <button type="button" class="ios-btn ios-btn-outline" style="padding:4px 10px;" onclick="document.getElementById('avigenLargeQrScanModal')?.classList.remove('open')">✖ Kapat</button>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:8px;">
+        <div style="font-size:13px; font-weight:900; color:#1d4ed8;">
+          ${main.flag || '🇹🇷'} ${escapeHtml(main.ring || 'TR-2026-0001')} — ${escapeHtml(main.name || '')}
+        </div>
+        <div style="background:#ffffff; padding:10px; border:2px solid #1d4ed8; border-radius:12px; box-shadow:0 4px 14px rgba(15,23,42,0.12);">
+          ${makeQrSvg(qrUrl, 230)}
+        </div>
+        <div style="font-size:10.5px; color:#334155; line-height:1.4; max-width:300px;">
+          Telefonunuzun normal kamerasını bu karekoda tuttuğunuzda <strong>AVIGEN Resmi Dijital Soyağacı Doğrulama Sertifikası</strong> açılır.
+        </div>
+      </div>
+    </div>
+  `;
+  modal.classList.add('open');
 }
 
 function makeBarcodeSvg(ring) {
@@ -4590,35 +4625,34 @@ function computePedigreePage2Data(ped) {
 function buildPedigreeSecondPageHtml(ped, logoHtml, birdPhotoHtml, accent, genDepth, showCodes) {
   const d = computePedigreePage2Data(ped);
   const main = d.main;
+  const qrPayloadUrl = encodeFullPedigreeQrPayload(ped);
 
   return `
     <div class="paper-watermark">${escapeHtml(loftConfig.title)}</div>
 
-    <!-- ÜST BAŞLIK & ANA KUŞ (1. SAYFA İLE BİREBİR KURUMSAL BÜTÜNLÜK + KRALİYET KALİTE MÜHRÜ) -->
+    <!-- ÜST BAŞLIK & ANA KUŞ (ULUSLARARASI FCI / AVRUPA PEDİGRİ STANDARDI + BÜYÜK OKUNABİLİR QR KOD) -->
     <div class="paper-top">
       <div class="paper-loft" onclick="openLoftHeaderModal()" style="cursor:pointer;">
         <div class="paper-logo">${logoHtml}</div>
         <div class="paper-loft-title">
           <h2>${escapeHtml(loftConfig.title)}</h2>
-          <p>SAYFA 2 / 2 • PERFORMANS, GENETİK PROFİL &amp; KİŞİSEL SİCİL DOSYASI</p>
+          <p>SAYFA 2 / 2 • PERFORMANS, GENETİK PROFİL &amp; KİŞİSEL SİCİL DOSYASI (OFFICIAL ANNEX II)</p>
         </div>
       </div>
 
-      <div class="paper-main-bird" onclick="openBoxEditModal('main')" style="position:relative;">
-        <div class="paper-bird-photo">${birdPhotoHtml}</div>
-        <div style="min-width:0; flex:1; overflow:hidden;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+      <div class="paper-main-bird" onclick="openBoxEditModal('main')" style="position:relative; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1; overflow:hidden;">
+          <div class="paper-bird-photo">${birdPhotoHtml}</div>
+          <div style="min-width:0; flex:1; overflow:hidden;">
             <div style="font-size:12.2px; font-weight:900; color:${accent}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              ${main.flag || '🇹🇷'} ${escapeHtml(main.ring)} • ${main.sex === 'F' ? '♀ Dişi' : '♂ Erkek'}
+              ${main.flag || '🇹🇷'} ${escapeHtml(main.ring)} • ${main.sex === 'F' ? '♀ Dişi (Hen)' : '♂ Erkek (Cock)'}
             </div>
-            <span style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%); color:#fde047; border:1px solid #f59e0b; font-size:6.8px; font-weight:900; padding:1px 5px; border-radius:4px; white-space:nowrap; flex-shrink:0;">
-              🏅 ${escapeHtml(d.eliteClassTitle)} • EBV ${d.breedingScore}
-            </span>
+            <div style="font-size:10.8px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.name || 'İsimsiz Güvercin')}</div>
+            <div style="font-size:8.3px; opacity:0.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.color || 'Mavi Çakmaklı')} • ${escapeHtml(d.phenotype.roleLabel)}</div>
+            <div style="font-size:7.8px; font-weight:800; color:#047857; margin-top:1px;">Uzmanlık: ${escapeHtml(d.specialtyLabel)} • COI: %${Number(d.coiPct || 0).toFixed(2)}</div>
           </div>
-          <div style="font-size:10.8px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.name || 'İsimsiz Güvercin')}</div>
-          <div style="font-size:8.3px; opacity:0.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.color || 'Mavi Çakmaklı')} • ${escapeHtml(d.phenotype.roleLabel)}</div>
-          <div style="font-size:7.8px; font-weight:800; color:#047857; margin-top:1px;">Uzmanlık: ${escapeHtml(d.specialtyLabel)} • COI: %${Number(d.coiPct || 0).toFixed(2)}</div>
         </div>
+        ${showCodes ? makeQrSvg(qrPayloadUrl, 52) : ''}
       </div>
     </div>
 
@@ -4867,41 +4901,41 @@ function renderActivePedigree() {
   const genHeadersGap = genDepth === 3 ? '8px' : '6px';
   const genHeadersHtml = `
     <div style="display:grid; grid-template-columns:${genHeadersGridCols}; gap:${genHeadersGap}; margin:2px 0 0 0;">
-      <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:6.8px; font-weight:900; color:#1e3a8a; text-align:center; padding:1px 4px; letter-spacing:0.25px;">1. KUŞAK (EBEVEYN • BABA &amp; ANNE)</div>
-      <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:6.8px; font-weight:900; color:#1e3a8a; text-align:center; padding:1px 4px; letter-spacing:0.25px;">2. KUŞAK (4 BÜYÜKEBEVEYN)</div>
-      <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:6.8px; font-weight:900; color:#1e3a8a; text-align:center; padding:1px 4px; letter-spacing:0.25px;">3. KUŞAK (8 ATA)</div>
-      ${genDepth === 4 ? `<div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:6.8px; font-weight:900; color:#1e3a8a; text-align:center; padding:1px 4px; letter-spacing:0.25px;">4. KUŞAK (16 ATA)</div>` : ''}
+      <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:6.7px; font-weight:900; color:#1e3a8a; text-align:center; padding:1px 4px; letter-spacing:0.2px;">I. KUŞAK — EBEVEYN (PARENTS: SIRE &amp; DAM)</div>
+      <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:6.7px; font-weight:900; color:#1e3a8a; text-align:center; padding:1px 4px; letter-spacing:0.2px;">II. KUŞAK — BÜYÜKEBEVEYN (GRANDPARENTS)</div>
+      <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:6.7px; font-weight:900; color:#1e3a8a; text-align:center; padding:1px 4px; letter-spacing:0.2px;">III. KUŞAK — 3. NESİL (GREAT-GRANDPARENTS)</div>
+      ${genDepth === 4 ? `<div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; font-size:6.7px; font-weight:900; color:#1e3a8a; text-align:center; padding:1px 4px; letter-spacing:0.2px;">IV. KUŞAK — 4. NESİL (16 GREAT-GREAT-GP)</div>` : ''}
     </div>
   `;
+
+  const qrPayloadUrl1 = encodeFullPedigreeQrPayload(ped);
 
   const page1InnerHtml = `
     <div class="paper-watermark">${escapeHtml(loftConfig.title)}</div>
 
-    <!-- ÜST BAŞLIK & ANA KUŞ + KRALİYET KALİTE MÜHRÜ -->
+    <!-- ÜST BAŞLIK & ANA KUŞ (ULUSLARARASI FCI / AVRUPA PEDİGRİ STANDARDI + SAĞ ÜST BÜYÜK QR KOD) -->
     <div class="paper-top">
       <div class="paper-loft" onclick="openLoftHeaderModal()" style="cursor:pointer;">
         <div class="paper-logo">${logoHtml}</div>
         <div class="paper-loft-title">
           <h2>${escapeHtml(loftConfig.title)}</h2>
-          <p>${escapeHtml(loftConfig.subtitle)}</p>
+          <p>${escapeHtml(loftConfig.subtitle || 'OFFICIAL RACING PIGEON PEDIGREE • FCI / INTERNATIONAL STANDARD')}</p>
         </div>
       </div>
 
-      <div class="paper-main-bird" onclick="openBoxEditModal('main')">
-        <div class="paper-bird-photo">${birdPhotoHtml}</div>
-        <div style="min-width:0; flex:1; overflow:hidden;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+      <div class="paper-main-bird" onclick="openBoxEditModal('main')" style="justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1; overflow:hidden;">
+          <div class="paper-bird-photo">${birdPhotoHtml}</div>
+          <div style="min-width:0; flex:1; overflow:hidden;">
             <div style="font-size:12.2px; font-weight:900; color:${accent}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              ${main.flag || '🇹🇷'} ${escapeHtml(main.ring)}
+              ${main.flag || '🇹🇷'} ${escapeHtml(main.ring)} • ${main.sex === 'F' ? '♀ Dişi (Hen)' : '♂ Erkek (Cock)'}
             </div>
-            <span style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%); color:#fde047; border:1px solid #f59e0b; font-size:6.8px; font-weight:900; padding:1px 5px; border-radius:4px; white-space:nowrap; flex-shrink:0;">
-              🏅 ${escapeHtml(p2Summary.eliteClassTitle)} • EBV ${p2Summary.breedingScore} • COI %${Number(p2Summary.coiPct || 0).toFixed(2)}
-            </span>
+            <div style="font-size:10.8px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.name)}</div>
+            <div style="font-size:8.3px; opacity:0.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.color)}</div>
+            ${main.notes ? `<div class="paper-main-bird-notes">${escapeHtml(main.notes)}</div>` : ''}
           </div>
-          <div style="font-size:10.8px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.name)}</div>
-          <div style="font-size:8.3px; opacity:0.85; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(main.color)}</div>
-          ${main.notes ? `<div class="paper-main-bird-notes">${escapeHtml(main.notes)}</div>` : ''}
         </div>
+        ${showCodes ? makeQrSvg(qrPayloadUrl1, 52) : ''}
       </div>
     </div>
 
@@ -4988,47 +5022,64 @@ function renderActivePedigree() {
   setTimeout(fitPaperToIphoneScreen, 10);
 }
 
-// Bir Pedigrenin Ana Kuşunu + Baba + Anne + Büyük Ebeveynlerini Hem Normal Telefon Kameralarının (AVIGEN Yüklü Olmayan Cihazlar Dahil)
-// Doğrudan Web Tarayıcıda Açabileceği Resmi Doğrulama Bağlantısı, Hem de AVIGEN İçi QR Tarayıcının Kümes Aktarımı Yapabileceği Evrensel URL Olarak Üretir
+// Bir Pedigrenin Ana Kuşunu + Baba + Anne Halka Numarasını Telefon Kameralarının 0.1 Saniyede Okuyabileceği
+// Ultra Kompakt (QR Version 3/4 - Büyük Kareli) Evrensel Doğrulama URL'si Olarak Üretir
 function encodeFullPedigreeQrPayload(ped) {
   const b = ped?.boxes || {};
   const m = b.main || {};
   const ring = String(m.ring || 'TR-2026-0001').trim().slice(0, 18);
-  const name = String(m.name || '').trim().slice(0, 16);
-  const sex = m.sex === 'F' ? 'F' : 'M';
-  const sire = String(b.sire?.ring || '').trim().slice(0, 16);
-  const dam = String(b.dam?.ring || '').trim().slice(0, 16);
-  const loft = String((typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN').trim().slice(0, 18);
-
-  const params = new URLSearchParams();
-  params.set('verify', '1');
-  params.set('r', ring);
-  if (name) params.set('n', name);
-  params.set('sx', sex);
-  if (sire) params.set('s', sire);
-  if (dam) params.set('d', dam);
-  if (loft) params.set('l', loft);
-
-  return `https://hasanbenzer.github.io/avigen/?${params.toString()}`;
+  const sire = String(b.sire?.ring || '').trim().slice(0, 14);
+  const dam = String(b.dam?.ring || '').trim().slice(0, 14);
+  // Kısa URL (~52-68 karakter -> QR Version 3/4, büyük ve yüksek kontrastlı modüller!)
+  const compact = [ring, sire, dam].filter(Boolean).join('~');
+  return `https://hasanbenzer.github.io/avigen/?v=${encodeURIComponent(compact)}`;
 }
 
-// Hiç AVIGEN yüklü olmayan bir telefon veya bilgisayarda QR kod okutulup https://hasanbenzer.github.io/avigen/?verify=1... açıldığında
+// Hiç AVIGEN yüklü olmayan bir telefon veya bilgisayarda QR kod okutulup https://hasanbenzer.github.io/avigen/?v=... açıldığında
 // ekrana otomatik çıkan "🛡️ AVIGEN RESMİ DİJİTAL PEDİGRİ DOĞRULAMA & TANITIM SERTİFİKASI" penceresi
 let _pendingVerifiedQrBird = null;
 
 function checkAndShowPedigreeQrVerifyModal() {
   try {
     const searchStr = window.location.search || '';
-    if (!searchStr.includes('verify=1')) return;
+    if (!searchStr.includes('verify=1') && !searchStr.includes('v=')) return;
     const params = new URLSearchParams(searchStr);
-    if (params.get('verify') !== '1') return;
+    const vCompact = params.get('v') || '';
+    const isVerify1 = params.get('verify') === '1';
+    if (!isVerify1 && !vCompact) return;
 
-    const ring = (params.get('r') || 'TR-2026-0001').trim();
-    const name = (params.get('n') || 'Şampiyon Güvercin').trim();
-    const sex = params.get('sx') === 'F' ? 'F' : 'M';
-    const sire = (params.get('s') || '-').trim();
-    const dam = (params.get('d') || '-').trim();
-    const loft = (params.get('l') || 'AVIGEN Üye Kümesi').trim();
+    let ring = (params.get('r') || 'TR-2026-0001').trim();
+    let name = (params.get('n') || '').trim();
+    let sex = params.get('sx') === 'F' ? 'F' : 'M';
+    let sire = (params.get('s') || '').trim();
+    let dam = (params.get('d') || '').trim();
+    let loft = (params.get('l') || '').trim();
+
+    if (vCompact) {
+      const parts = vCompact.split('~').map(s => s.trim());
+      if (parts[0]) ring = parts[0];
+      if (parts[1] && !sire) sire = parts[1];
+      if (parts[2] && !dam) dam = parts[2];
+    }
+
+    // Eğer bu halka numarası kümeste / sistemde kayıtlıysa tüm isim, baba, anne ve kümes detaylarını otomatik doldur
+    const cleanUp = ring.toUpperCase();
+    if (Array.isArray(pedigrees)) {
+      const foundPed = pedigrees.find(p => (p?.boxes?.main?.ring || '').trim().toUpperCase() === cleanUp);
+      if (foundPed && foundPed.boxes) {
+        const fm = foundPed.boxes.main || {};
+        if (!name && fm.name) name = fm.name;
+        if (fm.sex) sex = fm.sex === 'F' ? 'F' : 'M';
+        if (!sire && foundPed.boxes.sire?.ring) sire = foundPed.boxes.sire.ring;
+        if (!dam && foundPed.boxes.dam?.ring) dam = foundPed.boxes.dam.ring;
+      }
+    }
+
+    if (!name) name = 'Resmi Pedigri Kayıtlı Güvercin';
+    if (!sire) sire = '-';
+    if (!dam) dam = '-';
+    if (!loft) loft = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN Üye Kümesi';
+
     const flag = typeof detectFlagFromRing === 'function' ? detectFlagFromRing(ring) : '🇹🇷';
     const certCode = `#AVG-${ring.replace(/[^A-Z0-9]/gi, '').slice(-6).toUpperCase()}`;
 
@@ -6959,8 +7010,8 @@ async function scanBarcodeFromImageFile(event) {
     } catch (e) {}
   }
 
-  // Eğer okunan QR kod içinde zaten tam AVIGEN_FULL soyağacı paketi veya AVIGEN ?verify=1 doğrulama bağlantısı varsa hemen çöz
-  if (detectedBarcodeVal && (detectedBarcodeVal.startsWith('AVIGEN_FULL||') || detectedBarcodeVal.includes('verify=1'))) {
+  // Eğer okunan QR kod içinde zaten tam AVIGEN_FULL soyağacı paketi veya AVIGEN ?verify=1 / ?v= doğrulama bağlantısı varsa hemen çöz
+  if (detectedBarcodeVal && (detectedBarcodeVal.startsWith('AVIGEN_FULL||') || detectedBarcodeVal.includes('verify=1') || detectedBarcodeVal.includes('?v='))) {
     document.getElementById('scannedBarcodeInput').value = detectedBarcodeVal;
     onBarcodeValueDecoded(detectedBarcodeVal);
     return;
@@ -7021,16 +7072,23 @@ function onBarcodeValueDecoded(rawStr) {
     return;
   }
 
-  // 0. EĞER AVIGEN RESMİ DİJİTAL PEDİGRİ QR BAĞLANTISI (https://.../avigen/?verify=1&r=...) İSE:
-  if (clean.includes('verify=1') && clean.includes('r=')) {
+  // 0. EĞER AVIGEN RESMİ DİJİTAL PEDİGRİ QR BAĞLANTISI (https://.../avigen/?v=... veya ?verify=1&r=...) İSE:
+  if ((clean.includes('verify=1') && clean.includes('r=')) || clean.includes('?v=')) {
     try {
       const qIdx = clean.indexOf('?');
       const params = new URLSearchParams(qIdx >= 0 ? clean.slice(qIdx + 1) : clean);
-      const r = (params.get('r') || '').trim();
-      const n = (params.get('n') || 'Pedigri Kaydı').trim();
-      const s = (params.get('s') || '').trim();
-      const d = (params.get('d') || '').trim();
+      const vCompact = (params.get('v') || '').trim();
+      let r = (params.get('r') || '').trim();
+      let n = (params.get('n') || 'Pedigri Kaydı').trim();
+      let s = (params.get('s') || '').trim();
+      let d = (params.get('d') || '').trim();
       const l = (params.get('l') || 'AVIGEN').trim();
+      if (vCompact) {
+        const sp = vCompact.split('~').map(x => x.trim());
+        if (sp[0]) r = sp[0];
+        if (sp[1] && !s) s = sp[1];
+        if (sp[2] && !d) d = sp[2];
+      }
       if (r) {
         const parts = [
           `main:${r}~${n}~Mavi Çakmaklı~${l} QR Sertifikalı`,
@@ -7271,35 +7329,41 @@ function drawAvigenVectorPigeonLogoOnCanvas(ctx, x, y, w, h) {
   ctx.restore();
 }
 
+// PDF / JPG Canvas İçin Yüksek Kontrastlı, 4 Modül Sessiz Bölgeli (Quiet Zone) Gerçek ISO/IEC 18004 QR Kod Çizici
+function drawHighResQrCodeOnCanvas(ctx, qrStr, xStart, yStart, boxSize = 58) {
+  const str = String(qrStr || 'https://hasanbenzer.github.io/avigen/');
+  const mat = generateIsoQrMatrix(str);
+  const gridSize = mat.length;
+  const quiet = 4; // ISO/IEC 18004 standart 4 modül beyaz sessiz çerçeve
+  const totalMods = gridSize + quiet * 2;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(xStart, yStart, boxSize, boxSize);
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(xStart, yStart, boxSize, boxSize);
+
+  const cell = boxSize / totalMods;
+  ctx.fillStyle = '#000000';
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      if (mat[r][c]) {
+        ctx.fillRect(xStart + (c + quiet) * cell, yStart + (r + quiet) * cell, cell + 0.08, cell + 0.08);
+      }
+    }
+  }
+}
+
 // PDF / JPG Canvas Alt Çubuğu İçin Gerçek ISO/IEC 18004 QR Kod + Code-128B Barkod Çizici (Sayfa 1 ve Sayfa 2'de Birebir Görünür)
 function drawQrAndBarcodeOnPedigreeCanvas(ctx, qrStr, ringStr, xStart, yStart) {
   const str = String(qrStr || ringStr || 'https://hasanbenzer.github.io/avigen/');
   const cleanRing = String(ringStr || 'TR-2026-0001').toUpperCase();
 
-  // 1. Gerçek ISO/IEC 18004 QR Kod Kutusu (22x22 px)
-  const qrBoxSize = 22;
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#94a3b8';
-  ctx.lineWidth = 0.8;
-  ctx.fillRect(xStart, yStart, qrBoxSize, qrBoxSize);
-  ctx.strokeRect(xStart, yStart, qrBoxSize, qrBoxSize);
-
-  const mat = generateIsoQrMatrix(str);
-  const gridSize = mat.length;
-  const cell = (qrBoxSize - 2.4) / gridSize;
-  const qx0 = xStart + 1.2;
-  const qy0 = yStart + 1.2;
-  ctx.fillStyle = '#0f172a';
-  for (let r = 0; r < gridSize; r++) {
-    for (let c = 0; c < gridSize; c++) {
-      if (mat[r][c]) {
-        ctx.fillRect(qx0 + c * cell, qy0 + r * cell, cell + 0.08, cell + 0.08);
-      }
-    }
-  }
+  // 1. Alt Çubuk QR Kod Kutusu (22x22 px, 3 modül sessiz bölge)
+  drawHighResQrCodeOnCanvas(ctx, str, xStart, yStart, 22);
 
   // 2. Gerçek Code-128B Barkod Kutusu (90x22 px)
-  const bcX = xStart + qrBoxSize + 4;
+  const bcX = xStart + 26;
   const bcW = 90;
   const bcH = 22;
   ctx.fillStyle = '#ffffff';
@@ -7311,7 +7375,7 @@ function drawQrAndBarcodeOnPedigreeCanvas(ctx, qrStr, ringStr, xStart, yStart) {
   const mods = generateCode128BModules(cleanRing);
   const modW = (bcW - 8) / Math.max(1, mods.length);
   const bx0 = bcX + 4;
-  ctx.fillStyle = '#0f172a';
+  ctx.fillStyle = '#000000';
   let i = 0;
   while (i < mods.length) {
     if (mods[i] === 1) {
@@ -7367,7 +7431,7 @@ function drawNativePedigreeCertificateCanvas(ped) {
   ctx.fillText(loftTitle.toUpperCase(), 0, 0);
   ctx.restore();
 
-  // 2. Üst Başlık & Ana Kuş Kartı (y: 12..82)
+  // 2. Üst Başlık & Ana Kuş Kartı (y: 12..82) — ULUSLARARASI FCI / AVRUPA PEDİGRİ STANDARDI
   ctx.fillStyle = '#ffffff';
   ctx.strokeStyle = '#bfdbfe';
   ctx.lineWidth = 1.2;
@@ -7387,16 +7451,16 @@ function drawNativePedigreeCertificateCanvas(ped) {
   ctx.font = '900 14px Inter, Arial, sans-serif';
   ctx.fillText(String(loftTitle).slice(0, 32), 74, 38);
   ctx.fillStyle = '#475569';
-  ctx.font = '700 8.5px Inter, Arial, sans-serif';
-  ctx.fillText(String(loftSub).slice(0, 52), 74, 54);
+  ctx.font = '700 8.2px Inter, Arial, sans-serif';
+  ctx.fillText(String(loftSub).slice(0, 52), 74, 53);
   ctx.fillStyle = '#1d4ed8';
-  ctx.font = '800 8px Inter, Arial, sans-serif';
-  ctx.fillText('RESMİ 4 KUŞAK (31 KUTU) SOYAĞACI SERTİFİKASI', 74, 68);
+  ctx.font = '800 7.5px Inter, Arial, sans-serif';
+  ctx.fillText('OFFICIAL RACING PIGEON PEDIGREE • FCI / INTERNATIONAL 4-GEN STANDARD', 74, 68);
 
-  const p2Summary = computePedigreePage2Data(ped);
   const dupMap = getPedigreeDuplicateAncestorMap(ped);
+  const qrPayload1 = typeof encodeFullPedigreeQrPayload === 'function' ? encodeFullPedigreeQrPayload(ped) : (main.ring || 'TR-2026-0001');
 
-  // Sağ Ana Kuş Kutusu + Kraliyet Kalite & Damızlık Sınıfı Mührü
+  // Sağ Ana Kuş Kutusu + Sağ Köşede Büyük (58x58 px / 116x116 HD) Kamera Okunabilir Resmi QR Kod
   ctx.fillStyle = '#eff6ff';
   ctx.strokeStyle = '#1d4ed8';
   ctx.lineWidth = 1.6;
@@ -7404,47 +7468,34 @@ function drawNativePedigreeCertificateCanvas(ped) {
   ctx.strokeRect(354, 13, W - 368, 66);
 
   ctx.fillStyle = '#1d4ed8';
-  ctx.font = '900 12.2px Inter, Arial, sans-serif';
-  ctx.fillText(`${main.ring || 'TR-2026-0001'}  •  ${String(main.name || '').slice(0, 18)}`, 364, 29);
-
-  // Sağ Üst Kraliyet Mührü Rozeti (Altın Çerçeveli Lacivert Mühür)
-  const sealW = 176;
-  const sealX = W - 14 - sealW - 6;
-  const sealY = 17;
-  const sealH = 16;
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(sealX, sealY, sealW, sealH);
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(sealX, sealY, sealW, sealH);
-  ctx.fillStyle = '#fde047';
-  ctx.font = '900 6.8px Inter, Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`★ ${p2Summary.eliteClassTitle} • EBV ${p2Summary.breedingScore} • COI %${Number(p2Summary.coiPct || 0).toFixed(2)}`, sealX + sealW / 2, sealY + 10.5);
-  ctx.textAlign = 'left';
+  ctx.font = '900 12.5px Inter, Arial, sans-serif';
+  ctx.fillText(`${main.ring || 'TR-2026-0001'}  •  ${String(main.name || '').slice(0, 26)}`, 364, 30);
 
   ctx.fillStyle = '#1e293b';
   ctx.font = '700 9px Inter, Arial, sans-serif';
-  ctx.fillText(`Renk / Cinsiyet: ${main.color || 'Mavi Çakmaklı'} ${main.sex === 'F' ? '(♀ Dişi)' : '(♂ Erkek)'}`, 364, 45);
+  ctx.fillText(`Renk / Cinsiyet: ${main.color || 'Mavi Çakmaklı'} ${main.sex === 'F' ? '(♀ Dişi / Hen)' : '(♂ Erkek / Cock)'}`, 364, 45);
 
   const mainNotesLines = String(main.notes || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   if (mainNotesLines.length > 0) {
     ctx.fillStyle = '#334155';
     ctx.font = '600 7.8px Inter, Arial, sans-serif';
-    ctx.fillText(mainNotesLines.slice(0, 2).join('  |  ').slice(0, 78), 364, 59);
+    ctx.fillText(mainNotesLines.slice(0, 2).join('  |  ').slice(0, 58), 364, 59);
     if (mainNotesLines.length > 2) {
-      ctx.fillText(mainNotesLines.slice(2, 4).join('  |  ').slice(0, 78), 364, 71);
+      ctx.fillText(mainNotesLines.slice(2, 4).join('  |  ').slice(0, 58), 364, 71);
     }
   }
+
+  // Sağ Üst Büyük Kamera Okunabilir QR Kod (58x58 px = 116x116 HD piksel)
+  drawHighResQrCodeOnCanvas(ctx, qrPayload1, W - 14 - 58 - 4, 17, 58);
 
   // 3. Kuşak Sütun Başlıkları (y: 82..94) + 4 Kuşak Soyağacı Kutuları (y: 96..511)
   const treeTop = 96;
   const treeH = 415;
   const cols = [
-    { x: 14,  w: 168, title: '1. KUŞAK (EBEVEYN • BABA & ANNE)', keys: ['sire', 'dam'], maxLines: 7, ringFont: 10.2, nameFont: 9, noteFont: 7.4 },
-    { x: 192, w: 174, title: '2. KUŞAK (4 BÜYÜKEBEVEYN)', keys: ['g2_1', 'g2_2', 'g2_3', 'g2_4'], maxLines: 4, ringFont: 9.2, nameFont: 8.3, noteFont: 7 },
-    { x: 376, w: 178, title: '3. KUŞAK (8 ATA)', keys: ['g3_1', 'g3_2', 'g3_3', 'g3_4', 'g3_5', 'g3_6', 'g3_7', 'g3_8'], maxLines: 2, ringFont: 8.3, nameFont: 7.5, noteFont: 6.6 },
-    { x: 564, w: 182, title: '4. KUŞAK (16 ATA)', keys: ['g4_1', 'g4_2', 'g4_3', 'g4_4', 'g4_5', 'g4_6', 'g4_7', 'g4_8', 'g4_9', 'g4_10', 'g4_11', 'g4_12', 'g4_13', 'g4_14', 'g4_15', 'g4_16'], maxLines: 0, ringFont: 7.3, nameFont: 6.6, noteFont: 6 }
+    { x: 14,  w: 168, title: 'I. KUŞAK — EBEVEYN (PARENTS: SIRE & DAM)', keys: ['sire', 'dam'], maxLines: 7, ringFont: 10.2, nameFont: 9, noteFont: 7.4 },
+    { x: 192, w: 174, title: 'II. KUŞAK — BÜYÜKEBEVEYN (GRANDPARENTS)', keys: ['g2_1', 'g2_2', 'g2_3', 'g2_4'], maxLines: 4, ringFont: 9.2, nameFont: 8.3, noteFont: 7 },
+    { x: 376, w: 178, title: 'III. KUŞAK — 3. NESİL (GREAT-GRANDPARENTS)', keys: ['g3_1', 'g3_2', 'g3_3', 'g3_4', 'g3_5', 'g3_6', 'g3_7', 'g3_8'], maxLines: 2, ringFont: 8.3, nameFont: 7.5, noteFont: 6.6 },
+    { x: 564, w: 182, title: 'IV. KUŞAK — 4. NESİL (16 GREAT-GREAT-GP)', keys: ['g4_1', 'g4_2', 'g4_3', 'g4_4', 'g4_5', 'g4_6', 'g4_7', 'g4_8', 'g4_9', 'g4_10', 'g4_11', 'g4_12', 'g4_13', 'g4_14', 'g4_15', 'g4_16'], maxLines: 0, ringFont: 7.3, nameFont: 6.6, noteFont: 6 }
   ];
 
   // Sütun Başlık Şeritleri
@@ -7455,7 +7506,7 @@ function drawNativePedigreeCertificateCanvas(ped) {
     ctx.fillRect(col.x, 82, col.w, 12);
     ctx.strokeRect(col.x, 82, col.w, 12);
     ctx.fillStyle = '#1e3a8a';
-    ctx.font = '900 6.7px Inter, Arial, sans-serif';
+    ctx.font = '900 6.5px Inter, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(col.title, col.x + col.w / 2, 90.5);
   });
@@ -7491,7 +7542,7 @@ function drawNativePedigreeCertificateCanvas(ped) {
       const colorStr = (node.color || '').trim();
       const sexSym = isMale ? '♂' : '♀';
       const champPrefix = isChamp ? '★ ' : '';
-      const dupSuffix = dupInfo ? ` [${dupInfo.count}x ORTAK]` : '';
+      const dupSuffix = dupInfo ? ` [${dupInfo.count}x]` : '';
 
       ctx.textAlign = 'left';
       if (count === 16) {
@@ -7569,7 +7620,6 @@ function drawNativePedigreeCertificateCanvas(ped) {
   ctx.fillRect(14, 514, W - 28, 25);
   ctx.strokeRect(14, 514, W - 28, 25);
 
-  const qrPayload1 = typeof encodeFullPedigreeQrPayload === 'function' ? encodeFullPedigreeQrPayload(ped) : (main.ring || 'TR-2026-0001');
   drawQrAndBarcodeOnPedigreeCanvas(ctx, qrPayload1, main.ring || 'TR-2026-0001', 17, 515.5);
 
   const certCode = `#AVG-${(main.ring || '001').replace(/[^A-Z0-9]/gi, '').slice(-6).toUpperCase()}`;
@@ -7577,7 +7627,7 @@ function drawNativePedigreeCertificateCanvas(ped) {
   ctx.fillStyle = '#1e3a8a';
   ctx.font = '900 7.6px Inter, Arial, sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`${String(loftTitle).slice(0, 34)} — SAYFA 1 (SOYAĞACI)`, 136, 524.5);
+  ctx.fillText(`${String(loftTitle).slice(0, 34)} — SAYFA 1 (OFFICIAL FCI PEDIGREE)`, 136, 524.5);
   ctx.fillStyle = '#334155';
   ctx.font = '700 6.8px Inter, Arial, sans-serif';
   ctx.fillText(`AVIGEN QR/Barkod Kodu: ${certCode}  •  Düzenleme: ${todayStr}`, 136, 534);
@@ -7634,6 +7684,7 @@ function drawNativePedigreePage2Canvas(ped) {
   const d = computePedigreePage2Data(ped);
   const main = d.main;
   const loftTitle = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN ELITE LOFT';
+  const qrPayload2 = typeof encodeFullPedigreeQrPayload === 'function' ? encodeFullPedigreeQrPayload(ped) : (main.ring || 'TR-2026-0001');
 
   // 1. Zemin ve Çift Çizgili Resmi Mavi Çerçeve
   ctx.fillStyle = '#f8fafc';
@@ -7674,13 +7725,13 @@ function drawNativePedigreePage2Canvas(ped) {
   ctx.font = '900 13.5px Inter, Arial, sans-serif';
   ctx.fillText(String(loftTitle).slice(0, 32), 74, 37);
   ctx.fillStyle = '#1d4ed8';
-  ctx.font = '800 8.5px Inter, Arial, sans-serif';
-  ctx.fillText('SAYFA 2 / 2 • PERFORMANS, GENETİK PROFİL & SİCİL DOSYASI', 74, 53);
+  ctx.font = '800 8px Inter, Arial, sans-serif';
+  ctx.fillText('SAYFA 2 / 2 • PERFORMANS, GENETİK PROFİL & SİCİL (ANNEX II)', 74, 53);
   ctx.fillStyle = '#475569';
   ctx.font = '700 8px Inter, Arial, sans-serif';
   ctx.fillText(`Uzmanlık: ${String(d.specialtyLabel).slice(0, 44)}`, 74, 67);
 
-  // Sağ Ana Kuş Kutusu + Kraliyet Kalite & Damızlık Sınıfı Mührü
+  // Sağ Ana Kuş Kutusu + Sağ Köşede Büyük (58x58 px / 116x116 HD) Kamera Okunabilir Resmi QR Kod
   ctx.fillStyle = '#eff6ff';
   ctx.strokeStyle = '#1d4ed8';
   ctx.lineWidth = 1.6;
@@ -7688,30 +7739,17 @@ function drawNativePedigreePage2Canvas(ped) {
   ctx.strokeRect(354, 13, W - 368, 66);
 
   ctx.fillStyle = '#1d4ed8';
-  ctx.font = '900 12.2px Inter, Arial, sans-serif';
-  ctx.fillText(`${main.ring || 'TR-2026-0001'}  •  ${String(main.name || '').slice(0, 18)}`, 364, 29);
-
-  const seal2W = 176;
-  const seal2X = W - 14 - seal2W - 6;
-  const seal2Y = 17;
-  const seal2H = 16;
-  ctx.fillStyle = '#0f172a';
-  ctx.fillRect(seal2X, seal2Y, seal2W, seal2H);
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(seal2X, seal2Y, seal2W, seal2H);
-  ctx.fillStyle = '#fde047';
-  ctx.font = '900 6.8px Inter, Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`★ ${d.eliteClassTitle} • EBV ${d.breedingScore} • COI %${Number(d.coiPct || 0).toFixed(2)}`, seal2X + seal2W / 2, seal2Y + 10.5);
-  ctx.textAlign = 'left';
+  ctx.font = '900 12.5px Inter, Arial, sans-serif';
+  ctx.fillText(`${main.ring || 'TR-2026-0001'}  •  ${String(main.name || '').slice(0, 26)}`, 364, 30);
 
   ctx.fillStyle = '#1e293b';
   ctx.font = '700 9px Inter, Arial, sans-serif';
-  ctx.fillText(`Renk / Cinsiyet: ${main.color || 'Mavi Çakmaklı'} ${main.sex === 'F' ? '(♀ Dişi)' : '(♂ Erkek)'} • ${d.phenotype.roleLabel}`, 364, 46);
+  ctx.fillText(`Renk / Cinsiyet: ${main.color || 'Mavi Çakmaklı'} ${main.sex === 'F' ? '(♀ Dişi / Hen)' : '(♂ Erkek / Cock)'} • ${d.phenotype.roleLabel}`, 364, 46);
   ctx.fillStyle = '#047857';
   ctx.font = '800 8.2px Inter, Arial, sans-serif';
   ctx.fillText(`Baba: ${ped?.boxes?.sire?.ring || '-'}   ×   Anne: ${ped?.boxes?.dam?.ring || '-'}`, 364, 62);
+
+  drawHighResQrCodeOnCanvas(ctx, qrPayload2, W - 14 - 58 - 4, 17, 58);
 
   // 3. 2x2 Gövde Kutuları: Üst Kutular Kompakt (y: 84..206, h: 122), Alt Yarış & Sicil Kutuları Genişletilmiş (y: 211..470, h: 259)
   // KUTU 1 (SOL ÜST - KOMPAKT): Performans & Genetik Profil (x:14, y:84, w:360, h:122)
@@ -12375,11 +12413,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.6.6',
-    localBuild: 566,
-    remoteVersion: '5.6.6',
-    remoteBuild: 566,
-    remoteTitle: "AVIGEN v5.6.6 — Yedek & Saat Hilesi Koruması (Anti-Cheat 1 & 2) ve 90 Günlük Ücretsiz Kümes Kayıt Bildirimi",
+    localVersion: '5.6.7',
+    localBuild: 567,
+    remoteVersion: '5.6.7',
+    remoteBuild: 567,
+    remoteTitle: "AVIGEN v5.6.7 — Uluslararası FCI Pedigri Standardı, Sağ Üst Rozetin Kaldırılması ve Yüksek Kontrastlı Büyük Kamera-Okunabilir QR Kod",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",

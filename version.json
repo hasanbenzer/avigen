@@ -1,13 +1,13 @@
 {
-  "version": "5.6.6",
-  "build": 566,
+  "version": "5.6.7",
+  "build": 567,
   "releaseDate": "2026-11-25",
-  "title": "AVIGEN v5.6.6 — Yedek & Saat Hilesi Koruması (Anti-Cheat 1 & 2) ve 90 Günlük Ücretsiz Kümes Kayıt Bildirimi",
+  "title": "AVIGEN v5.6.7 — Uluslararası FCI Pedigri Standardı, Sağ Üst Rozetin Kaldırılması ve Yüksek Kontrastlı Büyük Kamera-Okunabilir QR Kod",
   "notes": [
-    "Güvenlik Kilidi 1 (Yedek Dosyasında İlk Kurulum Tarihi & İmza Koruması): Uygulamayı silip tekrar kurarak eski .json yedeğini yükleme yoluyla 90 günlük deneme süresini sıfırlama hilesi engellendi",
-    "Güvenlik Kilidi 2 (İleri Yönlü Zaman Kilidi & Sunucu Saati Kontrolü): Cihaz tarihini/saatini geriye alarak deneme veya lisans süresini uzatma hilesi engellendi",
-    "90 Günlük Ücretsiz Deneme Kümes Kayıt Bildirimi: Üyelik ekranına tek tuşla WhatsApp üzerinden 90 günlük ücretsiz kümes kaydını bildirme özelliği eklendi",
-    "Kraliyet Pedigri (1. ve 2. Sayfa), Gerçek ISO QR Kod & Code-128B Barkod Doğrulama ve Yasal/Bilimsel Bildirimler aktif"
+    "Sağ Üstteki A+ Damızlık / Sınıf Rozeti Kaldırıldı: Pedigri 1. ve 2. sayfa üst başlığındaki 'A+ Damızlık & Yarış Sınıfı' etiketi tamamen kaldırılarak sade uluslararası FCI standardına geçildi",
+    "Uluslararası FCI / Avrupa 4 Kuşak Pedigri Standardı: Kuşak başlıkları ve ana güvercin künyesi resmi uluslararası FCI (I. Parents, II. Grandparents, III. Great-Grandparents, IV. Great-Great-Grandparents) formatına uyarlandı",
+    "Yüksek Kontrastlı Büyük QR Kod & Kamera Okuma Düzeltmesi: QR kod URL boyutu kısaltılarak (Version 3/4 büyük modüller + 4 modül beyaz sessiz çerçeve) üst başlığın sağ köşesine 58x58 px (116x116 HD) boyutunda yerleştirildi ve üzerine dokunulduğunda 230x230 px tam ekran QR doğrulama kartı açılması sağlandı",
+    "Güvenlik Kilidi 1 & 2 (Yedek & Saat Hilesi Koruması) ve 90 Günlük Ücretsiz Deneme aktif"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"
