@@ -1908,11 +1908,31 @@ function handleHomeQuickSearchAction(idx, actionType, event) {
 
 function switchHomeSubPanel(tabName, btnEl) {
   activeHomeSubTab = tabName;
-  if (btnEl) {
-    btnEl.parentElement.querySelectorAll('.sub-pill').forEach(b => b.classList.remove('active'));
-    btnEl.classList.add('active');
+  const mapBtnId = {
+    reminders: 'homeTabBtn_reminders',
+    pairs: 'homeTabBtn_pairs',
+    races: 'homeTabBtn_races',
+    dossier: 'homeTabBtn_dossier'
+  };
+  const targetBtn = btnEl || document.getElementById(mapBtnId[tabName] || 'homeTabBtn_reminders');
+  if (targetBtn && targetBtn.parentElement) {
+    targetBtn.parentElement.querySelectorAll('.sub-pill').forEach(b => b.classList.remove('active'));
+    targetBtn.classList.add('active');
   }
   renderHomeSubPanelContent();
+}
+
+function scrollHomeSubPanelIntoViewSmooth() {
+  setTimeout(() => {
+    const card = document.getElementById('homeBottomSubPanelCard');
+    if (card && typeof card.scrollIntoView === 'function') {
+      try {
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (e) {
+        card.scrollIntoView();
+      }
+    }
+  }, 60);
 }
 
 let showCompletedRemindersArchive = false;
@@ -2792,7 +2812,14 @@ function saveHomeItemFromModal() {
   }
 
   saveMypedigreData();
-  renderHomeSubPanelContent();
+  if (type && ['reminders', 'pairs', 'races', 'dossier'].includes(type)) {
+    switchHomeSubPanel(type);
+  } else {
+    renderHomeSubPanelContent();
+  }
+  if (typeof renderHomeMorningBriefingCard === 'function') {
+    renderHomeMorningBriefingCard();
+  }
   renderLoftBirdsDirectory();
   renderActivePedigree();
   if (typeof AvigenGenesisAI !== 'undefined') {
@@ -2804,6 +2831,8 @@ function saveHomeItemFromModal() {
   closeHomeItemModal();
   if (document.getElementById('birdDossierModal')?.classList.contains('open') && activeDossierRing) {
     openBirdDossierModal(activeDossierRing);
+  } else if (document.getElementById('page-home')?.classList.contains('active')) {
+    scrollHomeSubPanelIntoViewSmooth();
   }
 }
 
@@ -11238,16 +11267,16 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.6.2',
-    localBuild: 562,
-    remoteVersion: '5.6.2',
-    remoteBuild: 562,
-    remoteTitle: "AVIGEN v5.6.2 — Pedigri PDF İndirme & WhatsApp Dosya Paylaşımı Tam Düzeltmesi, Adım Adım Ana Menüye Dönen Geri Tuşu, WhatsApp Yedek Gönderimi & Takvim Günlük Yem/Suluk Programı",
+    localVersion: '5.6.3',
+    localBuild: 563,
+    remoteVersion: '5.6.3',
+    remoteBuild: 563,
+    remoteTitle: "AVIGEN v5.6.3 — Ana Sayfa Görevler / Takvim Tam Görünüm & Kaydırma Düzeltmesi, Pedigri PDF Paylaşımı & Android Geri Tuşu",
     remoteNotes: [
-      "Pedigri PDF İndir & WhatsApp Paylaş Ekranı Düzeltmesi: Açılan PDF sertifika ekranındaki 'WhatsApp'ta PDF Dosyası Paylaş', 'Cihaza PDF İndir / Kaydet', '1+2 Sayfa Sertifika Görselini Paylaş' ve 'A4 Yazdır / PDF Kaydet' butonları hem eski hem yeni APK'da %100 çalışır hale getirildi",
-      "Android Geri Tuşu Düzeltmesi: Geri tuşuna basıldığında direkt programdan çıkmaz; User-Gesture URL Hash (#adim-N) ve Native KeyEvent köprüsüyle önce açık pencereleri kapatır ve Ana Menüye (Ana Sayfa) döner, yalnızca Ana Menüdeyken basılırsa programdan çıkar",
-      "WhatsApp Yedek Gönderimi & Cihaza Yedek Kaydetme Düzeltmesi: WhatsApp bağlantı ve boyut limiti hatası giderildi; yedek dosyası WhatsApp'a ve telefon hafızasına sorunsuz aktarılır",
-      "Takvime Göre Günlük Yem & Suluk Programı: Ana sayfadaki yem ve içecek önerisi artık haftanın günlerine (Pzt..Paz) ve Takvimdeki aktif kümes gerekliliklerine (yarış, kuluçka/yavru, aşı/kür, tüy, kış) göre günlük reçete sunar"
+      "Ana Sayfa Görevler / Takvim Tam Görünüm Düzeltmesi: Ana sayfanın en altında kalan Görevler / Takvim kartının yüksekliği serbest bırakıldı; yeni görev eklendiğinde sayfa aşağı sıkışmaz, tüm görev başlıkları ve detay notları tam satır olarak görüntülenir ve otomatik olarak görünür alana kaydırılır",
+      "Pedigri PDF İndir & WhatsApp Paylaş Ekranı Düzeltmesi: Açılan PDF sertifika ekranındaki 'WhatsApp'ta PDF Dosyası Paylaş', 'Cihaza PDF İndir / Kaydet', '1+2 Sayfa Sertifika Görselini Paylaş' ve 'A4 Yazdır / PDF Kaydet' butonları hem eski hem yeni APK'da %100 çalışır",
+      "Android Geri Tuşu Düzeltmesi: Geri tuşuna basıldığında direkt programdan çıkmaz; önce açık pencereleri kapatır ve Ana Menüye (Ana Sayfa) döner, yalnızca Ana Menüdeyken basılırsa programdan çıkar",
+      "Takvime Göre Günlük Yem & Suluk Programı: Ana sayfadaki yem ve içecek önerisi haftanın günlerine (Pzt..Paz) ve Takvimdeki aktif kümes gerekliliklerine göre günlük reçete sunar"
     ],
     apkUrl: 'https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk',
     webUrl: 'https://hasanbenzer.github.io/avigen/',

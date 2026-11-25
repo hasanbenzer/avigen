@@ -308,7 +308,10 @@ body.dark-theme .nav-subtitle {
   display: none;
   flex-direction: column;
   gap: 10px;
-  height: 100%;
+  height: auto;
+  min-height: min-content;
+  flex-shrink: 0;
+  padding-bottom: 18px;
 }
 
 .ios-tab-page.active {
@@ -892,18 +895,18 @@ body.dark-theme .ai-answer-box {
   color: var(--ios-text);
   font-size: 11.5px;
   letter-spacing: -0.1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.32;
 }
 
 .dash-list-sub {
   font-size: 10px;
   font-weight: 500;
   color: var(--ios-subtext);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
   margin-top: 2px;
 }
 
@@ -2495,8 +2498,7 @@ body.cyber-ai-skin #homeCyber3x2Grid {
 /* 6. Kompakt Günlük Görev Alanı & Elektrik Mavisi / Gri Alt Navigasyon */
 .home-compact-tasks-card {
   padding: 9px 10px !important;
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
 }
@@ -2514,9 +2516,8 @@ body.cyber-ai-skin #homeCyber3x2Grid {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+  flex: 0 0 auto;
+  overflow: visible;
 }
 body.cyber-ai-skin .ios-card {
   background: linear-gradient(180deg, rgba(14, 29, 58, 0.9) 0%, rgba(9, 19, 40, 0.94) 100%);
