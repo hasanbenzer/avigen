@@ -5103,11 +5103,16 @@ function downloadVerifiedPedigreePdfFromVerifyPage() {
 
 function checkAndShowPedigreeQrVerifyModal() {
   try {
+    const hashStr = window.location.hash || '';
+    // Eğer harici Chrome PDF veya Yedek indirme köprüsü (#auto_ped_pdf= veya #auto_backup_dl=) çalışıyorsa QR Doğrulama Merkezini ASLA açma!
+    if (hashStr.includes('auto_ped_pdf=') || hashStr.includes('auto_backup_dl=')) return;
+
     const searchStr = window.location.search || '';
     if (!searchStr.includes('verify=1') && !searchStr.includes('v=')) return;
     const params = new URLSearchParams(searchStr);
     const vCompact = (params.get('v') || '').trim();
-    const isCacheBustOrVer = /^\d{9,15}$/.test(vCompact) || /^\d+\.\d+(\.\d+)?$/.test(vCompact);
+    // Sadece sayıdan oluşan (?v=562, ?v=573, ?v=1764000000) veya sürüm numarası (?v=5.7.3) olan önbellek parametrelerini QR kod sanma!
+    const isCacheBustOrVer = /^\d+$/.test(vCompact) || /^\d+\.\d+(\.\d+)?$/.test(vCompact) || !/[-~A-Za-z]/.test(vCompact) || vCompact.length < 4;
     const isVerify1 = params.get('verify') === '1';
     if (!isVerify1 && (!vCompact || isCacheBustOrVer)) return;
 
@@ -8555,10 +8560,65 @@ function openPedigreePdfInExternalChrome(ped, formatType = 'pdf') {
   const targetPed = ped || (_lastExportedPedigreeState && _lastExportedPedigreeState.ped) || getActivePedigree();
   const b64 = buildCompactPedigreeForUrlBridge(targetPed);
   if (!b64) return false;
-  // raw.githack.com Capacitor'un allowNavigation listesinde olmadığı için eski APK bile bu adresi %100 telefonun harici Android Chrome tarayıcısında açar!
-  const extUrl = `https://raw.githack.com/hasanbenzer/avigen/main/index.html?v=562#auto_ped_pdf=${encodeURIComponent(b64)}&fmt=${encodeURIComponent(formatType)}`;
+  // raw.githack.com Capacitor'un allowNavigation listesinde olmadığı için eski APK bile bu adresi %100 telefonun harici Android Chrome / Samsung tarayıcısında açar!
+  // ÖNEMLİ: "?v=..." KULLANILMAZ (QR doğrulama parametresiyle çakışmaması ve önbelleğe takılmaması için "?pdfbridge=..." kullanılır!)
+  const extUrl = `https://raw.githack.com/hasanbenzer/avigen/main/index.html?pdfbridge=${Date.now()}#auto_ped_pdf=${encodeURIComponent(b64)}&fmt=${encodeURIComponent(formatType)}`;
   openExternalUrlSafe(extUrl);
   return true;
+}
+
+function renderStandaloneExternalPdfSharePage(st) {
+  if (!st) return;
+  const helperBar = document.querySelector('.desktop-helper-bar');
+  const devStage = document.querySelector('.device-stage');
+  if (helperBar) helperBar.style.display = 'none';
+  if (devStage) devStage.style.display = 'none';
+  const qrPage = document.getElementById('avigenStandaloneQrVerifyPage');
+  if (qrPage) qrPage.style.display = 'none';
+
+  let bridgePage = document.getElementById('avigenExternalPdfShareBridgePage');
+  if (!bridgePage) {
+    bridgePage = document.createElement('div');
+    bridgePage.id = 'avigenExternalPdfShareBridgePage';
+    document.body.appendChild(bridgePage);
+  }
+  bridgePage.style.cssText = 'min-height:100vh; width:100%; background:linear-gradient(180deg,#090d16 0%,#0f172a 100%); color:#f8fafc; font-family:Inter,sans-serif; padding:14px 10px 36px 10px; box-sizing:border-box; overflow-y:auto;';
+
+  bridgePage.innerHTML = `
+    <div style="max-width:780px; margin:0 auto; display:flex; flex-direction:column; gap:12px;">
+      <div style="background:linear-gradient(135deg,#064e3b 0%,#0f172a 65%,#1e3a8a 100%); border:2px solid #10b981; border-radius:14px; padding:15px; text-align:center; box-shadow:0 8px 24px rgba(0,0,0,0.35);">
+        <div style="font-size:15px; font-weight:900; color:#6ee7b7; margin-bottom:4px;">
+          ✅ ${escapeHtml(st.ring)} — 2 Sayfa Resmi Pedigri PDF Dosyanız Hazır!
+        </div>
+        <div style="font-size:11px; color:#e2e8f0; line-height:1.45; margin-bottom:12px;">
+          2 sayfalık PDF sertifikanız (<strong>${escapeHtml(st.pdfFileName)}</strong>) telefonunuzun <strong>İndirilenler</strong> klasörüne indirildi. Şimdi aşağıdaki yeşil butona basarak doğrudan <strong>WhatsApp'ta PDF Dosyası olarak</strong> gönderebilirsiniz:
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; max-width:460px; margin:0 auto;">
+          <button type="button" class="ios-btn ios-btn-green" style="width:100%; padding:13px 16px; font-size:13px; font-weight:900; box-shadow:0 4px 14px rgba(16,185,129,0.4);" onclick="shareExportedPedigreeFromAssistModal('pdf')">
+            📲 WhatsApp'ı Aç ve 2 Sayfa PDF Dosyasını Gönder
+          </button>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <button type="button" class="ios-btn ios-btn-primary" style="padding:10px; font-size:11px; font-weight:900;" onclick="triggerBlobFileDownload(_lastExportedPedigreeState.pdfBlob, _lastExportedPedigreeState.pdfFileName)">
+              📄 PDF Dosyasını Tekrar İndir
+            </button>
+            <button type="button" class="ios-btn ios-btn-outline" style="padding:10px; font-size:11px; font-weight:800; background:rgba(255,255,255,0.1); color:#fff; border-color:#93c5fd;" onclick="shareExportedPedigreeFromAssistModal('png')">
+              🖼️ Resim (JPG) Olarak Paylaş
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#ffffff; color:#0f172a; border:2px solid #1d4ed8; border-radius:14px; padding:12px;">
+        <div style="font-size:12px; font-weight:900; color:#1e3a8a; margin-bottom:8px;">
+          📜 1. Sayfa (4 Kuşak FCI Soyağacı) &amp; 2. Sayfa (Performans ve Sicil) Önizlemesi
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <img src="${st.pngDataUrl}" alt="Sayfa 1" style="width:100%; height:auto; border-radius:8px; border:1px solid #cbd5e1;" />
+          ${st.page2PngDataUrl ? `<img src="${st.page2PngDataUrl}" alt="Sayfa 2" style="width:100%; height:auto; border-radius:8px; border:1px solid #cbd5e1;" />` : ''}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function checkAndRunAutoExternalPdfBridge() {
@@ -8602,7 +8662,7 @@ function checkAndRunAutoExternalPdfBridge() {
 
     setTimeout(() => {
       const st = preparePedigreeExportAssetsSync(activePedigreeId);
-      // Harici Android Chrome içinde olduğumuz için gerçek 2 Sayfalık .PDF dosyasını anında İndirilenler'e indir!
+      // Harici Android Chrome / Samsung Tarayıcı içinde olduğumuz için gerçek 2 Sayfalık .PDF dosyasını anında İndirilenler'e indir ve Tam Ekran Paylaşım Sayfasını göster!
       if (fmt === 'png') {
         triggerBlobFileDownload(st.pngBlob, st.pngFileName, st.pngDataUrl);
         if (st.page2PngBlob) {
@@ -8611,8 +8671,8 @@ function checkAndRunAutoExternalPdfBridge() {
       } else {
         triggerBlobFileDownload(st.pdfBlob, st.pdfFileName);
       }
-      openPedigreeExportAssistModal('2 Sayfa PDF İndirildi — WhatsApp Dosya Paylaş');
-    }, 250);
+      renderStandaloneExternalPdfSharePage(st);
+    }, 150);
   } catch (e) {}
 }
 
@@ -12871,11 +12931,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.7.2',
-    localBuild: 572,
-    remoteVersion: '5.7.2',
-    remoteBuild: 572,
-    remoteTitle: "AVIGEN v5.7.2 — Android Geri Tuşu Kademeli Menü Koruması (Uygulamayı Kapatmaz) & Detaylı API Anahtarı / Kullanım Rehberi",
+    localVersion: '5.7.3',
+    localBuild: 573,
+    remoteVersion: '5.7.3',
+    remoteBuild: 573,
+    remoteTitle: "AVIGEN v5.7.3 — Samsung / Android Harici Tarayıcı WhatsApp 2 Sayfa PDF Paylaşım Köprüsü Düzeltmesi (?v=562 Çakışması Giderildi)",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
