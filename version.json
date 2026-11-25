@@ -1,12 +1,12 @@
 {
-  "version": "5.7.0",
-  "build": 570,
+  "version": "5.7.1",
+  "build": 571,
   "releaseDate": "2026-11-25",
-  "title": "AVIGEN v5.7.0 — WhatsApp Doğrudan Yedek Dosyası Paylaşımı (Karakter Sınırı Olmadan Gerçek Dosya Eki)",
+  "title": "AVIGEN v5.7.1 — Uygulama İçi 'Kayıtlı Yedeklerim' Tek Tuşla Geri Yükleme Kasası & Android Görünür .TXT Yedek Belgesi",
   "notes": [
-    "WhatsApp Doğrudan Yedek Dosyası Gönderimi: 'WhatsApp'a Yedek Dosyası Gönder' butonu artık karakter sınırına takılan uzun sohbet metni GÖNDERMEZ; yedeği doğrudan gerçek belge dosyası (.txt / .json) olarak WhatsApp'a ekler",
-    "Masaüstü ve Eski Tarayıcı Desteği: Doğrudan dosya paylaşımı olmayan masaüstü tarayıcılarda yedek dosyasını anında İndirilenler klasörüne dosya olarak indirir",
-    "Çift Formatlı (.JSON & .TXT) Yedek Geri Yükleme: WhatsApp üzerinden gelen .txt veya .json uzantılı yedek dosyalarının tamamı tek tuşla geri yüklenir",
+    "Uygulama İçi 'Bu Telefonda Kayıtlı Yedeklerim' Kasası: Telefonun klasörlerinde hiç dosya aramadan, doğrudan uygulama ekranındaki yedek listesinden '🔄 Tek Tuşla Yükle' butonuyla 1 saniyede geri yükleme",
+    "Android 'Dosyalarım -> Belgeler & İndirilenler'de Görünür .TXT Yedek Formatı: Android dosya yöneticilerinin gizlediği .json yerine en üstte görünen standart .txt belgesi olarak yedek indirme",
+    "WhatsApp Doğrudan Yedek Dosyası Gönderimi: Karakter sınırına takılmadan yedeği doğrudan belge dosyası olarak WhatsApp'a ekleme",
     "25/25 Otomatik Sistem, Yol Haritası & Bilimsel Doğruluk Testi, 90 Gün Ücretsiz Tam Sürüm ve Anti-Cheat Kilit 1-2 aktif"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",

@@ -6246,12 +6246,135 @@ function restoreBackupFromPastedText() {
   }
 }
 
-function openAndroidBackupAssistModal(autoCopied = false) {
+// ============================================================================
+// UYGULAMA İÇİ KALICI YEDEK KASASI (ANDROID'DE DOSYA ARAMADAN TEK TUŞLA GERİ YÜKLEME)
+// ============================================================================
+const AVIGEN_INAPP_BACKUP_VAULT_KEY = 'avigen_inapp_backup_vault_v1';
+
+function getInAppBackupVaultList() {
+  let list = [];
+  try {
+    const raw = localStorage.getItem(AVIGEN_INAPP_BACKUP_VAULT_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed;
+    }
+  } catch (e) {}
+
+  // Eğer kasada henüz kayıt yoksa ama otomatik güvenlik yedeği varsa onu da ilk sırada göster
+  if (list.length === 0) {
+    try {
+      const autoRaw = localStorage.getItem('avigen_auto_safety_snapshot_v1');
+      if (autoRaw) {
+        const autoData = JSON.parse(autoRaw);
+        if (autoData && Array.isArray(autoData.pedigrees)) {
+          const dt = autoData.exportedAt ? new Date(autoData.exportedAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Son Otomatik Yedek';
+          list.push({
+            id: 'auto_safety_v1',
+            dateLabel: dt,
+            tag: 'Otomatik Güvenlik Yedeği',
+            loftTitle: autoData.loftConfig?.title || 'AVIGEN Kümesi',
+            birdCnt: autoData.pedigrees.length,
+            pairCnt: Array.isArray(autoData.activePairsList) ? autoData.activePairsList.length : 0,
+            raceCnt: Array.isArray(autoData.race_tracking_events) ? autoData.race_tracking_events.length : 0,
+            payload: autoData
+          });
+        }
+      }
+    } catch (e) {}
+  }
+  return list;
+}
+
+function saveCurrentLoftToInAppVault(customTag = 'Kayıtlı Yedek') {
+  try {
+    const payload = buildFullAvigenSnapshotPayload();
+    const compactJson = JSON.stringify(payload);
+    try {
+      localStorage.setItem('avigen_auto_safety_snapshot_v1', compactJson);
+    } catch (e) {}
+
+    const dateLabel = new Date().toLocaleString('tr-TR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const birdCnt = Array.isArray(payload.pedigrees) ? payload.pedigrees.length : 0;
+    const pairCnt = Array.isArray(payload.activePairsList) ? payload.activePairsList.length : 0;
+    const raceCnt = Array.isArray(payload.race_tracking_events) ? payload.race_tracking_events.length : 0;
+
+    let existing = [];
+    try {
+      const raw = localStorage.getItem(AVIGEN_INAPP_BACKUP_VAULT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) existing = parsed.filter(x => x && x.id !== 'auto_safety_v1');
+      }
+    } catch (e) {}
+
+    const newEntry = {
+      id: 'vault_' + Date.now(),
+      dateLabel,
+      tag: customTag,
+      loftTitle: loftConfig.title || 'AVIGEN Kümesi',
+      birdCnt,
+      pairCnt,
+      raceCnt,
+      payload
+    };
+
+    const updated = [newEntry, ...existing].slice(0, 4);
+    try {
+      localStorage.setItem(AVIGEN_INAPP_BACKUP_VAULT_KEY, JSON.stringify(updated));
+    } catch (quotaErr) {
+      // localStorage kotası dolarsa yalnızca son 2 tam yedeği sakla
+      try {
+        localStorage.setItem(AVIGEN_INAPP_BACKUP_VAULT_KEY, JSON.stringify(updated.slice(0, 2)));
+      } catch (e2) {}
+    }
+    return newEntry;
+  } catch (e) {
+    return null;
+  }
+}
+
+function restoreBackupFromInAppVault(vaultId) {
+  const list = getInAppBackupVaultList();
+  const found = list.find(x => x && x.id === vaultId);
+  if (!found || !found.payload) {
+    alert('⚠️ Seçilen yedek kaydı bulunamadı.');
+    return;
+  }
+  if (!confirm(`🔄 "${found.dateLabel}" tarihli (${found.birdCnt} Güvercin • ${found.pairCnt} Yuva) kümes yedeğinizi şimdi geri yüklemek istiyor musunuz?`)) {
+    return;
+  }
+  applyRestoredBackupDataObject(found.payload);
+}
+
+function deleteBackupFromInAppVault(vaultId) {
+  try {
+    const raw = localStorage.getItem(AVIGEN_INAPP_BACKUP_VAULT_KEY);
+    if (!raw) return;
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return;
+    const filtered = list.filter(x => x && x.id !== vaultId);
+    localStorage.setItem(AVIGEN_INAPP_BACKUP_VAULT_KEY, JSON.stringify(filtered));
+    openAndroidBackupAssistModal(false);
+  } catch (e) {}
+}
+
+function openAndroidBackupAssistModal(autoCopied = false, savedFileNotice = '') {
   const payload = buildFullAvigenSnapshotPayload();
   const jsonStr = JSON.stringify(payload);
   const birdCnt = Array.isArray(payload.pedigrees) ? payload.pedigrees.length : 0;
   const pairCnt = Array.isArray(payload.activePairsList) ? payload.activePairsList.length : 0;
   const raceCnt = Array.isArray(payload.race_tracking_events) ? payload.race_tracking_events.length : 0;
+  const safeName = (loftConfig.title || 'AVIGEN').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const dateTag = new Date().toISOString().slice(0, 10);
+  const txtFileName = `${safeName}_Tam_Yedek_${dateTag}.txt`;
+  const vaultList = getInAppBackupVaultList();
 
   let modal = document.getElementById('avigenBackupAssistModal');
   if (!modal) {
@@ -6275,39 +6398,87 @@ function openAndroidBackupAssistModal(autoCopied = false) {
       <div style="display:flex; flex-direction:column; gap:8px; font-size:10.5px;">
         <div style="background:#ecfdf5; border:1.5px solid #6ee7b7; border-radius:9px; padding:8px 10px; color:#065f46; line-height:1.4;">
           ✅ <strong>Aktif Kümes Verisi:</strong> <strong>${birdCnt} Güvercin / Pedigri</strong> • <strong>${pairCnt} Yuva</strong> • <strong>${raceCnt} Yarış</strong>
-          ${autoCopied ? `<br/><span style="color:#047857; font-weight:800;">📋 Yedek kodunuz telefonunuzun panosuna otomatik kopyalandı!</span>` : ''}
+          ${autoCopied ? `<br/><span style="color:#047857; font-weight:800;">📦 Yedeğiniz aşağıdaki "Bu Telefonda Kayıtlı Yedeklerim" kasasına ve panoya otomatik kaydedildi!</span>` : ''}
+          ${savedFileNotice ? `<br/><span style="color:#0052cc; font-weight:900;">📁 İndirilen Dosya Yeri: Dosyalarım → Belgeler veya İndirilenler → ${escapeHtml(savedFileNotice)}</span>` : ''}
         </div>
 
-        <!-- 1. BÖLÜM: YEDEĞİ İNDİR / WHATSAPP'A GÖNDER / KOPYALA -->
+        <!-- 1. BÖLÜM: TELEFONDA HİÇ DOSYA ARAMADAN TEK TUŞLA YEDEK KASASI (EN PRATİK ANDROID ÇÖZÜMÜ) -->
+        <div style="background:linear-gradient(135deg,#f0fdf4,#eff6ff); border:2px solid #10b981; border-radius:10px; padding:9px 10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:900; color:#065f46; font-size:11.2px;">
+                📱 1️⃣ Bu Telefonda Kayıtlı Yedeklerim (Dosya Aramadan Tek Tuşla Yükle)
+              </div>
+              <div style="font-size:9.2px; color:#047857;">
+                Telefon klasörlerinde dosya aramanıza gerek yoktur! Kayıtlı yedekleriniz burada saklanır:
+              </div>
+            </div>
+            <button type="button" class="ios-btn ios-btn-green" style="padding:5px 9px; font-size:9.5px; font-weight:900; flex-shrink:0;" onclick="saveCurrentLoftToInAppVault('Manuel Kasa Yedeği'); openAndroidBackupAssistModal(true);">
+              ➕ Şimdi Kasaya Yedekle
+            </button>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:5px; max-height:145px; overflow-y:auto;">
+            ${vaultList.length > 0 ? vaultList.map((v, idx) => `
+              <div style="background:#ffffff; border:1px solid #a7f3d0; border-left:3.5px solid #059669; border-radius:8px; padding:6px 8px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                <div style="min-width:0; flex:1;">
+                  <div style="font-weight:900; font-size:10.3px; color:#0f172a;">
+                    📦 Yedek #${idx + 1} — ${escapeHtml(v.dateLabel)}
+                  </div>
+                  <div style="font-size:9px; color:#475569;">
+                    <strong>${v.birdCnt} Kuş</strong> • ${v.pairCnt} Yuva • ${v.raceCnt} Yarış (${escapeHtml(v.tag || 'Tam Yedek')})
+                  </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+                  <button type="button" class="ios-btn ios-btn-primary" style="padding:5px 9px; font-size:9.5px; font-weight:900;" onclick="restoreBackupFromInAppVault('${escapeHtml(v.id)}')">
+                    🔄 Tek Tuşla Yükle
+                  </button>
+                  ${v.id !== 'auto_safety_v1' ? `
+                    <button type="button" class="ios-btn ios-btn-outline" style="padding:4px 6px; font-size:9px; color:#dc2626; border-color:#fecaca;" onclick="deleteBackupFromInAppVault('${escapeHtml(v.id)}')" title="Bu Yedeği Sil">✕</button>
+                  ` : ''}
+                </div>
+              </div>
+            `).join('') : `
+              <div style="background:#ffffff; border:1px dashed #6ee7b7; border-radius:8px; padding:8px; text-align:center; font-size:9.8px; color:#065f46;">
+                Henüz kayıtlı kasa yedeği yok. Yukarıdaki <strong>"➕ Şimdi Kasaya Yedekle"</strong> butonuna basarak anında kaydedebilirsiniz.
+              </div>
+            `}
+          </div>
+        </div>
+
+        <!-- 2. BÖLÜM: WHATSAPP'A DOSYA GÖNDER VEYA TELEFONA GÖRÜNÜR .TXT BELGESİ İNDİR -->
         <div style="background:var(--ios-card-alt); border:1.5px solid #93c5fd; border-radius:10px; padding:9px 10px;">
-          <div style="font-weight:900; color:#0052cc; font-size:11px; margin-bottom:6px;">
-            1️⃣ Kümes Yedeğini Al (Dosya İndir / WhatsApp / Kopyala)
+          <div style="font-weight:900; color:#0052cc; font-size:11px; margin-bottom:4px;">
+            2️⃣ Başka Telefona / WhatsApp'a Yedek Dosyası Gönder veya İndir
+          </div>
+          <div style="font-size:9.1px; color:var(--ios-subtext); margin-bottom:6px; line-height:1.35;">
+            Android telefonlarda <strong>"Dosyalarım → Belgeler ve İndirilenler"</strong> içinde en üstte görünmesi için yedek dosyası <strong><code>${escapeHtml(txtFileName)}</code></strong> (.TXT Belgesi) olarak kaydedilir:
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
-            <button type="button" class="ios-btn ios-btn-green" style="padding:10px 6px; font-size:10.5px; font-weight:900;" onclick="shareFullAvigenBackupViaWhatsApp()">
+            <button type="button" class="ios-btn ios-btn-green" style="padding:10px 6px; font-size:10.3px; font-weight:900;" onclick="shareFullAvigenBackupViaWhatsApp()">
               📲 WhatsApp'a Yedek Dosyası Gönder
             </button>
-            <button type="button" class="ios-btn ios-btn-primary" style="padding:10px 6px; font-size:10.5px; font-weight:900;" onclick="saveBackupJsonFileDirectToDevice()">
-              ⬇️ Cihaza .JSON Dosya Kaydet
+            <button type="button" class="ios-btn ios-btn-primary" style="padding:10px 6px; font-size:10.3px; font-weight:900;" onclick="saveBackupJsonFileDirectToDevice()">
+              ⬇️ Telefona Belge (.TXT) İndir
             </button>
           </div>
-          <button type="button" class="ios-btn ios-btn-outline" style="width:100%; padding:8px 6px; font-size:10px; font-weight:900; margin-bottom:6px;" onclick="copyTextToClipboardSafe(document.getElementById('avigenRawBackupCodeBox')?.value, '✅ Tüm kümes yedek kodunuz panoya kopyalandı!')">
+          <button type="button" class="ios-btn ios-btn-outline" style="width:100%; padding:7px 6px; font-size:9.8px; font-weight:900; margin-bottom:5px;" onclick="copyTextToClipboardSafe(document.getElementById('avigenRawBackupCodeBox')?.value, '✅ Tüm kümes yedek kodunuz panoya kopyalandı!')">
             📋 Yedek Kodunu Panoya Kopyala
           </button>
-          <textarea id="avigenRawBackupCodeBox" class="ios-textarea" rows="2" readonly onclick="this.select()" style="font-size:9px; font-family:monospace; background:var(--ios-card); color:var(--ios-subtext);">${escapeHtml(jsonStr)}</textarea>
+          <textarea id="avigenRawBackupCodeBox" class="ios-textarea" rows="2" readonly onclick="this.select()" style="font-size:8.8px; font-family:monospace; background:var(--ios-card); color:var(--ios-subtext);">${escapeHtml(jsonStr)}</textarea>
         </div>
 
-        <!-- 2. BÖLÜM: YEDEĞİ GERİ YÜKLE (DOSYA SEÇ VEYA KOD YAPIŞTIR) -->
+        <!-- 3. BÖLÜM: WHATSAPP'TAN VEYA DOSYALARDAN GELEN YEDEK DOSYASINI SEÇ VEYA KOD YAPIŞTIR -->
         <div style="background:var(--ios-card-alt); border:1.5px solid #c4b5fd; border-radius:10px; padding:9px 10px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <span style="font-weight:900; color:#5b21b6; font-size:11px;">2️⃣ Yedeği Geri Yükle (Dosya Seç veya Kod Yapıştır)</span>
+            <span style="font-weight:900; color:#5b21b6; font-size:11px;">3️⃣ Dışarıdan Dosya Seç (.TXT / .JSON) veya Kod Yapıştır</span>
             <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 8px; font-size:9px; font-weight:900; color:#5b21b6; border-color:#c4b5fd;" onclick="(async()=>{const el=document.getElementById('avigenBackupPasteInput');if(!el)return;if(navigator.clipboard&&navigator.clipboard.readText){try{const t=await navigator.clipboard.readText();if(t&&t.trim()){el.value=t.trim();return;}}catch(e){}}el.focus();})()">
               📋 Kutuya Yapıştır
             </button>
           </div>
           <label class="ios-btn ios-btn-primary" style="width:100%; box-sizing:border-box; padding:10px 8px; font-size:10.8px; font-weight:900; cursor:pointer; text-align:center; display:flex; align-items:center; justify-content:center; margin-bottom:7px;">
-            📁 Telefondan Yedek Dosyası (.JSON / .TXT) Seç &amp; Yükle
-            <input type="file" accept=".json,.txt,application/json,text/plain" style="display:none;" onchange="importFullAvigenBackup(event)" />
+            📁 Telefondan Yedek Dosyası (.TXT / .JSON) Seç &amp; Yükle
+            <input type="file" accept=".txt,.json,text/plain,application/json" style="display:none;" onchange="importFullAvigenBackup(event)" />
           </label>
           <textarea id="avigenBackupPasteInput" class="ios-textarea" rows="2" placeholder="Veya kopyaladığınız yedek kodunu buraya yapıştırıp alttaki butona basın..." style="font-size:10px; margin-bottom:6px;"></textarea>
           <div style="display:grid; grid-template-columns:1.25fr 1fr; gap:6px;">
@@ -6391,83 +6562,75 @@ async function saveBackupJsonFileDirectToDevice() {
   const jsonStr = JSON.stringify(payload, null, 2);
   const compactJson = JSON.stringify(payload);
   const safeName = (loftConfig.title || 'AVIGEN').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const fileName = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
-  const birdCnt = Array.isArray(payload.pedigrees) ? payload.pedigrees.length : 0;
+  const dateTag = new Date().toISOString().slice(0, 10);
+  // Android "Dosyalarım -> Belgeler & İndirilenler" ekranında gizlenmeden en üstte görünmesi için .txt (Metin Belgesi) olarak kaydedilir
+  const txtFileName = `${safeName}_Tam_Yedek_${dateTag}.txt`;
 
-  // 1. Panoya ve yerel güvenlik deposuna %100 kaydet
-  await copyTextToClipboardSafe(compactJson);
-  try {
-    localStorage.setItem('avigen_auto_safety_snapshot_v1', compactJson);
-  } catch (e) {}
+  // 1. Önce Uygulama İçi Yedek Kasasına (1-Tuşla Geri Yükleme Listesine) kaydet (User Gesture'ı bozmamak için senkron!)
+  saveCurrentLoftToInAppVault('Telefona Kaydedilen Yedek');
 
-  // 2. Yeni Android APK (AvigenNativeBridge) varsa doğrudan İndirilenler (Downloads) klasörüne gerçek .JSON dosyası olarak kaydet
+  // 2. Yeni Android APK (AvigenNativeBridge) varsa doğrudan İndirilenler (Downloads) klasörüne görünür .TXT belgesi olarak kaydet
   if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.saveBase64FileToDownloads === 'function') {
     try {
       const b64 = encodeUtf8ToBase64Safe(jsonStr);
       if (b64) {
-        window.AvigenNativeBridge.saveBase64FileToDownloads(b64, fileName, 'application/json');
+        window.AvigenNativeBridge.saveBase64FileToDownloads(b64, txtFileName, 'text/plain');
+        openAndroidBackupAssistModal(true, txtFileName);
         return;
       }
     } catch (e) {}
   }
 
-  const blob = new Blob([jsonStr], { type: 'application/json' });
-  const backupFile = new File([blob], fileName, { type: 'application/json', lastModified: Date.now() });
+  const txtBlob = new Blob([jsonStr], { type: 'text/plain;charset=utf-8' });
+  const txtFile = new File([txtBlob], txtFileName, { type: 'text/plain', lastModified: Date.now() });
 
-  // 3. Web Share API dosya paylaşımı destekliyorsa (iOS Safari / Chrome) sistem kaydetme ekranını aç
+  // 3. Mobil / APK ortamında Web Share API dosya paylaşımı destekliyorsa sistem "Dosyalara Kaydet / Drive / WhatsApp" ekranını aç
   if (isCapacitorAndroidApk() && navigator.share) {
     try {
       await navigator.share({
-        files: [backupFile],
-        title: `${loftConfig.title || 'AVIGEN'} Tam Kümes Yedeği (.JSON)`
+        files: [txtFile],
+        title: `${loftConfig.title || 'AVIGEN'} Tam Kümes Yedeği (.TXT Belgesi)`
       });
+      openAndroidBackupAssistModal(true, txtFileName);
       return;
     } catch (err) {
       if (err && err.name === 'AbortError') return;
     }
   }
 
-  // 4. Eski APK WebView içindeysek dış Chrome köprüsüyle .JSON dosyasını İndirilenler'e indir veya panoya kopyalandığını bildir
-  if (isCapacitorAndroidApk()) {
-    const slimJson = buildUserOnlyCompactBackupJson(payload);
-    if (slimJson && slimJson.length <= 6500) {
-      const b64 = encodeURIComponent(encodeUtf8ToBase64Safe(slimJson));
-      const extChromeUrl = `https://raw.githack.com/hasanbenzer/avigen/main/index.html?v=562#auto_backup_dl=${b64}`;
-      openExternalUrlSafe(extChromeUrl);
-    }
-    alert(`✅ Kümes yedeğiniz (${birdCnt} güvercin) telefonunuzun panosuna kopyalandı ve güvenlik deposuna kaydedildi!\n\nİsterseniz WhatsApp veya Notlar uygulamasına basılı tutup "Yapıştır" diyerek de saklayabilirsiniz.`);
-    return;
-  }
-
-  const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
-  triggerBlobFileDownload(blob, fileName, dataUrl);
+  // 4. Web / Masaüstü / Mobil Tarayıcıda doğrudan .TXT belgesi olarak İndirilenler'e indir
+  const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(jsonStr);
+  triggerBlobFileDownload(txtBlob, txtFileName, dataUrl);
+  await copyTextToClipboardSafe(compactJson);
+  openAndroidBackupAssistModal(true, txtFileName);
 }
 
 async function exportFullAvigenBackup() {
   const payload = buildFullAvigenSnapshotPayload();
   const jsonStr = JSON.stringify(payload, null, 2);
   const safeName = (loftConfig.title || 'AVIGEN').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const fileName = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
+  const txtFileName = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.txt`;
 
-  // 1. Panoya otomatik kopyala
-  await copyTextToClipboardSafe(JSON.stringify(payload));
+  // 1. Uygulama İçi Yedek Kasasına (1-Tuşla Geri Yükleme Listesine) kaydet
+  saveCurrentLoftToInAppVault('Hızlı Kümes Yedeği');
 
-  // 2. Yeni Android APK içindeysek doğrudan İndirilenler klasörüne de kaydet, Web'deysek dosya indir
+  // 2. Yeni Android APK içindeysek doğrudan İndirilenler klasörüne .TXT belgesi olarak kaydet, Web'deysek dosya indir
   if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.saveBase64FileToDownloads === 'function') {
     try {
       const b64 = encodeUtf8ToBase64Safe(jsonStr);
       if (b64) {
-        window.AvigenNativeBridge.saveBase64FileToDownloads(b64, fileName, 'application/json');
+        window.AvigenNativeBridge.saveBase64FileToDownloads(b64, txtFileName, 'text/plain');
       }
     } catch (e) {}
   } else if (!isCapacitorAndroidApk()) {
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
-    triggerBlobFileDownload(blob, fileName, dataUrl);
+    const blob = new Blob([jsonStr], { type: 'text/plain;charset=utf-8' });
+    const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(jsonStr);
+    triggerBlobFileDownload(blob, txtFileName, dataUrl);
   }
 
-  // 3. Tek Merkez Yedekleme & Geri Yükleme Penceresini aç
-  openAndroidBackupAssistModal(true);
+  // 3. Panoya otomatik kopyala ve Tek Merkez Yedekleme & Geri Yükleme Penceresini aç
+  await copyTextToClipboardSafe(JSON.stringify(payload));
+  openAndroidBackupAssistModal(true, txtFileName);
 }
 
 // AVIGEN — Tek Tuşla Kümes Yedeğini Doğrudan DOSYA OLARAK (Asla Uzun Metin Göndermeden ve Karakter Sınırına Takılmadan!) WhatsApp, Drive veya Dosyalara Paylaşma
@@ -6480,9 +6643,8 @@ async function shareFullAvigenBackupViaWhatsApp() {
   const jsonFileName = `${safeName}_Tam_Yedek_${dateTag}.json`;
   const txtFileName = `${safeName}_Tam_Yedek_${dateTag}.txt`;
 
-  try {
-    localStorage.setItem('avigen_auto_safety_snapshot_v1', compactJson);
-  } catch (e) {}
+  // 0. Uygulama İçi Yedek Kasasına da senkron olarak kaydet
+  saveCurrentLoftToInAppVault('WhatsApp Yedek Dosyası');
 
   // 1. Yeni Android APK (AvigenNativeBridge) varsa gerçek yedek dosyasını doğrudan WhatsApp'a BELGE DOSYASI eki olarak gönder
   if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.shareBase64File === 'function') {
@@ -6491,8 +6653,8 @@ async function shareFullAvigenBackupViaWhatsApp() {
       if (b64) {
         window.AvigenNativeBridge.shareBase64File(
           b64,
-          jsonFileName,
-          'application/octet-stream',
+          txtFileName,
+          'text/plain',
           `${loftConfig.title || 'AVIGEN'} Tam Kümes Yedek Dosyası`
         );
         return;
@@ -6501,8 +6663,6 @@ async function shareFullAvigenBackupViaWhatsApp() {
   }
 
   // 2. Web Share API Level 2 (Gerçek Dosya Paylaşımı — User Gesture düşmemesi için öncesinde await KULLANILMAZ ve ASLA metin paylaşımına düşmez!)
-  // Not: Chromium/Android Chrome güvenlik politikası gereği navigator.share({files}) içinde 'application/json' (.json) uzantısını reddedip
-  // 'text/plain' (.txt) ve 'application/pdf' (.pdf) dosyalarına %100 izin verir. Bu yüzden canShare ile önce .json, kabul edilmezse .txt dosyası olarak gerçek dosya eki paylaşılır.
   const jsonBlob = new Blob([jsonStr], { type: 'application/json' });
   const txtBlob = new Blob([jsonStr], { type: 'text/plain;charset=utf-8' });
   const jsonFile = new File([jsonBlob], jsonFileName, { type: 'application/json', lastModified: Date.now() });
@@ -6511,10 +6671,10 @@ async function shareFullAvigenBackupViaWhatsApp() {
   if (navigator.share) {
     let filesToShare = [txtFile];
     try {
-      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [jsonFile] })) {
-        filesToShare = [jsonFile];
-      } else if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [txtFile] })) {
+      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [txtFile] })) {
         filesToShare = [txtFile];
+      } else if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [jsonFile] })) {
+        filesToShare = [jsonFile];
       }
     } catch (e) {
       filesToShare = [txtFile];
@@ -6528,38 +6688,27 @@ async function shareFullAvigenBackupViaWhatsApp() {
       return;
     } catch (err) {
       if (err && err.name === 'AbortError') return;
-      // İlk deneme .json ile başarısız olduysa .txt (text/plain) dosyası olarak tekrar dene
-      if (filesToShare[0] !== txtFile) {
-        try {
-          await navigator.share({
-            files: [txtFile],
-            title: `${loftConfig.title || 'AVIGEN'} Tam Kümes Yedek Dosyası`
-          });
-          return;
-        } catch (err2) {
-          if (err2 && err2.name === 'AbortError') return;
-        }
-      }
     }
   }
 
   // 3. Masaüstü bilgisayar veya doğrudan dosya paylaşımını desteklemeyen eski tarayıcıdaysak:
-  // ASLA WhatsApp sohbetine uzun metin gönderme! Bunun yerine yedek dosyasını doğrudan İndirilenler'e indir.
+  // ASLA WhatsApp sohbetine uzun metin gönderme! Bunun yerine yedek dosyasını (.TXT) doğrudan İndirilenler'e indir.
   if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.saveBase64FileToDownloads === 'function') {
     try {
       const b64 = encodeUtf8ToBase64Safe(jsonStr);
       if (b64) {
-        window.AvigenNativeBridge.saveBase64FileToDownloads(b64, jsonFileName, 'application/json');
+        window.AvigenNativeBridge.saveBase64FileToDownloads(b64, txtFileName, 'text/plain');
       }
     } catch (e) {}
   } else {
-    const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
-    triggerBlobFileDownload(jsonBlob, jsonFileName, dataUrl);
+    const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(jsonStr);
+    triggerBlobFileDownload(txtBlob, txtFileName, dataUrl);
   }
   await copyTextToClipboardSafe(compactJson);
+  openAndroidBackupAssistModal(true, txtFileName);
   alert(
-    `📄 Kümes Yedek Dosyanız ("${jsonFileName}") cihazınızın İndirilenler klasörüne DOSYA olarak indirildi!\n\n` +
-    `WhatsApp'ta göndermek istediğiniz sohbete girip 📎 (Ataç / Ekle) -> "Belge (Document)" seçeneğinden bu dosyayı seçerek hiçbir karakter sınırına takılmadan doğrudan dosya olarak gönderebilirsiniz.`
+    `📄 Kümes Yedek Dosyanız ("${txtFileName}") hem uygulama içi "Kayıtlı Yedeklerim" kasasına hem de cihazınızın İndirilenler / Belgeler klasörüne DOSYA olarak kaydedildi!\n\n` +
+    `WhatsApp'ta göndermek istediğiniz sohbete girip 📎 (Ataç / Ekle) -> "Belge (Document)" seçeneğinden "${txtFileName}" dosyasını seçerek hiçbir karakter sınırına takılmadan gönderebilirsiniz.`
   );
 }
 
@@ -8419,8 +8568,8 @@ function checkAndRunAutoExternalPdfBridge() {
       const b64Param = decodeURIComponent(hash.replace('#auto_backup_dl=', '').split('&')[0] || '');
       const jsonText = decodeBase64ToUtf8Safe(b64Param);
       if (jsonText && jsonText.trim().startsWith('{')) {
-        const fileName = `AVIGEN_Kumes_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
-        const blob = new Blob([jsonText], { type: 'application/json' });
+        const fileName = `AVIGEN_Kumes_Yedek_${new Date().toISOString().slice(0, 10)}.txt`;
+        const blob = new Blob([jsonText], { type: 'text/plain;charset=utf-8' });
         triggerBlobFileDownload(blob, fileName);
       }
       return;
@@ -12624,11 +12773,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.7.0',
-    localBuild: 570,
-    remoteVersion: '5.7.0',
-    remoteBuild: 570,
-    remoteTitle: "AVIGEN v5.7.0 — WhatsApp Doğrudan Yedek Dosyası Paylaşımı (Karakter Sınırı Olmadan Gerçek Dosya Eki)",
+    localVersion: '5.7.1',
+    localBuild: 571,
+    remoteVersion: '5.7.1',
+    remoteBuild: 571,
+    remoteTitle: "AVIGEN v5.7.1 — Uygulama İçi 'Kayıtlı Yedeklerim' Tek Tuşla Geri Yükleme Kasası & Android Görünür .TXT Yedek Belgesi",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
