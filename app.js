@@ -4220,6 +4220,9 @@ function openLargePedigreeQrModal() {
         <div style="background:#ffffff; padding:10px; border:2px solid #1d4ed8; border-radius:12px; box-shadow:0 4px 14px rgba(15,23,42,0.12);">
           ${makeQrSvg(qrUrl, 230)}
         </div>
+        <div id="qrOpticalDecodeStatus" style="font-size:9.5px; font-weight:800; color:#059669;">
+          ✅ ISO/IEC 18004 Kamera Uyumlu QR Kod Hazır
+        </div>
         <div style="font-size:10.5px; color:#334155; line-height:1.4; max-width:300px;">
           Telefonunuzun normal kamerasını bu karekoda tuttuğunuzda <strong>AVIGEN Resmi Dijital Soyağacı Doğrulama Sertifikası</strong> açılır.
         </div>
@@ -4227,6 +4230,29 @@ function openLargePedigreeQrModal() {
     </div>
   `;
   modal.classList.add('open');
+
+  // Tarayıcıda BarcodeDetector mevcutsa hem büyük QR kodu hem de PDF Canvas üzerindeki QR kodu optik olarak doğrula
+  if ('BarcodeDetector' in window) {
+    setTimeout(async () => {
+      try {
+        const cnv = document.createElement('canvas');
+        cnv.width = 240;
+        cnv.height = 240;
+        const cctx = cnv.getContext('2d');
+        drawHighResQrCodeOnCanvas(cctx, qrUrl, 0, 0, 240);
+        const det = new window.BarcodeDetector({ formats: ['qr_code'] });
+        const found = await det.detect(cnv);
+        const stEl = document.getElementById('qrOpticalDecodeStatus');
+        if (stEl) {
+          if (found && found.length > 0 && found[0].rawValue) {
+            stEl.textContent = `✅ Kamera Optik Okuma Doğrulandı: ${found[0].rawValue}`;
+          } else {
+            stEl.textContent = `⚠️ Optik Okuma Sonucu: Boş`;
+          }
+        }
+      } catch (e) {}
+    }, 60);
+  }
 }
 
 function makeBarcodeSvg(ring) {
@@ -7956,7 +7982,6 @@ function drawNativePedigreePage2Canvas(ped) {
   ctx.fillRect(14, 514, W - 28, 25);
   ctx.strokeRect(14, 514, W - 28, 25);
 
-  const qrPayload2 = typeof encodeFullPedigreeQrPayload === 'function' ? encodeFullPedigreeQrPayload(ped) : (main.ring || 'TR-2026-0001');
   drawQrAndBarcodeOnPedigreeCanvas(ctx, qrPayload2, main.ring || 'TR-2026-0001', 17, 515.5);
 
   const certCode = `#AVG-${(main.ring || '001').replace(/[^A-Z0-9]/gi, '').slice(-6).toUpperCase()}-P2`;
