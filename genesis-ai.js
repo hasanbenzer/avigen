@@ -16,7 +16,7 @@ const GENESIS_HISTORY_STORAGE_KEY = 'avigen_genesis_analysis_history_v1';
 const AvigenGenesisAI = {
   state: {
     isPremiumActive: false,
-    planName: 'AVIGEN FREE',
+    planName: 'AVIGEN STANDART',
     viewStage: 'launcher', // 'launcher' (Kare Bento Kartlar) | 'tool' (Seçilen Analiz Çalışma Ekranı) | 'history' (Geçmiş Analizler)
     activeMode: 'breeding', // 'breeding' | 'smart_race' | 'nutrition'
     selectedRacerPedId: '',
@@ -5493,7 +5493,7 @@ const AvigenGenesisAI = {
         <div class="genesis-paywall-card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <span class="gene-badge gene-purple">🧬 AVIGEN GENESIS AI</span>
-            <span style="font-size:10.5px; color:#cbd5e1; font-weight:700;">AVIGEN FREE Sürümü</span>
+            <span style="font-size:10.5px; color:#cbd5e1; font-weight:700;">AVIGEN STANDART Sürümü</span>
           </div>
           <div style="display:flex; align-items:center; gap:11px; margin-bottom:8px;">
             <img src="avigen-logo.svg" style="width:46px; height:46px; background:#fff; padding:4px; border-radius:13px; flex-shrink:0;" />

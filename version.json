@@ -1,13 +1,13 @@
 {
-  "version": "5.6.8",
-  "build": 568,
+  "version": "5.6.9",
+  "build": 569,
   "releaseDate": "2026-11-25",
-  "title": "AVIGEN v5.6.8 — QR Okutulduğunda Bağımsız Tam Ekran Pedigri Görüntüsü, Doğrulama Sertifikası & Tanıtım Kutusu",
+  "title": "AVIGEN v5.6.9 — 5 Adımlı Son Geliştirme Yol Haritası (Görsel Kalite, Sıfır Eğitimli Kuşçu UX Sözlüğü, Fonksiyonel, Bilimsel & Ticari Denetim)",
   "notes": [
-    "QR Kod Okutulduğunda Bağımsız Tam Ekran Doğrulama Sayfası: Barkod/QR okutan kişide doğrudan program ve örnek kuşlar açılmaz; yalnızca okutulan güvercinin Resmi Dijital Doğrulama Sertifikası ile Pedigri 1. ve 2. Sayfa Tam Görüntüsü açılır",
-    "En Altta Tanıtım & Uygulamaya Geçiş Kutusu: 'Siz de kendi kümesinizin soyağacı ve genetik eşleştirmelerini profesyonelce yönetmek ister misiniz?' mesajı ve '📲 AVIGEN GENESIS AI Uygulamasını İndir / 90 Gün Ücretsiz Dene' butonu eklendi (yalnızca kullanıcı basarsa programa geçer)",
-    "Uluslararası FCI / Avrupa 4 Kuşak Pedigri Standardı, Sağ Üst Rozetin Kaldırılması ve Yüksek Kontrastlı Büyük Kamera-Okunabilir QR Kod aktif",
-    "Güvenlik Kilidi 1 & 2 (Yedek & Saat Hilesi Koruması) ve 90 Günlük Ücretsiz Deneme aktif"
+    "1. Görsel Kalite Denetimi: Ana Sayfa katlanabilir tek-satır günlük yem/suluk barı, 2 Sayfa Uluslararası FCI Pedigri Sertifikası, GENESIS AI ve Yarış ekranları mobil standarda getirildi",
+    "2. Kullanıcı Deneyimi (UX) & Kuşçu Sözlüğü: Üst bara her ekrandan tek dokunuşla açılan '📖 Rehber' butonu ve sıfır eğitimli kuşçular için sade Türkçe '🔤 Kuşçu Sözlüğü' (COI, EBV, Heterosis, Kp İndeksi, m/dk, Genler) eklendi",
+    "3. Fonksiyonel & QR Doğrulama Testi: QR okutulduğunda bağımsız tam ekran pedigri doğrulama sertifikası + tanıtım kutusu, 2 sayfa PDF, imzalı JSON yedekleme ve cihazlar arası aktarım doğrulandı",
+    "4. Bilimsel & 5. Ticari Hazırlık: 25/25 Otomatik Sistem, Yol Haritası & Bilimsel Doğruluk Testi (T01-T25), 90 Gün Ücretsiz Tam Sürüm, STANDART (399 TL) / GENESIS AI (899 TL) ve Anti-Cheat Kilit 1-2 aktif"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"

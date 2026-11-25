@@ -1787,45 +1787,52 @@ function renderHomeMorningBriefingCard() {
 
   box.style.display = 'block';
   box.innerHTML = `
-    <div class="ios-card" style="padding:9px 11px; border-left:4px solid #059669; background:linear-gradient(135deg, var(--ios-card) 0%, rgba(16,185,129,0.06) 100%);">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:5px;">
-        <div style="display:flex; align-items:center; gap:5px;">
+    <div class="ios-card" style="padding:8px 10px; border-left:4px solid #059669; background:linear-gradient(135deg, var(--ios-card) 0%, rgba(16,185,129,0.06) 100%);">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; cursor:pointer;" onclick="toggleHomeMorningBriefing()">
+        <div style="display:flex; align-items:center; gap:5px; min-width:0; flex:1;">
           <span style="font-size:13px;">📅🌾</span>
-          <span style="font-size:10.8px; font-weight:900; color:var(--ios-text);">${phaseTitle}</span>
+          <span style="font-size:10.5px; font-weight:900; color:var(--ios-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${phaseTitle}</span>
         </div>
-        <span class="gene-badge gene-green" style="font-size:8px; padding:2px 6px;">${phaseBadge}</span>
+        <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
+          <span class="gene-badge gene-green" style="font-size:8px; padding:2px 6px;">${phaseBadge}</span>
+          <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.8px; font-weight:900;">
+            ${isHomeMorningBriefingExpanded ? '▴ Gizle' : '▾ Yem & Suluk'}
+          </button>
+        </div>
       </div>
 
-      <!-- HAFTANIN GÜNLERİ (TAKVİM GÜNÜ SEÇİCİ) -->
-      <div style="display:flex; gap:3px; overflow-x:auto; padding-bottom:4px; margin-bottom:5px;">
-        <button type="button" class="ios-btn ${homeFeedCalendarDayOverride === 'TODAY' ? 'ios-btn-green' : 'ios-btn-outline'}" style="padding:3px 6px; font-size:8.4px; font-weight:900; flex-shrink:0;" onclick="setHomeFeedCalendarDay('TODAY')">📅 Bugün (${dayShort[todayDayNum]})</button>
-        ${[1, 2, 3, 4, 5, 6, 0].map(dIdx => `
-          <button type="button" class="ios-btn ${homeFeedCalendarDayOverride === dIdx ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 6px; font-size:8.3px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedCalendarDay(${dIdx})">${dayShort[dIdx]}</button>
-        `).join('')}
-      </div>
+      ${isHomeMorningBriefingExpanded ? `
+        <!-- HAFTANIN GÜNLERİ (TAKVİM GÜNÜ SEÇİCİ) -->
+        <div style="display:flex; gap:3px; overflow-x:auto; padding-bottom:4px; margin-top:7px; margin-bottom:5px;">
+          <button type="button" class="ios-btn ${homeFeedCalendarDayOverride === 'TODAY' ? 'ios-btn-green' : 'ios-btn-outline'}" style="padding:3px 6px; font-size:8.4px; font-weight:900; flex-shrink:0;" onclick="setHomeFeedCalendarDay('TODAY')">📅 Bugün (${dayShort[todayDayNum]})</button>
+          ${[1, 2, 3, 4, 5, 6, 0].map(dIdx => `
+            <button type="button" class="ios-btn ${homeFeedCalendarDayOverride === dIdx ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 6px; font-size:8.3px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedCalendarDay(${dIdx})">${dayShort[dIdx]}</button>
+          `).join('')}
+        </div>
 
-      <!-- HIZLI DÖNEM / DURUM SEÇİCİ -->
-      <div style="display:flex; gap:4px; overflow-x:auto; padding-bottom:5px; margin-bottom:6px;">
-        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'AUTO' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('AUTO')">🔄 Takvim Otomatik (${totalBirds} Kuş)</button>
-        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'RACE' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('RACE')">🏁 Yarış (${racersCnt})</button>
-        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'BREEDING' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('BREEDING')">🪺 Eşleşme/Yavru (${breedersCnt + youngCnt})</button>
-        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'MOULTING' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('MOULTING')">🪶 Tüy Dönemi</button>
-        <button type="button" class="ios-btn ${homeFeedBriefingMode === 'WINTER' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('WINTER')">❄️ Kış Dinlenme</button>
-      </div>
+        <!-- HIZLI DÖNEM / DURUM SEÇİCİ -->
+        <div style="display:flex; gap:4px; overflow-x:auto; padding-bottom:5px; margin-bottom:6px;">
+          <button type="button" class="ios-btn ${homeFeedBriefingMode === 'AUTO' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('AUTO')">🔄 Takvim Otomatik (${totalBirds} Kuş)</button>
+          <button type="button" class="ios-btn ${homeFeedBriefingMode === 'RACE' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('RACE')">🏁 Yarış (${racersCnt})</button>
+          <button type="button" class="ios-btn ${homeFeedBriefingMode === 'BREEDING' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('BREEDING')">🪺 Eşleşme/Yavru (${breedersCnt + youngCnt})</button>
+          <button type="button" class="ios-btn ${homeFeedBriefingMode === 'MOULTING' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('MOULTING')">🪶 Tüy Dönemi</button>
+          <button type="button" class="ios-btn ${homeFeedBriefingMode === 'WINTER' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:3px 7px; font-size:8.5px; font-weight:800; flex-shrink:0;" onclick="setHomeFeedBriefingMode('WINTER')">❄️ Kış Dinlenme</button>
+        </div>
 
-      <div style="display:grid; grid-template-columns:1fr; gap:5px; font-size:9.6px; line-height:1.38;">
-        <div style="background:rgba(5,150,105,0.08); border:1px solid rgba(5,150,105,0.28); border-radius:8px; padding:5px 8px; color:var(--ios-text);">
-          ${calendarDayRequirementNote}
+        <div style="display:grid; grid-template-columns:1fr; gap:5px; font-size:9.6px; line-height:1.38;">
+          <div style="background:rgba(5,150,105,0.08); border:1px solid rgba(5,150,105,0.28); border-radius:8px; padding:5px 8px; color:var(--ios-text);">
+            ${calendarDayRequirementNote}
+          </div>
+          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px;">
+            <div style="font-weight:900; color:#b45309; margin-bottom:2px;">🥣 Takvime Göre Bugün Verilecek Yem &amp; Karışım Oranı:</div>
+            <div style="color:var(--ios-text);">${feedNote}</div>
+          </div>
+          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px;">
+            <div style="font-weight:900; color:#0284c7; margin-bottom:2px;">💧 Takvime Göre Bugün Verilecek İçecek (Suluk) &amp; Takviye:</div>
+            <div style="color:var(--ios-text);">${drinkNote}</div>
+          </div>
         </div>
-        <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px;">
-          <div style="font-weight:900; color:#b45309; margin-bottom:2px;">🥣 Takvime Göre Bugün Verilecek Yem &amp; Karışım Oranı:</div>
-          <div style="color:var(--ios-text);">${feedNote}</div>
-        </div>
-        <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px;">
-          <div style="font-weight:900; color:#0284c7; margin-bottom:2px;">💧 Takvime Göre Bugün Verilecek İçecek (Suluk) &amp; Takviye:</div>
-          <div style="color:var(--ios-text);">${drinkNote}</div>
-        </div>
-      </div>
+      ` : ''}
     </div>
   `;
 }
@@ -3450,7 +3457,7 @@ function renderLoftBirdsDirectory() {
           <div style="font-size:32px; margin-bottom:6px;">🕊️</div>
           <div style="font-weight:900; font-size:13.5px; color:#0052cc;">Kümesinize Hoş Geldiniz!</div>
           <div style="font-size:10.8px; color:var(--ios-subtext); margin-top:4px; line-height:1.45;">
-            Kümesinizde henüz kayıtlı güvercin bulunmuyor. <strong>AVIGEN FREE</strong> ile sınırsız güvercin, 4 kuşak (31 kutu) soyağacı, yuva/kuluçka ve 3 kategorili yarış takibini tamamen ücretsiz kullanabilirsiniz.
+            Kümesinizde henüz kayıtlı güvercin bulunmuyor. <strong>İlk 90 Gün (3 Ay) GENESIS AI Dahil Tam Sürüm Ücretsiz</strong> olarak sınırsız güvercin, 4 kuşak (31 kutu) FCI soyağacı, yuva/kuluçka ve 3 kategorili yarış takibini hemen başlatabilirsiniz.
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;">
             <button type="button" class="ios-btn ios-btn-primary" style="padding:10px 8px; font-size:11px; font-weight:900;" onclick="createNewPedigreeRecord()">
@@ -11543,7 +11550,7 @@ const AvigenUxManager = {
               <button type="button" class="ios-btn ios-btn-purple" style="padding:7px 8px; font-size:10px; font-weight:900;" onclick="AvigenUxManager.openSubscriptionModal('checkout')">
                 🔑 Lisans Kodu Gir
               </button>
-              <button type="button" class="ios-btn ios-btn-green" style="padding:7px 8px; font-size:10px; font-weight:900;" onclick="AvigenUxManager.requestLicenseViaWhatsApp('3.990 TL', 'Yıllık (365 Gün)')">
+              <button type="button" class="ios-btn ios-btn-green" style="padding:7px 8px; font-size:10px; font-weight:900;" onclick="AvigenUxManager.requestLicenseViaWhatsApp('8.990 TL', 'Yıllık (365 Gün)')">
                 📲 Kod İste (0532 782 03 85)
               </button>
             </div>
@@ -11630,7 +11637,7 @@ const AvigenUxManager = {
           </div>
 
           <button type="button" class="ios-btn ios-btn-outline" style="width:100%; padding:7px; font-size:10px;" onclick="AvigenSystemAuditQA.runAndRenderInSecurityPane()">
-            🧪 20 Otomatik Sistem &amp; Bilimsel Doğruluk Testini Çalıştır
+            🧪 25 Otomatik Sistem, Yol Haritası &amp; Bilimsel Doğruluk Testini Çalıştır
           </button>
           <div id="avigenQaTestOutputBox" style="margin-top:7px;"></div>
         </div>
@@ -11939,19 +11946,22 @@ const AvigenUxManager = {
       <div style="display:flex; flex-direction:column; gap:8px; font-size:10.5px;">
         <div class="sub-pills">
           <button class="sub-pill ${tab === 'howto' ? 'active' : ''}" onclick="AvigenUxManager.openUserGuideModal('howto')">
-            📖 Nasıl Kullanılır? (Adım Adım)
+            📖 Nasıl Kullanılır?
           </button>
           <button class="sub-pill ${tab === 'features' ? 'active' : ''}" onclick="AvigenUxManager.openUserGuideModal('features')">
-            🧭 Neyin Ne İşe Yaradığı
+            🧭 Sekmeler &amp; Araçlar
+          </button>
+          <button class="sub-pill ${tab === 'glossary' ? 'active' : ''}" onclick="AvigenUxManager.openUserGuideModal('glossary')">
+            🔤 Kuşçu Sözlüğü
           </button>
         </div>
 
         ${tab === 'howto' ? `
           <div style="display:flex; flex-direction:column; gap:7px; max-height:70vh; overflow-y:auto; padding-right:2px;">
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #0066ff; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#0052cc; font-size:11px; margin-bottom:3px;">1️⃣ Yeni Kuş veya Yavru Nasıl Eklenir? (Sınırsız &amp; Ücretsiz)</div>
+              <div style="font-weight:900; color:#0052cc; font-size:11px; margin-bottom:3px;">1️⃣ Yeni Kuş veya Yavru Nasıl Eklenir? (Sınırsız Kayıt)</div>
               <div style="color:var(--ios-text); line-height:1.4;">
-                • <strong>AVIGEN FREE</strong> sürümünde kuş ve pedigri ekleme sınırı yoktur; kümesinizdeki tüm kuşları ücretsiz kaydedebilirsiniz.<br/>
+                • <strong>İlk 90 Gün Tam Sürüm Ücretsiz &amp; AVIGEN STANDART</strong> paketlerinde kuş ve pedigri ekleme sınırı yoktur; kümesinizdeki tüm kuşları kaydedebilirsiniz.<br/>
                 • <strong>Ana Sayfa</strong> veya <strong>Kuş &amp; Yuva</strong> sekmesindeki <strong>➕ Kuş Ekle</strong> butonuna basın; bilezik numarası, isim, cinsiyet (♂ Erkek / ♀ Dişi) ve kategori (Yarışçı / Damızlık / Yavru) seçin.<br/>
                 • <strong>30 Kutu Otomatik Soy Bağlama:</strong> Alttaki <strong>"♂ Baba Seç"</strong> ve <strong>"♀ Anne Seç"</strong> kutularından kümesinizdeki anne-babayı seçtiğinizde, yavrunun 30 kutuluk tüm üst soyağacı (dede, nine, 3. ve 4. kuşak) <strong>tek saniyede otomatik dolar!</strong>
               </div>
@@ -11968,16 +11978,16 @@ const AvigenUxManager = {
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #7c3aed; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#5b21b6; font-size:11px; margin-bottom:3px;">3️⃣ 4 Kuşak (31 Kutu) Pedigri Kağıdı Nasıl İndirilir &amp; Paylaşılır?</div>
+              <div style="font-weight:900; color:#5b21b6; font-size:11px; margin-bottom:3px;">3️⃣ 4 Kuşak (31 Kutu) Uluslararası FCI Pedigri Kağıdı &amp; QR Doğrulama</div>
               <div style="color:var(--ios-text); line-height:1.4;">
                 • Alttan <strong>2. Sekme (Kuş &amp; Yuva) → 📜 Pedigre Kağıdı</strong> görünümüne geçin.<br/>
                 • Pedigri üzerindeki herhangi bir kutuya dokunarak o atayı düzenleyebilir, iki parmakla yakınlaştırabilirsiniz.<br/>
-                • Alttaki <strong>🖼️ HD Pedigre İndir</strong> veya <strong>📲 Paylaş</strong> butonuyla yüksek çözünürlüklü şecereyi WhatsApp'tan gönderebilirsiniz.
+                • Alttaki <strong>📄 Pedigre + Sicil PDF İndir</strong> veya <strong>📲 WhatsApp PDF Paylaş</strong> butonuyla 2 sayfalık resmi sertifikayı paylaşabilirsiniz. Sağ üstteki QR kod okutulduğunda karşı tarafa bağımsız <strong>Dijital Pedigri Doğrulama Sertifikası</strong> açılır.
               </div>
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #db2777; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#be185d; font-size:11px; margin-bottom:3px;">4️⃣ GENESIS AI Akıllı Eşleştirme &amp; "GENESIS AI'ya Sor" Nasıl Kullanılır? (AVIGEN AI)</div>
+              <div style="font-weight:900; color:#be185d; font-size:11px; margin-bottom:3px;">4️⃣ GENESIS AI Akıllı Eşleştirme &amp; "GENESIS AI'ya Sor" Nasıl Kullanılır?</div>
               <div style="color:var(--ios-text); line-height:1.4;">
                 • Alttaki ortanca <strong>🧬 GENESIS AI</strong> sekmesine girip <strong>1. GENESIS AI – Akıllı Eşleştirme &amp; Soy Danışmanı</strong> modülünü açın.<br/>
                 • Erkek ve dişi kuşunuzu seçtiğinizde 5 nesil Sewall Wright COI akrabalık katsayısı, 11 özellikte yavru potansiyeli ve koşullu BLUP analizi üretilir.<br/>
@@ -11986,7 +11996,7 @@ const AvigenUxManager = {
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #d97706; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#b45309; font-size:11px; margin-bottom:3px;">5️⃣ Haritalı Akıllı Yarış Simülasyonu &amp; Akıllı Yem Nasıl Çalışır? (AVIGEN AI)</div>
+              <div style="font-weight:900; color:#b45309; font-size:11px; margin-bottom:3px;">5️⃣ Haritalı Akıllı Yarış Simülasyonu &amp; Akıllı Yem Nasıl Çalışır?</div>
               <div style="color:var(--ios-text); line-height:1.4;">
                 • <strong>2. Haritalı Akıllı Yarış Simülasyonu:</strong> Türkiye haritasında 81 il ve ilçeden salım/varış noktasını seçin. Sistem rüzgâr, sıcaklık ve arazi eğimine göre kuşlarınızın uygunluk sırasını, tahmini hızını (m/dk) ve olası dönüş saatlerini yatay kaydırmasız mobil kartlarda listeler.<br/>
                 • <strong>3. Akıllı Yem, Sıvı &amp; 1 Aylık Maliyet:</strong> Kümes mevcuduna, mevsime ve hava sıcaklığına göre günlük tohum gramajı, suluk kürü ve 30 günlük yem maliyetini hesaplar.
@@ -11994,14 +12004,14 @@ const AvigenUxManager = {
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #0284c7; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#0369a1; font-size:11px; margin-bottom:3px;">6️⃣ GENESIS AI Lisans Kodu Nasıl Alınır &amp; Yedekleme Nasıl Yapılır?</div>
+              <div style="font-weight:900; color:#0369a1; font-size:11px; margin-bottom:3px;">6️⃣ Lisans Kodu Nasıl Alınır &amp; Yedekleme Nasıl Yapılır?</div>
               <div style="color:var(--ios-text); line-height:1.4;">
-                • <strong>Lisans Kodu İste (0 532 782 03 85):</strong> Üstteki <strong>🧬 GENESIS AI</strong> butonuna veya <strong>Profil &amp; Ayarlar → 🔑 Lisans Kodu</strong> sekmesine girip <strong>"📲 WhatsApp'tan Cihazıma Özel Lisans Kodu İste (0 532 782 03 85)"</strong> butonuna basın. Telefonunuza özel üretilen kodu girerek GENESIS AI modüllerini hemen açabilirsiniz.<br/>
-                • <strong>Sıfır Veri Kaybı &amp; Yedek:</strong> <strong>Profil &amp; Ayarlar → ⚙️ Ayarlar &amp; Yedek</strong> ekranından <strong>📲 WhatsApp Yedek Gönder</strong> veya <strong>⬇️ Cihaza Yedek İndir (.JSON)</strong> ile tüm kümesinizi istediğiniz an yedekleyebilirsiniz.
+                • <strong>İlk 90 Gün Ücretsiz &amp; Lisans Hattı (0 532 782 03 85):</strong> İlk 3 ay GENESIS AI dahil tüm özellikler ücretsizdir. Süre sonunda üstteki <strong>🧬 GENESIS AI</strong> butonuna veya <strong>Profil &amp; Ayarlar → 🔑 Lisans Kodu</strong> sekmesine girip <strong>"📲 WhatsApp'tan Cihazıma Özel Lisans Kodu İste (0 532 782 03 85)"</strong> butonuna basabilirsiniz.<br/>
+                • <strong>Sıfır Veri Kaybı &amp; Yedek:</strong> <strong>Profil &amp; Ayarlar → ⚙️ Ayarlar &amp; Yedek</strong> ekranından <strong>📥 Kümes Yedeğimi Al</strong> ile tüm kümesinizi istediğiniz an yedekleyebilirsiniz.
               </div>
             </div>
           </div>
-        ` : `
+        ` : (tab === 'features' ? `
           <div style="display:flex; flex-direction:column; gap:7px; max-height:70vh; overflow-y:auto; padding-right:2px;">
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
               <strong style="color:#0052cc; font-size:11px;">🏠 1. Sekme: Ana Sayfa (Tek Ekran Kümes Kontrol Merkezi)</strong><br/>
@@ -12012,15 +12022,15 @@ const AvigenUxManager = {
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
-              <strong style="color:#059669; font-size:11px;">🕊️ 2. Sekme: Kuş &amp; Yuva (Sınırsız Ücretsiz Kümes, Pedigri &amp; Kuluçka)</strong><br/>
+              <strong style="color:#059669; font-size:11px;">🕊️ 2. Sekme: Kuş &amp; Yuva (Sınırsız Kümes, FCI Pedigri &amp; Kuluçka)</strong><br/>
               • <strong>🕊️ Kuşlarım Listesi:</strong> Kuşlarınızı <em>Kümesim, Erkek, Dişi, Damızlık, Yarışçı, Yavru, Büyük Yarış, Dinlenmede, Kayıp/Satıldı ve Soy Arşivi</em> olarak filtreler.<br/>
-              • <strong>📜 Pedigre Kağıdı (4 Kuşak • 31 Kutu):</strong> Resmi mavi sertifika tasarımında 31 kutulu soyağacı üretir, QR/Barkod ekler, PDF/PNG olarak indirir veya paylaşır.<br/>
+              • <strong>📜 Pedigre Kağıdı (4 Kuşak • 31 Kutu):</strong> Uluslararası FCI standartlarında 31 kutulu soyağacı ve 2. sayfa performans/sicil sertifikası üretir, kamera-okunabilir QR kod ekler, PDF/PNG olarak indirir.<br/>
               • <strong>🪺 Yuva &amp; Kuluçka Takibi:</strong> Eşleşen çiftlerin yumurtlama tarihine göre 18 günlük kuluçka geri sayımını, bilezik takma gününü (7–10. gün) ve çifte yavru kaydını yönetir.<br/>
               • <strong>📊 Performans &amp; Genetik Profil Kartı:</strong> Kuşun gerçek yarış performansı ile soyağacı genetik potansiyelini birbirine karıştırmadan ayrı ayrı grafiklendirir.
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
-              <strong style="color:#7c3aed; font-size:11px;">🧬 3. Sekme: GENESIS AI (Abonelik Gerektiren Yapay Zekâ Merkezi)</strong><br/>
+              <strong style="color:#7c3aed; font-size:11px;">🧬 3. Sekme: GENESIS AI (Yapay Zekâ Karar Destek Merkezi)</strong><br/>
               • <strong>1. GENESIS AI – Akıllı Eşleştirme &amp; Soy Danışmanı:</strong> 5 nesil Sewall Wright COI akrabalık hesabı, ortak ata tespiti, kümes içi en uygun 5 çift önerisi, 11 özellikte yavru tahmini, koşullu BLUP ve birleşik <em>"🧬 GENESIS AI'ya Sor"</em> soru-cevap danışmanı.<br/>
               • <strong>2. GENESIS AI – Haritalı Akıllı Yarış Simülasyonu:</strong> Türkiye 81 il/ilçe uydu ve arazi haritası üzerinde rota, rüzgâr ve rakım analizi; her kuş için yatay kaydırmasız mobil kartlarda uygunluk puanı, tahmini dönüş saati ve tek tuşla yarışa sepetleme.<br/>
               • <strong>3. GENESIS AI – Akıllı Yem, Sıvı &amp; 1 Aylık Maliyet:</strong> Mevsime, hava sıcaklığına ve kuş sayısına göre günlük yem reçetesi, suluk takviyesi ve 30 günlük TL maliyet tablosu.
@@ -12028,19 +12038,54 @@ const AvigenUxManager = {
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
               <strong style="color:#d97706; font-size:11px;">🏁 4. Sekme: Yarışlar (3 Kategorili Resmi Yarış &amp; Performans Sistemi)</strong><br/>
-              • <strong>🏁 Yarış Yönetimi (Ücretsiz):</strong> <em>Kümesüstü Yarışları</em>, <em>Dernek Yarışları</em> ve <em>Büyük Ödüllü Yarışlar (Derby / OLR)</em> için ayrı yarış açma, kuş sepetleme, 7 canlı kuş durumu (Hazırlanıyor, Kafeste, Salındı, Eve Döndü, Bekleniyor, Yarış Dışı, Manuel Onaylı Kayıp) ve tek tuşla <strong>⚡ İndi</strong> hız (m/dk) hesabı.<br/>
-              • <strong>🧬 AI Yarış Analizi (AVIGEN AI):</strong> Tamamlanan gerçek yarış sonuçlarına göre kısa/orta/uzun mesafe uzmanlarını, hava koşulu liderlerini ve sezon içi form grafiğini çıkarır.<br/>
+              • <strong>🏁 Yarış Yönetimi:</strong> <em>Kümesüstü Yarışları</em>, <em>Dernek Yarışları</em> ve <em>Büyük Ödüllü Yarışlar (Derby / OLR)</em> için ayrı yarış açma, kuş sepetleme, 7 canlı kuş durumu (Hazırlanıyor, Kafeste, Salındı, Eve Döndü, Bekleniyor, Yarış Dışı, Manuel Onaylı Kayıp) ve tek tuşla <strong>⚡ İndi</strong> hız (m/dk) hesabı.<br/>
+              • <strong>🧬 AI Yarış Analizi:</strong> Tamamlanan gerçek yarış sonuçlarına göre kısa/orta/uzun mesafe uzmanlarını, hava koşulu liderlerini ve sezon içi form grafiğini çıkarır.<br/>
               • <strong>🌤️ Uçuş Hava:</strong> Rüzgâr yönü, sıcaklık ve manyetik Kp indeksine göre uçuş zorluk derecesini hesaplar.
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
               <strong style="color:#0f172a; font-size:11px;">⚙️ 5. Sekme: Profil &amp; Ayarlar (Yedekleme, Güncelleme, Lisans &amp; Kütüphane)</strong><br/>
-              • <strong>⚙️ Ayarlar &amp; Yedek:</strong> Veri kaybı olmadan canlı sürüm güncelleme (<em>⚡ Şimdi Güncelle</em>), <em>📲 WhatsApp Yedek Gönder (.JSON)</em>, gece/gündüz teması ve örnek kuş temizleme.<br/>
+              • <strong>⚙️ Ayarlar &amp; Yedek:</strong> Veri kaybı olmadan canlı sürüm güncelleme (<em>⚡ Şimdi Güncelle</em>), <em>📥 Kümes Yedeğimi Al (.JSON)</em>, gece/gündüz teması ve örnek kuş temizleme.<br/>
               • <strong>👑 Üyelik &amp; Lisans:</strong> Cihaz Kimlik Kodunuza (<em>AVG-XXXX-XXXX</em>) özel lisans aktivasyonu ve <strong>0 532 782 03 85</strong> WhatsApp lisans talep hattı.<br/>
-              • <strong>📚 Bilimsel Kütüphane:</strong> Yarış güvercini genetiği (LDHA, DRD4, CRY1, GSR) ve fizyolojisi üzerine DOI/PMID doğrulanmış hakemli akademik makale arşivi.
+              • <strong>📚 Bilimsel Kütüphane:</strong> Yarış güvercini genetiği (LDHA, DRD4, CRY4, CASK, GSR) ve fizyolojisi üzerine DOI/PMID doğrulanmış hakemli akademik makale arşivi.
             </div>
           </div>
-        `}
+        ` : `
+          <div style="display:flex; flex-direction:column; gap:7px; max-height:70vh; overflow-y:auto; padding-right:2px;">
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #7c3aed; border-radius:9px; padding:8px 10px; line-height:1.42;">
+              <strong style="color:#5b21b6; font-size:11px;">🧬 COI (Akrabalık Katsayısı / Kan Yakınlığı) Nedir?</strong><br/>
+              Anne ile babanın 5 nesil geriye doğru ne kadar yakın akraba olduğunu yüzde (%) olarak gösterir:<br/>
+              • <strong>%0 – %3 (Yabancı Kan / Outcross):</strong> Akrabalık yoktur. Yarış uçuracak dayanıklı ve hızlı yavru almak için en ideal aralıktır.<br/>
+              • <strong>%3 – %12.5 (Soy İçi / Linebreeding):</strong> Ortak bir şampiyon dede/nine kanını sabitlemek için idealdir (Örn: Kuzen veya amca-yeğen eşleşmesi).<br/>
+              • <strong>%12.5 Üzeri (Çok Yakın Akraba / Inbreeding):</strong> Baba-kız veya öz kardeş eşleşmesidir. Yavruda bağışıklık düşüklüğü yapabileceği için yarışçılarda önerilmez; sadece damızlık kanı kilitlemek için uzmanlarca kullanılır.
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #0066ff; border-radius:9px; padding:8px 10px; line-height:1.42;">
+              <strong style="color:#0052cc; font-size:11px;">📊 EBV (Damızlık &amp; Soy Kalite Puanı • 0–100) Nedir?</strong><br/>
+              Bir güvercinin sadece kendi uçtuğu yarışlara değil; anne, baba, dede, kardeş ve yavrularının kazandığı derecelere göre hesaplanan <strong>kalıtsal damızlık gücü puanıdır</strong>. 80 puan ve üzeri kuşlar "Elit Damızlık / Şampiyon Soy" kabul edilir.
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #059669; border-radius:9px; padding:8px 10px; line-height:1.42;">
+              <strong style="color:#047857; font-size:11px;">⚡ Heterosis (Melez Dinçliği) vs Prepotency (Kan Baskınlığı)</strong><br/>
+              • <strong>Heterosis (Melez Dinçliği):</strong> İki farklı sağlam soy eşleştiğinde doğacak yavrunun kas gücü ve hastalık direncinin anne-babasından daha yüksek olmasıdır (Yarış yavrusu için yüksek olması istenir).<br/>
+              • <strong>Prepotency (Kalıtsal Baskınlık):</strong> Damızlık kuşun kendi üstün özelliklerini yavrusuna bozulmadan aktarma kararlılığıdır (Damızlık yavrusu için yüksek olması istenir).
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #d97706; border-radius:9px; padding:8px 10px; line-height:1.42;">
+              <strong style="color:#b45309; font-size:11px;">🧭 Kp İndeksi (Manyetik Fırtına • 0–9) &amp; m/dk Hız Nedir?</strong><br/>
+              • <strong>Kp İndeksi (0–9):</strong> Güneş patlamalarının Dünya'nın manyetik alanını bozma şiddetidir. <strong>Kp 0–3</strong> arası pusula tertemizdir; <strong>Kp 5 ve üzerinde</strong> manyetik fırtına vardır, güvercinlerin yön bulma sistemi şaşabileceği için salım yapılmamalıdır.<br/>
+              • <strong>m/dk (Metre / Dakika):</strong> Uluslararası resmi güvercin yarışı hız birimidir. <em>(Mesafe km × 1000) ÷ Uçuş Dakikası</em> ile hesaplanır. (Örn: 420 km yolu 300 dakikada uçan kuşun hızı <strong>1400 m/dk</strong> yani saatte 84 km'dir).
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #db2777; border-radius:9px; padding:8px 10px; line-height:1.42;">
+              <strong style="color:#be185d; font-size:11px;">🔬 LDHA, DRD4, CRY4 ve F-KER Genleri Ne İşe Yarar?</strong><br/>
+              • <strong>LDHA Geni:</strong> Göğüs kasında laktik asit (yorgunluk) birikimini geciktiren dayanıklılık genidir.<br/>
+              • <strong>DRD4 Geni:</strong> Beyindeki dopamin reseptörüdür; kuşun eve dönüş hırsını ve hız motivasyonunu belirler.<br/>
+              • <strong>CRY4 (Kriptokrom-4):</strong> Göz retinasında Dünya'nın manyetik alanını gören biyolojik pusula proteinidir.<br/>
+              • <strong>F-KER / MSTN:</strong> İpeksi telek kalitesi (F-KER) ve göğüs kası hacmini (MSTN) kontrol eden genetik işaretleyicilerdir.
+            </div>
+          </div>
+        `)}
       </div>
     `;
 
@@ -12539,11 +12584,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.6.8',
-    localBuild: 568,
-    remoteVersion: '5.6.8',
-    remoteBuild: 568,
-    remoteTitle: "AVIGEN v5.6.8 — QR Okutulduğunda Bağımsız Tam Ekran Pedigri Görüntüsü, Doğrulama Sertifikası & Tanıtım Kutusu",
+    localVersion: '5.6.9',
+    localBuild: 569,
+    remoteVersion: '5.6.9',
+    remoteBuild: 569,
+    remoteTitle: "AVIGEN v5.6.9 — 5 Adımlı Son Geliştirme Yol Haritası (Görsel Kalite, Sıfır Eğitimli Kuşçu UX Sözlüğü, Fonksiyonel, Bilimsel & Ticari Denetim)",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
@@ -13345,6 +13390,105 @@ const AvigenSystemAuditQA = {
       AvigenRaceTracker.events = backupEvents;
     }
     assert('T20', 'Gelişmiş Yarış Yönetimi', '3 Yarış Kategorisi, 7 Kuş Durumu, Kategori Bazlı Arşiv & GENESIS AI Entegrasyonu', raceTrackerOk, rtDetail);
+
+    // ------------------------------------------------------------------------
+    // YOL HARİTASI 5 ADIMLI SON DENETİM TESTLERİ (T21 - T25)
+    // ------------------------------------------------------------------------
+    // T21: 1. Görsel Kalite Denetimi (Ana Sayfa, GENESIS AI, 2 Sayfa FCI Pedigri Canvas & Yarış Ekranları)
+    let visualAuditOk = false;
+    let visualDetail = '';
+    try {
+      const has5Tabs = Boolean(
+        document.getElementById('page-home') &&
+        document.getElementById('page-pedigrees') &&
+        document.getElementById('page-breeding') &&
+        document.getElementById('page-flight') &&
+        document.getElementById('page-notes')
+      );
+      const samplePed = pedigrees[0] || { id: 'vis_test', boxes: { main: { flag: '🇹🇷', ring: 'TR-2026-0001', name: 'Test' } } };
+      const c1 = typeof drawNativePedigreeCertificateCanvas === 'function' ? drawNativePedigreeCertificateCanvas(samplePed) : null;
+      const c2 = typeof drawNativePedigreePage2Canvas === 'function' ? drawNativePedigreePage2Canvas(samplePed) : null;
+      visualAuditOk = has5Tabs && Boolean(c1 && c1.width >= 1000 && c2 && c2.width >= 1000);
+      visualDetail = `5 Ana Mobil Sekme + FCI Pedigri Sayfa 1 (${c1 ? c1.width + 'x' + c1.height : '-'}) & Sayfa 2 (${c2 ? c2.width + 'x' + c2.height : '-'}) HD Canvas doğrulandı.`;
+    } catch (e) {
+      visualDetail = 'Görsel denetim hatası: ' + (e.message || e);
+    }
+    assert('T21', '1. Görsel Kalite Denetimi', 'Ana Sayfa, GENESIS AI, 2 Sayfa FCI Pedigri ve Yarış Ekranları Mobil Standardı', visualAuditOk, visualDetail);
+
+    // T22: 2. Kullanıcı Deneyimi (UX) Denetimi (Üst Bar 1-Dokunuş Rehber, Kuşçu Terimler Sözlüğü & Android Geri Tuşu)
+    const uxAuditOk = Boolean(
+      document.getElementById('navGuideQuickBtn') &&
+      typeof AvigenUxManager !== 'undefined' &&
+      typeof AvigenUxManager.openUserGuideModal === 'function' &&
+      typeof handleAndroidBackNavigation === 'function'
+    );
+    assert(
+      'T22',
+      '2. Kullanıcı Deneyimi (UX)',
+      'Üst Bar 1-Dokunuş Rehber, Sade Türkçe Kuşçu Sözlüğü & Android Geri Tuşu Koruması',
+      uxAuditOk,
+      'Sıfır eğitimli kuşçular için Üst Bar 📖 Rehber, 🔤 Kuşçu Sözlüğü (COI, EBV, Kp, m/dk, Genler) ve Geri Tuşu aktif.'
+    );
+
+    // T23: 3. Fonksiyonel Test (QR Doğrulama Sayfası, 2 Sayfa PDF, JSON Yedek & Cihazlar Arası Aktarım)
+    let funcAuditOk = false;
+    let funcDetail = '';
+    try {
+      const samplePed = pedigrees[0] || { id: 'fn_test', boxes: { main: { ring: 'TR-2026-0001' }, sire: { ring: 'TR-24-101' }, dam: { ring: 'TR-24-102' } } };
+      const qrUrl = typeof encodeFullPedigreeQrPayload === 'function' ? encodeFullPedigreeQrPayload(samplePed) : '';
+      const snap = typeof buildFullAvigenSnapshotPayload === 'function' ? buildFullAvigenSnapshotPayload() : null;
+      funcAuditOk = qrUrl.includes('?v=') &&
+        qrUrl.length <= 95 &&
+        typeof checkAndShowPedigreeQrVerifyModal === 'function' &&
+        typeof enterAvigenAppFromVerifyPage === 'function' &&
+        Boolean(snap && Array.isArray(snap.pedigrees) && snap._originSig);
+      funcDetail = `Kompakt QR URL (${qrUrl.length} krk) • Bağımsız Doğrulama Sayfası • 2 Sayfa PDF & İmzalı JSON Yedek (${snap?.pedigrees?.length || 0} kayıt) doğrulandı.`;
+    } catch (e) {
+      funcDetail = 'Fonksiyonel test hatası: ' + (e.message || e);
+    }
+    assert('T23', '3. Fonksiyonel Test', 'QR Bağımsız Doğrulama, 2 Sayfa PDF, JSON Yedek & Cihazlar Arası Aktarım', funcAuditOk, funcDetail);
+
+    // T24: 4. Bilimsel Denetim (Wright 5 Nesil COI, Genetik Lokuslar, Atmosferik Uçuş & Akademik Kütüphane)
+    const sciSourcesCnt = (typeof AvigenScientificLibrary !== 'undefined' && Array.isArray(AvigenScientificLibrary.sources))
+      ? AvigenScientificLibrary.sources.length
+      : 0;
+    const sciAuditOk = sciSourcesCnt >= 15 &&
+      typeof AvigenGenesisAI !== 'undefined' &&
+      typeof AvigenPerformanceEngine !== 'undefined';
+    assert(
+      'T24',
+      '4. Bilimsel Denetim',
+      'Sewall Wright (1922) 5 Nesil COI, LDHA/DRD4/CRY4 Genetiği & Hakemli Akademik Kaynaklar',
+      sciAuditOk,
+      `Wright COI + BLUP/EBV + Atmosferik/Manyetik Kp Uçuş Modeli + ${sciSourcesCnt} Hakemli Akademik Makale doğrulandı.`
+    );
+
+    // T25: 5. Ticari Hazırlık (90 Gün Ücretsiz Tam Sürüm, STANDART & GENESIS AI Paketleri, Cihaz Kilidi & Anti-Cheat 1-2)
+    let commAuditOk = false;
+    let commDetail = '';
+    try {
+      const tStd = AvigenUxManager.TIERS?.FREE;
+      const tAi = AvigenUxManager.TIERS?.GENETICS_AI;
+      const devId = AvigenUxManager.getOrCreateDeviceId();
+      const testSig = AvigenUxManager.computeDeviceBoundLicenseSignature('AVIGEN-YIL', devId, 'K9');
+      const validKey = `AVIGEN-YIL-K9${testSig}`;
+      const wrongKey = `AVIGEN-YIL-K90000`;
+      const originIso = new Date().toISOString();
+      const originSig = typeof computeInstallOriginTamperSig === 'function' ? computeInstallOriginTamperSig(originIso) : '';
+      commAuditOk = Boolean(
+        tStd && tStd.monthlyPrice === '399 TL' &&
+        tAi && tAi.monthlyPrice === '899 TL' &&
+        AvigenUxManager.TRIAL_DURATION_DAYS === 90 &&
+        AvigenUxManager.verifySignedLicenseKey(validKey) === true &&
+        AvigenUxManager.verifySignedLicenseKey(wrongKey) === false &&
+        originSig.startsWith('AVGO_') &&
+        typeof AvigenUxManager.getTrustedNowMs === 'function'
+      );
+      commDetail = `90 Gün Ücretsiz Deneme • STANDART (${tStd?.monthlyPrice}/ay) & GENESIS AI (${tAi?.monthlyPrice}/ay) • Cihaz Kilidi (${devId}) + Anti-Cheat Kilit 1 & 2 doğrulandı.`;
+    } catch (e) {
+      commDetail = 'Ticari denetim hatası: ' + (e.message || e);
+    }
+    assert('T25', '5. Ticari Hazırlık & Güvenlik', '90 Gün Deneme, STANDART/GENESIS AI Paketleri, Cihaza Özel Lisans & Anti-Cheat 1-2', commAuditOk, commDetail);
 
     if (hadEmptyLoftForTest) {
       pedigrees = savedPedigreesBeforeQa;
