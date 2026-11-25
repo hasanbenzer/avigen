@@ -6306,8 +6306,8 @@ function openAndroidBackupAssistModal(autoCopied = false) {
             </button>
           </div>
           <label class="ios-btn ios-btn-primary" style="width:100%; box-sizing:border-box; padding:10px 8px; font-size:10.8px; font-weight:900; cursor:pointer; text-align:center; display:flex; align-items:center; justify-content:center; margin-bottom:7px;">
-            📁 Telefondan .JSON Yedek Dosyası Seç &amp; Yükle
-            <input type="file" accept=".json,application/json,text/plain" style="display:none;" onchange="importFullAvigenBackup(event)" />
+            📁 Telefondan Yedek Dosyası (.JSON / .TXT) Seç &amp; Yükle
+            <input type="file" accept=".json,.txt,application/json,text/plain" style="display:none;" onchange="importFullAvigenBackup(event)" />
           </label>
           <textarea id="avigenBackupPasteInput" class="ios-textarea" rows="2" placeholder="Veya kopyaladığınız yedek kodunu buraya yapıştırıp alttaki butona basın..." style="font-size:10px; margin-bottom:6px;"></textarea>
           <div style="display:grid; grid-template-columns:1.25fr 1fr; gap:6px;">
@@ -6470,63 +6470,97 @@ async function exportFullAvigenBackup() {
   openAndroidBackupAssistModal(true);
 }
 
-// AVIGEN — Tek Tuşla Kümes Yedeğini (.json) WhatsApp, Google Drive veya Dosyalara Paylaşma
+// AVIGEN — Tek Tuşla Kümes Yedeğini Doğrudan DOSYA OLARAK (Asla Uzun Metin Göndermeden ve Karakter Sınırına Takılmadan!) WhatsApp, Drive veya Dosyalara Paylaşma
 async function shareFullAvigenBackupViaWhatsApp() {
   const payload = buildFullAvigenSnapshotPayload();
   const jsonStr = JSON.stringify(payload, null, 2);
   const compactJson = JSON.stringify(payload);
   const safeName = (loftConfig.title || 'AVIGEN').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const fileName = `${safeName}_Tam_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
-  const birdCnt = Array.isArray(payload.pedigrees) ? payload.pedigrees.length : 0;
-  const blob = new Blob([jsonStr], { type: 'application/json' });
-  const backupFile = new File([blob], fileName, {
-    type: 'application/json',
-    lastModified: Date.now()
-  });
+  const dateTag = new Date().toISOString().slice(0, 10);
+  const jsonFileName = `${safeName}_Tam_Yedek_${dateTag}.json`;
+  const txtFileName = `${safeName}_Tam_Yedek_${dateTag}.txt`;
 
-  // 1. Tüm yedek kodunu telefon panosuna otomatik kopyala (WhatsApp açıldığında tek dokunuşla Yapıştır yapılabilsin)
-  await copyTextToClipboardSafe(compactJson);
+  try {
+    localStorage.setItem('avigen_auto_safety_snapshot_v1', compactJson);
+  } catch (e) {}
 
-  // 2. Yeni Android APK (AvigenNativeBridge) varsa gerçek .JSON dosyasını doğrudan WhatsApp'a dosya eki olarak gönder
+  // 1. Yeni Android APK (AvigenNativeBridge) varsa gerçek yedek dosyasını doğrudan WhatsApp'a BELGE DOSYASI eki olarak gönder
   if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.shareBase64File === 'function') {
     try {
       const b64 = encodeUtf8ToBase64Safe(jsonStr);
       if (b64) {
         window.AvigenNativeBridge.shareBase64File(
           b64,
-          fileName,
-          'application/json',
-          `${loftConfig.title || 'AVIGEN'} Tam Kümes Yedek Dosyası (.JSON)`
+          jsonFileName,
+          'application/octet-stream',
+          `${loftConfig.title || 'AVIGEN'} Tam Kümes Yedek Dosyası`
         );
         return;
       }
     } catch (e) {}
   }
 
-  // 3. Tarayıcı Web Share API (navigator.share) dosya paylaşımını destekliyorsa gerçek .JSON dosyasını paylaş
+  // 2. Web Share API Level 2 (Gerçek Dosya Paylaşımı — User Gesture düşmemesi için öncesinde await KULLANILMAZ ve ASLA metin paylaşımına düşmez!)
+  // Not: Chromium/Android Chrome güvenlik politikası gereği navigator.share({files}) içinde 'application/json' (.json) uzantısını reddedip
+  // 'text/plain' (.txt) ve 'application/pdf' (.pdf) dosyalarına %100 izin verir. Bu yüzden canShare ile önce .json, kabul edilmezse .txt dosyası olarak gerçek dosya eki paylaşılır.
+  const jsonBlob = new Blob([jsonStr], { type: 'application/json' });
+  const txtBlob = new Blob([jsonStr], { type: 'text/plain;charset=utf-8' });
+  const jsonFile = new File([jsonBlob], jsonFileName, { type: 'application/json', lastModified: Date.now() });
+  const txtFile = new File([txtBlob], txtFileName, { type: 'text/plain', lastModified: Date.now() });
+
   if (navigator.share) {
+    let filesToShare = [txtFile];
+    try {
+      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [jsonFile] })) {
+        filesToShare = [jsonFile];
+      } else if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [txtFile] })) {
+        filesToShare = [txtFile];
+      }
+    } catch (e) {
+      filesToShare = [txtFile];
+    }
+
     try {
       await navigator.share({
-        files: [backupFile],
-        title: `${loftConfig.title || 'AVIGEN'} Tam Kümes Yedek Dosyası (.JSON)`
+        files: filesToShare,
+        title: `${loftConfig.title || 'AVIGEN'} Tam Kümes Yedek Dosyası`
       });
       return;
     } catch (err) {
       if (err && err.name === 'AbortError') return;
+      // İlk deneme .json ile başarısız olduysa .txt (text/plain) dosyası olarak tekrar dene
+      if (filesToShare[0] !== txtFile) {
+        try {
+          await navigator.share({
+            files: [txtFile],
+            title: `${loftConfig.title || 'AVIGEN'} Tam Kümes Yedek Dosyası`
+          });
+          return;
+        } catch (err2) {
+          if (err2 && err2.name === 'AbortError') return;
+        }
+      }
     }
   }
 
-  // 4. Eski APK WebView veya masaüstündeysek: WhatsApp uygulamasını %100 aç!
-  // (460 KB tam JSON URL'ye sığmayacağı için kompakt yedek <=3500 karakterse doğrudan mesaj içine koyar,
-  // daha büyükse tam yedeği panoya kopyalamış olarak WhatsApp'ı açar!)
-  const slimJson = buildUserOnlyCompactBackupJson(payload);
-  let waMessage = '';
-  if (slimJson && slimJson.length <= 3500) {
-    waMessage = `📦 *${loftConfig.title || 'AVIGEN'} KÜMES YEDEK PAKETİ (${new Date().toLocaleDateString('tr-TR')})*\n${slimJson}`;
+  // 3. Masaüstü bilgisayar veya doğrudan dosya paylaşımını desteklemeyen eski tarayıcıdaysak:
+  // ASLA WhatsApp sohbetine uzun metin gönderme! Bunun yerine yedek dosyasını doğrudan İndirilenler'e indir.
+  if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.saveBase64FileToDownloads === 'function') {
+    try {
+      const b64 = encodeUtf8ToBase64Safe(jsonStr);
+      if (b64) {
+        window.AvigenNativeBridge.saveBase64FileToDownloads(b64, jsonFileName, 'application/json');
+      }
+    } catch (e) {}
   } else {
-    waMessage = `📦 *${loftConfig.title || 'AVIGEN'} TAM KÜMES YEDEĞİ (${birdCnt} Güvercin - ${new Date().toLocaleDateString('tr-TR')})*\n✅ Tüm kümes yedek kodunuz telefonunuzun panosuna otomatik kopyalandı! Şimdi mesaj yazma kutusuna basılı tutup *"Yapıştır"* yaparak yedeğinizi gönderin:`;
+    const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonStr);
+    triggerBlobFileDownload(jsonBlob, jsonFileName, dataUrl);
   }
-  openExternalUrlSafe('https://api.whatsapp.com/send?text=' + encodeURIComponent(waMessage));
+  await copyTextToClipboardSafe(compactJson);
+  alert(
+    `📄 Kümes Yedek Dosyanız ("${jsonFileName}") cihazınızın İndirilenler klasörüne DOSYA olarak indirildi!\n\n` +
+    `WhatsApp'ta göndermek istediğiniz sohbete girip 📎 (Ataç / Ekle) -> "Belge (Document)" seçeneğinden bu dosyayı seçerek hiçbir karakter sınırına takılmadan doğrudan dosya olarak gönderebilirsiniz.`
+  );
 }
 
 function importFullAvigenBackup(event) {
@@ -6535,7 +6569,13 @@ function importFullAvigenBackup(event) {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
-      const data = JSON.parse(e.target.result);
+      const rawTxt = String(e.target?.result || '').trim();
+      const firstBrace = rawTxt.indexOf('{');
+      const lastBrace = rawTxt.lastIndexOf('}');
+      const cleanJson = (firstBrace !== -1 && lastBrace > firstBrace)
+        ? rawTxt.slice(firstBrace, lastBrace + 1)
+        : rawTxt;
+      const data = JSON.parse(cleanJson);
       applyRestoredBackupDataObject(data);
     } catch (err) {
       alert('Geçersiz veya bozuk yedek dosyası!');
@@ -12584,11 +12624,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.6.9',
-    localBuild: 569,
-    remoteVersion: '5.6.9',
-    remoteBuild: 569,
-    remoteTitle: "AVIGEN v5.6.9 — 5 Adımlı Son Geliştirme Yol Haritası (Görsel Kalite, Sıfır Eğitimli Kuşçu UX Sözlüğü, Fonksiyonel, Bilimsel & Ticari Denetim)",
+    localVersion: '5.7.0',
+    localBuild: 570,
+    remoteVersion: '5.7.0',
+    remoteBuild: 570,
+    remoteTitle: "AVIGEN v5.7.0 — WhatsApp Doğrudan Yedek Dosyası Paylaşımı (Karakter Sınırı Olmadan Gerçek Dosya Eki)",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
