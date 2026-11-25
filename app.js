@@ -11702,20 +11702,24 @@ const AvigenUxManager = {
               </button>
             </div>
             ${!(localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim() ? `
-              <div style="background:#f5f3ff; border:1.5px solid #c4b5fd; border-radius:9px; padding:8px 10px; font-size:9.3px; color:#4c1d95; line-height:1.42;">
-                <div style="font-weight:900; font-size:10px; color:#5b21b6; margin-bottom:3px;">
-                  📌 Bilgilendirme — Bu Kutu Boşsa Nasıl Doldurulur?
-                </div>
-                1️⃣ <strong>Boş Bırakırsanız:</strong> Hiçbir sorun olmaz! <strong>GENESIS AI Yerleşik Bilimsel Kümes Motoru</strong> ve ücretsiz bulut katmanı tüm eşleştirme, 5 nesil COI, yarış ve yem analizlerini <strong>anahtarsız %100 çalıştırır</strong>.<br/>
-                2️⃣ <strong>Nasıl Doldurulur? (3 Adımda Ücretsiz Anahtar Kurulumu):</strong><br/>
-                • <strong>Adım 1:</strong> Aşağıdaki <strong>"🔗 Ücretsiz Bulut Anahtarı Al"</strong> butonuna dokunun ve açılan sayfada <strong>"Create API key"</strong> tuşuna basın.<br/>
-                • <strong>Adım 2:</strong> Ekranda verilen <strong><code>AIzaSy...</code></strong> ile başlayan 39 haneli kodu kopyalayın.<br/>
-                • <strong>Adım 3:</strong> Yukarıdaki <strong>"📋 Yapıştır"</strong> ve <strong>"💾 Kaydet"</strong> butonuna basın.
-                <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:6px; margin-top:6px;">
-                  <button type="button" class="ios-btn ios-btn-purple" style="padding:6px 8px; font-size:9.3px; font-weight:900;" onclick="openExternalUrlSafe('https://aistudio.google.com/app/apikey')">
-                    🔗 Ücretsiz Bulut Anahtarı Al
+              <div style="background:#f5f3ff; border:1.5px solid #c4b5fd; border-radius:9px; padding:8px 10px; font-size:9.3px; color:#4c1d95; line-height:1.45;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
+                  <span style="font-weight:900; font-size:10px; color:#5b21b6;">
+                    📌 Ücretsiz Bulut Yapay Zekâ (API) Anahtarı Nasıl Alınır? (Adım Adım)
+                  </span>
+                  <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.6px; font-weight:900; color:#5b21b6; border-color:#c4b5fd; background:#ffffff;" onclick="AvigenUxManager.openUserGuideModal('apikey')">
+                    📖 Detaylı API Rehberi →
                   </button>
-                  <button type="button" class="ios-btn ios-btn-green" style="padding:6px 8px; font-size:9.3px; font-weight:900;" onclick="openExternalUrlSafe('https://wa.me/905327820385?text=' + encodeURIComponent('Merhaba, AVIGEN GENESIS AI Bulut Sinir Ağı Anahtarı kurulumu için destek / hazır anahtar talep ediyorum.'))">
+                </div>
+                • <strong>Zorunlu mu?</strong> Hayır! Kutuyu boş bıraksanız bile <strong>GENESIS AI Yerleşik Bilimsel Kümes Motoru</strong> tüm 5 nesil COI, eşleştirme, haritalı yarış ve yem analizlerini <strong>anahtarsız %100 çalıştırır</strong>. Kişisel anahtar yalnızca <em>"GENESIS AI'ya Sor"</em> sohbetinde sınırsız derin bulut yanıtları içindir (Tamamen ücretsizdir, kredi kartı istemez).<br/>
+                • <strong>1. Adım (Sayfayı Aç):</strong> Aşağıdaki <strong>"🔗 1. Adım: Google AI Studio Sayfasını Aç"</strong> butonuna dokunun ve telefonunuzdaki normal <strong>Gmail (Google)</strong> hesabınızla giriş yapın.<br/>
+                • <strong>2. Adım (Anahtar Üret):</strong> Sayfanın üstündeki mavi <strong>"Get API key"</strong> veya <strong>"Create API key"</strong> tuşuna basın. İlk kez giriyorsanız onay kutusunu işaretleyip <strong>"Create API key in new project"</strong> (Yeni projede anahtar oluştur) seçeneğine dokunun.<br/>
+                • <strong>3. Adım (Kopyala &amp; Kaydet):</strong> Ekranda <strong><code>AIzaSy...</code></strong> ile başlayan 39 karakterlik kodunuz çıkacaktır. Yanındaki <strong>"Copy" (Kopyala)</strong> tuşuna basın, ardından bu ekrana dönüp yukarıdaki <strong>"📋 Yapıştır"</strong> ve <strong>"💾 Kaydet"</strong> butonuna basın.
+                <div style="display:grid; grid-template-columns:1.25fr 1fr; gap:6px; margin-top:7px;">
+                  <button type="button" class="ios-btn ios-btn-purple" style="padding:7px 8px; font-size:9.3px; font-weight:900;" onclick="openExternalUrlSafe('https://aistudio.google.com/app/apikey')">
+                    🔗 1. Adım: Google AI Studio Aç
+                  </button>
+                  <button type="button" class="ios-btn ios-btn-green" style="padding:7px 8px; font-size:9.3px; font-weight:900;" onclick="openExternalUrlSafe('https://wa.me/905327820385?text=' + encodeURIComponent('Merhaba, AVIGEN GENESIS AI Bulut Sinir Ağı Anahtarı kurulumu için destek / hazır anahtar talep ediyorum.'))">
                     📲 WhatsApp Kurulum Desteği
                   </button>
                 </div>
@@ -12131,16 +12135,21 @@ const AvigenUxManager = {
     const body = document.getElementById('avigenUserGuideBody');
     if (!modal || !body) return;
 
+    const savedApiKey = (localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim();
+
     body.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:8px; font-size:10.5px;">
-        <div class="sub-pills" style="gap:3px; padding:3px;">
-          <button class="sub-pill ${tab === 'howto' ? 'active' : ''}" style="font-size:9.5px; padding:5px 4px;" onclick="AvigenUxManager.openUserGuideModal('howto')">
+        <div class="sub-pills" style="gap:3px; padding:3px; flex-wrap:wrap;">
+          <button class="sub-pill ${tab === 'howto' ? 'active' : ''}" style="font-size:9.1px; padding:5px 4px;" onclick="AvigenUxManager.openUserGuideModal('howto')">
             📖 Nasıl Kullanılır?
           </button>
-          <button class="sub-pill ${tab === 'features' ? 'active' : ''}" style="font-size:9.5px; padding:5px 4px;" onclick="AvigenUxManager.openUserGuideModal('features')">
+          <button class="sub-pill ${tab === 'apikey' ? 'active' : ''}" style="font-size:9.1px; padding:5px 4px;" onclick="AvigenUxManager.openUserGuideModal('apikey')">
+            🔑 API Anahtarı
+          </button>
+          <button class="sub-pill ${tab === 'features' ? 'active' : ''}" style="font-size:9.1px; padding:5px 4px;" onclick="AvigenUxManager.openUserGuideModal('features')">
             🧭 Sekmeler
           </button>
-          <button class="sub-pill ${tab === 'glossary' ? 'active' : ''}" style="font-size:9.5px; padding:5px 4px;" onclick="AvigenUxManager.openUserGuideModal('glossary')">
+          <button class="sub-pill ${tab === 'glossary' ? 'active' : ''}" style="font-size:9.1px; padding:5px 4px;" onclick="AvigenUxManager.openUserGuideModal('glossary')">
             🔤 Kuşçu Sözlüğü
           </button>
         </div>
@@ -12148,56 +12157,146 @@ const AvigenUxManager = {
         ${tab === 'howto' ? `
           <div style="display:flex; flex-direction:column; gap:7px; max-height:70vh; overflow-y:auto; padding-right:2px;">
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #0066ff; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#0052cc; font-size:11px; margin-bottom:3px;">1️⃣ Yeni Kuş veya Yavru Nasıl Eklenir? (Sınırsız Kayıt)</div>
+              <div style="font-weight:900; color:#0052cc; font-size:11px; margin-bottom:3px;">1️⃣ Yeni Kuş, Yavru &amp; 30 Kutu Otomatik Soyağacı Nasıl Eklenir?</div>
               <div style="color:var(--ios-text); line-height:1.4;">
-                • <strong>İlk 90 Gün Tam Sürüm Ücretsiz &amp; AVIGEN STANDART</strong> paketlerinde kuş ve pedigri ekleme sınırı yoktur; kümesinizdeki tüm kuşları kaydedebilirsiniz.<br/>
-                • <strong>Ana Sayfa</strong> veya <strong>Kuş &amp; Yuva</strong> sekmesindeki <strong>➕ Kuş Ekle</strong> butonuna basın; bilezik numarası, isim, cinsiyet (♂ Erkek / ♀ Dişi) ve kategori (Yarışçı / Damızlık / Yavru) seçin.<br/>
-                • <strong>30 Kutu Otomatik Soy Bağlama:</strong> Alttaki <strong>"♂ Baba Seç"</strong> ve <strong>"♀ Anne Seç"</strong> kutularından kümesinizdeki anne-babayı seçtiğinizde, yavrunun 30 kutuluk tüm üst soyağacı (dede, nine, 3. ve 4. kuşak) <strong>tek saniyede otomatik dolar!</strong>
-              </div>
-            </div>
-
-            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #059669; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#059669; font-size:11px; margin-bottom:3px;">2️⃣ 3 Kategorili Yarış Takibi (Kümesüstü / Dernek / Büyük Ödüllü) Nasıl Yapılır?</div>
-              <div style="color:var(--ios-text); line-height:1.4;">
-                • Alttan <strong>4. Sekme (Yarışlar)</strong> ekranına girin ve <strong>+ Yeni Yarış &amp; Kuş Seç</strong> butonuna basın.<br/>
-                • Yarış türünü seçin: <strong>🦅 Kümesüstü Yarışı</strong>, <strong>🏛️ Dernek Yarışı</strong> veya <strong>🏆 Büyük Ödüllü Yarış (Derby / OLR)</strong>.<br/>
-                • Salım ve varış il/ilçesini seçtiğinizde kuş uçuşu mesafe (km) otomatik hesaplanır. Yarışa katılacak kuşlarınızı işaretleyip kaydedin.<br/>
-                • Kuşlar eve döndüğünde yanındaki <strong>⚡ İndi</strong> butonuna tek dokunuşla basın; sistem varış saatini, uçuş süresini ve <strong>ortalama hızı (m/dk)</strong> otomatik hesaplar.
+                • <strong>Sınırsız Kayıt:</strong> İlk 90 Gün Ücretsiz Tam Sürüm ve <strong>AVIGEN STANDART / GENESIS AI</strong> paketlerinde kuş veya pedigri ekleme sınırı yoktur.<br/>
+                • <strong>➕ Kuş Ekle:</strong> <strong>Ana Sayfa</strong> veya <strong>Kuş &amp; Yuva</strong> sekmesindeki <strong>➕ Kuş Ekle</strong> butonuna basın; ülke bayrağını, bilezik numarasını, ismi, cinsiyeti (♂ Erkek / ♀ Dişi / 🐣 Genç), kadro rolünü (Yarışçı / Damızlık / Yavru) ve dilerseniz ele alma fiziksel özelliklerini (gövde, kas, çatal kemik, kanat, göz) seçin.<br/>
+                • <strong>30 Kutu Otomatik Soy Bağlama:</strong> Alttaki <strong>"♂ Baba Seç"</strong> ve <strong>"♀ Anne Seç"</strong> kutularından kümesinizdeki anne-babayı seçtiğinizde, yavrunun 4 kuşak 30 kutuluk tüm üst soyağacı (dede, nine, 3. ve 4. kuşak) <strong>1 saniyede otomatik dolar!</strong><br/>
+                • <strong>📸 Fotoğraftan OCR Tarama &amp; Barkod:</strong> Kağıt bir pedigri fotoğrafını okutarak 31 kutuyu otomatik doldurabilir veya bilezik barkodunu kamerayla okutabilirsiniz.
               </div>
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #7c3aed; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#5b21b6; font-size:11px; margin-bottom:3px;">3️⃣ 4 Kuşak (31 Kutu) Uluslararası FCI Pedigri Kağıdı &amp; QR Doğrulama</div>
+              <div style="font-weight:900; color:#5b21b6; font-size:11px; margin-bottom:3px;">2️⃣ 2 Sayfa Uluslararası FCI Pedigri Sertifikası &amp; QR Doğrulama Nasıl Çalışır?</div>
               <div style="color:var(--ios-text); line-height:1.4;">
-                • Alttan <strong>2. Sekme (Kuş &amp; Yuva) → 📜 Pedigre Kağıdı</strong> görünümüne geçin.<br/>
-                • Pedigri üzerindeki herhangi bir kutuya dokunarak o atayı düzenleyebilir, iki parmakla yakınlaştırabilirsiniz.<br/>
-                • Alttaki <strong>📄 Pedigre + Sicil PDF İndir</strong> veya <strong>📲 WhatsApp PDF Paylaş</strong> butonuyla 2 sayfalık resmi sertifikayı paylaşabilirsiniz. Sağ üstteki QR kod okutulduğunda karşı tarafa bağımsız <strong>Dijital Pedigri Doğrulama Sertifikası</strong> açılır.
+                • <strong>1. Sayfa (4 Kuşak • 31 Kutu FCI Soyağacı):</strong> Uluslararası FCI standartlarında 4 kuşak başlıkları (<em>I. Parents, II. Grandparents, III. Great-Grandparents, IV. Great-Great-GP</em>), şampiyon atalarda <strong>👑 altın taç</strong> ve ortak atalarda (Linebreeding) <strong>🧬2x</strong> rozeti yer alır.<br/>
+                • <strong>2. Sayfa (Performans, Genetik Profil &amp; Sicil Dosyası):</strong> Kuşun EBV damızlık puanı, yarış dereceleri, sağlık/aşı sicili, kan hattı dağılımı ve kardeş/yavru referanslarını tek sayfada toplar.<br/>
+                • <strong>📄 2 Sayfa PDF İndir &amp; Paylaş:</strong> Alttaki <strong>📄 Pedigre + Sicil PDF İndir</strong> veya <strong>📲 WhatsApp PDF Paylaş</strong> butonuyla A4 yatay 2 sayfalık resmi PDF sertifikasını doğrudan paylaşabilirsiniz.<br/>
+                • <strong>🛡️ QR Kod Okutulduğunda Bağımsız Doğrulama Sayfası:</strong> Pedigri sağ üstündeki QR kod telefon kamerasıyla okutulduğunda karşı tarafta program ve örnek kuşlar açılmaz; yalnızca o güvercine ait <strong>Resmi Dijital Doğrulama Sertifikası + 1. ve 2. Sayfa Pedigri Tam Görüntüsü + Tanıtım Kutusu</strong> açılır.
+              </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #10b981; border-radius:9px; padding:8px 10px;">
+              <div style="font-weight:900; color:#047857; font-size:11px; margin-bottom:3px;">3️⃣ Yuva, Eşleştirme, 18 Günlük Kuluçka &amp; Çifte Yavru Bilezik Takibi</div>
+              <div style="color:var(--ios-text); line-height:1.4;">
+                • <strong>2. Sekme (Kuş &amp; Yuva) → 💑 Yuva &amp; Üreme</strong> bölümünden <strong>+ Yeni Çift Eşleştir</strong> butonuna basın.<br/>
+                • Sistem yumurtlama tarihine göre <strong>18 günlük kuluçka geri sayımını</strong> ve <strong>7–10. gün bilezik takma gününü</strong> otomatik takip eder; aynı kuş birden fazla aktif yuvaya yazılırsa <strong>⚠️ Yuva Çakışma Uyarısı</strong> verir.<br/>
+                • Yuva kartındaki <strong>🐣 Yavru Kaydet</strong> butonuyla aynı yuvadaki 2 kardeş yavruya ardışık bilezik numaralarını tek seferde takıp soyağaçları hazır olarak kümese ekleyebilirsiniz.
+              </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #059669; border-radius:9px; padding:8px 10px;">
+              <div style="font-weight:900; color:#059669; font-size:11px; margin-bottom:3px;">4️⃣ 3 Kategorili Yarış Takibi (Kümesüstü / Dernek / Büyük Ödüllü Derby)</div>
+              <div style="color:var(--ios-text); line-height:1.4;">
+                • Alttan <strong>4. Sekme (Yarışlar)</strong> ekranına girin ve <strong>+ Yeni Yarış &amp; Kuş Seç</strong> butonuna basın.<br/>
+                • 3 ayrı yarış kategorisi vardır: <strong>🦅 Kümesüstü Antrenman</strong>, <strong>🏛️ Dernek / Kulüp Yarışı</strong> ve <strong>🏆 Büyük Ödüllü Yarış (Derby / OLR)</strong>. Büyük Ödüllü yarışa teslim edilen kuşlar kendi kümes kalabalığınızı karıştırmaz, <strong>🏆 Büyük Yarış</strong> filtresinde organizasyon bazlı takip edilir.<br/>
+                • Kuş eve döndüğünde yanındaki <strong>⚡ İndi</strong> butonuna tek dokunuşla basın; sistem uçuş süresini ve <strong>resmi hızı (m/dk)</strong> otomatik hesaplayıp kuşun siciline ve pedigri 2. sayfasına işler.
               </div>
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #db2777; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#be185d; font-size:11px; margin-bottom:3px;">4️⃣ GENESIS AI Akıllı Eşleştirme &amp; "GENESIS AI'ya Sor" Nasıl Kullanılır?</div>
+              <div style="font-weight:900; color:#be185d; font-size:11px; margin-bottom:3px;">5️⃣ GENESIS AI — 3 Çekirdek Yapay Zekâ Motoru &amp; "GENESIS AI'ya Sor"</div>
               <div style="color:var(--ios-text); line-height:1.4;">
-                • Alttaki ortanca <strong>🧬 GENESIS AI</strong> sekmesine girip <strong>1. GENESIS AI – Akıllı Eşleştirme &amp; Soy Danışmanı</strong> modülünü açın.<br/>
-                • Erkek ve dişi kuşunuzu seçtiğinizde 5 nesil Sewall Wright COI akrabalık katsayısı, 11 özellikte yavru potansiyeli ve koşullu BLUP analizi üretilir.<br/>
-                • Ayrıca Ana Sayfa veya modül içindeki <strong>"🧬 GENESIS AI'ya Sor"</strong> kutusuna Türkçe sorunuzu yazarak (Örn: <em>"En iyi 3 çiftim hangisi?", "Yarış öncesi yemleme nasıl olmalı?"</em>) kümes verilerinize özel yanıt alabilirsiniz.
-              </div>
-            </div>
-
-            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #d97706; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#b45309; font-size:11px; margin-bottom:3px;">5️⃣ Haritalı Akıllı Yarış Simülasyonu &amp; Akıllı Yem Nasıl Çalışır?</div>
-              <div style="color:var(--ios-text); line-height:1.4;">
-                • <strong>2. Haritalı Akıllı Yarış Simülasyonu:</strong> Türkiye haritasında 81 il ve ilçeden salım/varış noktasını seçin. Sistem rüzgâr, sıcaklık ve arazi eğimine göre kuşlarınızın uygunluk sırasını, tahmini hızını (m/dk) ve olası dönüş saatlerini yatay kaydırmasız mobil kartlarda listeler.<br/>
-                • <strong>3. Akıllı Yem, Sıvı &amp; 1 Aylık Maliyet:</strong> Kümes mevcuduna, mevsime ve hava sıcaklığına göre günlük tohum gramajı, suluk kürü ve 30 günlük yem maliyetini hesaplar.
+                • <strong>1. 💞 Akıllı Eşleştirme &amp; Soy Danışmanı:</strong> 5 nesil Sewall Wright COI akrabalık katsayısı, ortak şampiyon ata tespiti, kümesinizdeki en uyumlu 5 çiftin otomatik taranması ve 11 özellikte yavru potansiyeli.<br/>
+                • <strong>2. 🗺️ 81 İl/İlçe Haritalı Akıllı Yarış Simülasyonu:</strong> Türkiye haritasında salım-kümes rotası, rüzgâr/sıcaklık/rakım riski, her kuş için uygunluk puanı, tahmini hız (m/dk) ve tek tuşla sepetleme.<br/>
+                • <strong>3. 🌾 Akıllı Yem, Suluk Kürü &amp; 1 Aylık Maliyet:</strong> Günün tarihine, mevsime, hava sıcaklığına ve kuş sayısına göre günlük gramaj, suluk takviyesi ve 30 günlük maliyet tablosu.<br/>
+                • <strong>🧬 GENESIS AI'ya Sor:</strong> Türkçe serbest soru yazarak kümes verilerinize özel danışman yanıtı alabilirsiniz (Ücretsiz API anahtarı kurulumu için üstteki <strong>🔑 API Anahtarı</strong> sekmesine bakın).
               </div>
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #0284c7; border-radius:9px; padding:8px 10px;">
-              <div style="font-weight:900; color:#0369a1; font-size:11px; margin-bottom:3px;">6️⃣ Lisans Kodu Nasıl Alınır &amp; Yedekleme Nasıl Yapılır?</div>
+              <div style="font-weight:900; color:#0369a1; font-size:11px; margin-bottom:3px;">6️⃣ Uygulama İçi Yedek Kasası (Dosya Aramadan Yükle) &amp; WhatsApp Yedek</div>
               <div style="color:var(--ios-text); line-height:1.4;">
-                • <strong>İlk 90 Gün Ücretsiz &amp; Lisans Hattı (0 532 782 03 85):</strong> İlk 3 ay GENESIS AI dahil tüm özellikler ücretsizdir. Süre sonunda üstteki <strong>🧬 GENESIS AI</strong> butonuna veya <strong>Profil &amp; Ayarlar → 🔑 Lisans Kodu</strong> sekmesine girip <strong>"📲 WhatsApp'tan Cihazıma Özel Lisans Kodu İste (0 532 782 03 85)"</strong> butonuna basabilirsiniz.<br/>
-                • <strong>Sıfır Veri Kaybı &amp; Yedek:</strong> <strong>Profil &amp; Ayarlar → ⚙️ Ayarlar &amp; Yedek</strong> ekranından <strong>📥 Kümes Yedeğimi Al</strong> ile tüm kümesinizi istediğiniz an yedekleyebilirsiniz.
+                • <strong>📱 1. Bu Telefonda Kayıtlı Yedeklerim Kasası:</strong> <strong>Profil &amp; Ayarlar → 📥 Kümes Yedeğimi Al</strong> ekranına girdiğinizde yedekleriniz doğrudan uygulama içindeki listede saklanır. Telefon klasörlerinde hiç dosya aramadan <strong>🔄 Tek Tuşla Yükle</strong> butonuyla 1 saniyede geri yükleyebilirsiniz.<br/>
+                • <strong>📲 2. WhatsApp'a Yedek Dosyası Gönder:</strong> Karakter sınırına takılan uzun metin göndermez; yedeğinizi doğrudan <strong>gerçek bir belge dosyası (<code>.txt</code>)</strong> olarak WhatsApp'a ekler.<br/>
+                • <strong>⬇️ 3. Telefona Belge (.TXT) İndir:</strong> Android telefonlarda <em>Dosyalarım → Belgeler ve İndirilenler</em> klasöründe en üstte görünmesi için standart <code>.txt</code> belgesi olarak kaydedilir.
               </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #d97706; border-radius:9px; padding:8px 10px;">
+              <div style="font-weight:900; color:#b45309; font-size:11px; margin-bottom:3px;">7️⃣ 90 Gün Ücretsiz Tam Sürüm, Paketler, Lisans &amp; Canlı Güncelleme</div>
+              <div style="color:var(--ios-text); line-height:1.4;">
+                • <strong>İlk 90 Gün (3 Ay) Tam Sürüm Ücretsiz:</strong> Uygulamayı indiren herkes ilk 90 gün <strong>GENESIS AI</strong> dahil tüm özellikleri ücretsiz kullanır.<br/>
+                • <strong>90 Gün Sonunda Sıfır Veri Kaybı:</strong> Süre dolduğunda hiçbir kuşunuz veya pedigri kaydınız silinmez. Dilerseniz <strong>1. AVIGEN STANDART (399 TL/ay • 3.990 TL/yıl)</strong> veya <strong>2. AVIGEN GENESIS AI (899 TL/ay • 8.990 TL/yıl)</strong> lisans kodunuzu girerek devam edebilirsiniz.<br/>
+                • <strong>WhatsApp Lisans Hattı (0 532 782 03 85):</strong> Telefonunuzun Cihaz Kimlik Koduna (<em>AVG-XXXX-XXXX</em>) özel lisans anahtarınızı tek tuşla WhatsApp'tan isteyebilirsiniz.<br/>
+                • <strong>⚡ Canlı Güncelleme:</strong> <strong>Profil &amp; Ayarlar → ⚡ Şimdi Güncelle (Canlı)</strong> butonuyla yeni APK kurmaya gerek kalmadan tüm yenilikleri verileriniz silinmeden anında alabilirsiniz.
+              </div>
+            </div>
+          </div>
+        ` : (tab === 'apikey' ? `
+          <div style="display:flex; flex-direction:column; gap:7px; max-height:70vh; overflow-y:auto; padding-right:2px;">
+            <div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff); border:1.5px solid #7c3aed; border-radius:10px; padding:9px 11px; line-height:1.42;">
+              <div style="font-weight:900; color:#4c1d95; font-size:11.5px; margin-bottom:3px;">
+                🔑 Ücretsiz Bulut Yapay Zekâ (API) Anahtarı Nedir ve Nasıl Alınır?
+              </div>
+              <div style="color:#1e293b; font-size:10px;">
+                • <strong>Almak Zorunlu mu?</strong> Hayır! Anahtar kutusunu boş bıraksanız bile <strong>AVIGEN Yerleşik Bilimsel Kümes Motoru</strong> tüm 5 nesil COI akrabalık, eşleştirme, haritalı yarış simülasyonu ve 7 günlük yem/suluk hesaplamalarını <strong>hiçbir anahtar olmadan %100 çalıştırır</strong>.<br/>
+                • <strong>Ne İşe Yarar?</strong> Yalnızca <strong>"🧬 GENESIS AI'ya Sor"</strong> sohbet kutusunda serbest Türkçe sorularınıza en derin bulut sinir ağıyla sınırsız yanıt almak için kullanılır.<br/>
+                • <strong>Ücretli mi?</strong> Hayır, Google tarafından <strong>tamamen ücretsiz (0 TL)</strong> verilir, kredi kartı istemez ve günde 1.500 soruya kadar ücretsiz kullanım hakkı tanır.
+              </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:4px solid #0066ff; border-radius:9px; padding:8px 10px; line-height:1.44;">
+              <div style="font-weight:900; color:#0052cc; font-size:11px; margin-bottom:3px;">
+                1️⃣ Adım 1: Resmi Google AI Studio Anahtar Sayfasını Açın
+              </div>
+              <div style="color:var(--ios-text);">
+                Aşağıdaki <strong>"🔗 1. Adım: Google AI Studio Sayfasını Aç"</strong> butonuna dokunun (adres: <code>aistudio.google.com/app/apikey</code>). Açılan sayfada telefonunuzda zaten açık olan normal <strong>Gmail (Google)</strong> hesabınızla giriş yapın.
+              </div>
+              <button type="button" class="ios-btn ios-btn-primary" style="width:100%; margin-top:6px; padding:8px; font-size:10.5px; font-weight:900;" onclick="openExternalUrlSafe('https://aistudio.google.com/app/apikey')">
+                🔗 1. Adım: Google AI Studio Anahtar Sayfasını Aç (Ücretsiz)
+              </button>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:4px solid #7c3aed; border-radius:9px; padding:8px 10px; line-height:1.44;">
+              <div style="font-weight:900; color:#5b21b6; font-size:11px; margin-bottom:3px;">
+                2️⃣ Adım 2: "Create API key" (Anahtar Oluştur) Butonuna Basın
+              </div>
+              <div style="color:var(--ios-text);">
+                • Sayfaya ilk kez giriyorsanız kullanım koşullarını onaylama kutucuğunu işaretleyip <strong>"Continue" (Devam Et)</strong> tuşuna basın.<br/>
+                • Sayfanın üst kısmındaki mavi renkli <strong>"Get API key"</strong> veya <strong>"Create API key"</strong> butonuna dokunun.<br/>
+                • Açılan pencerede <strong>"Create API key in new project"</strong> (Yeni projede API anahtarı oluştur) seçeneğine basın ve 3–4 saniye bekleyin.
+              </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:4px solid #059669; border-radius:9px; padding:8px 10px; line-height:1.44;">
+              <div style="font-weight:900; color:#047857; font-size:11px; margin-bottom:3px;">
+                3️⃣ Adım 3: "AIzaSy..." İle Başlayan Kodu Kopyalayın
+              </div>
+              <div style="color:var(--ios-text);">
+                • Ekranda <strong><code>AIzaSy...</code></strong> harfleriyle başlayan 39 karakterlik kişisel anahtar kodunuz görünecektir.<br/>
+                • Kodun hemen yanındaki <strong>"Copy" (Kopyala)</strong> butonuna dokunarak anahtarı telefonunuzun panosuna kopyalayın.
+              </div>
+            </div>
+
+            <div style="background:var(--ios-card-alt); border:1.5px solid #10b981; border-left:4px solid #059669; border-radius:9px; padding:9px 10px; line-height:1.44;">
+              <div style="font-weight:900; color:#065f46; font-size:11px; margin-bottom:4px;">
+                4️⃣ Adım 4: Kopyaladığınız Anahtarı Hemen Buraya Yapıştırıp Kaydedin
+              </div>
+              <div style="color:var(--ios-text); font-size:9.8px; margin-bottom:6px;">
+                Ayarlar ekranına gitmenize bile gerek yok! Kopyaladığınız <strong><code>AIzaSy...</code></strong> kodunu doğrudan aşağıdaki kutuya yapıştırıp <strong>💾 Kaydet</strong> tuşuna basabilirsiniz:
+              </div>
+              <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                <input type="text" id="guideGeminiApiKeyInput" class="ios-input" style="flex:1; min-width:155px; padding:7px 9px; font-size:11px; font-weight:800;" placeholder="AIzaSy... ile başlayan kodu buraya yapıştırın" value="${escapeHtml(savedApiKey)}" />
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:7px 9px; font-size:9.8px; font-weight:800;" onclick="(async()=>{const el=document.getElementById('guideGeminiApiKeyInput');if(!el)return;let txt='';if(navigator.clipboard&&navigator.clipboard.readText){try{txt=await navigator.clipboard.readText();}catch(e){}}if(!txt.trim()){const m=prompt('📋 Kopyaladığınız AIzaSy... ile başlayan API Anahtarını buraya yapıştırın:',el.value||'');if(m===null)return;txt=m;}if(txt.trim()){el.value=txt.trim();if(typeof AvigenGenesisAI!=='undefined'){AvigenGenesisAI.saveGeminiApiKeyFromInput('guideGeminiApiKeyInput');}AvigenUxManager.openUserGuideModal('apikey');}})()">
+                  📋 Yapıştır
+                </button>
+                <button type="button" class="ios-btn ios-btn-green" style="padding:7px 11px; font-size:10px; font-weight:900;" onclick="if(typeof AvigenGenesisAI!=='undefined'){AvigenGenesisAI.saveGeminiApiKeyFromInput('guideGeminiApiKeyInput');}AvigenUxManager.openUserGuideModal('apikey');">
+                  💾 Kaydet
+                </button>
+              </div>
+              ${savedApiKey ? `
+                <div style="margin-top:6px; background:#ecfdf5; border:1px solid #6ee7b7; border-radius:7px; padding:5px 8px; font-size:9.5px; color:#065f46; font-weight:800;">
+                  ✅ Kişisel Bulut API Anahtarınız Kayıtlı ve Aktif! (${escapeHtml(savedApiKey.slice(0, 10))}••••••••)
+                </div>
+              ` : ''}
+            </div>
+
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:9px; padding:8px 10px; font-size:9.6px; color:#92400e; line-height:1.4;">
+              💬 <strong>Yardım mı Lazım?</strong> Anahtar alma sırasında takılırsanız aşağıdaki butona basarak WhatsApp destek hattımızdan (<strong>0 532 782 03 85</strong>) hazır kurulum desteği isteyebilirsiniz:
+              <button type="button" class="ios-btn ios-btn-green" style="width:100%; margin-top:6px; padding:7px; font-size:10px; font-weight:900;" onclick="openExternalUrlSafe('https://wa.me/905327820385?text=' + encodeURIComponent('Merhaba, AVIGEN GENESIS AI ücretsiz API anahtarı kurulumu için destek rica ediyorum.'))">
+                📲 WhatsApp'tan API Anahtarı Kurulum Desteği İste (0 532 782 03 85)
+              </button>
             </div>
           </div>
         ` : (tab === 'features' ? `
@@ -12205,38 +12304,37 @@ const AvigenUxManager = {
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
               <strong style="color:#0052cc; font-size:11px;">🏠 1. Sekme: Ana Sayfa (Tek Ekran Kümes Kontrol Merkezi)</strong><br/>
               • <strong>Kümes Kimliği &amp; Canlı Hava Durumu:</strong> Kümes adınızı, logonuzu ve bulunduğunuz konumdaki canlı sıcaklık, rüzgâr ve uçuş uygunluğunu gösterir.<br/>
-              • <strong>Kuş Özeti &amp; Hızlı Arama:</strong> Toplam kuş, damızlık, yarışçı, yavru ve büyük yarış sayılarını tek şeritte sunar. Halka no veya isimle saniyede arama yapar.<br/>
-              • <strong>🧬 GENESIS AI'ya Sor &amp; Vitrin Kartı:</strong> Ana ekrandan ayrılmadan GENESIS AI'ya doğal dilde soru sormanızı ve 3 çekirdek yapay zekâ motoruna tek dokunuşla geçmenizi sağlar.<br/>
+              • <strong>5'li Kümes Özeti &amp; Hızlı Arama:</strong> Aktif kuş, damızlık, yarışçı, yavru ve Büyük Yarış (Derby/OLR) sayılarını tek şeritte sunar. Halka no veya isimle saniyede arama yapar.<br/>
+              • <strong>📅🌾 Açılır/Kapanır Günlük Yem &amp; Suluk Reçetesi:</strong> Haftanın 7 gününe ve mevsime göre bugün verilecek tohum karışımını ve suluk takviyesini tek dokunuşla açar.<br/>
               • <strong>Alt Takip Paneli (📅 Takvim &amp; Görev, 🪺 Yuvalar, 🏁 Yarışlar, 📋 Sicil):</strong> Günlük aşı/bakım görevlerini, aktif kuluçka yuvalarını ve yaklaşan yarışları tek kartta toplar.
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
-              <strong style="color:#059669; font-size:11px;">🕊️ 2. Sekme: Kuş &amp; Yuva (Sınırsız Kümes, FCI Pedigri &amp; Kuluçka)</strong><br/>
+              <strong style="color:#059669; font-size:11px;">🕊️ 2. Sekme: Kuş &amp; Yuva (Sınırsız Kümes, 2 Sayfa FCI Pedigri &amp; Kuluçka)</strong><br/>
               • <strong>🕊️ Kuşlarım Listesi:</strong> Kuşlarınızı <em>Kümesim, Erkek, Dişi, Damızlık, Yarışçı, Yavru, Büyük Yarış, Dinlenmede, Kayıp/Satıldı ve Soy Arşivi</em> olarak filtreler.<br/>
-              • <strong>📜 Pedigre Kağıdı (4 Kuşak • 31 Kutu):</strong> Uluslararası FCI standartlarında 31 kutulu soyağacı ve 2. sayfa performans/sicil sertifikası üretir, kamera-okunabilir QR kod ekler, PDF/PNG olarak indirir.<br/>
-              • <strong>🪺 Yuva &amp; Kuluçka Takibi:</strong> Eşleşen çiftlerin yumurtlama tarihine göre 18 günlük kuluçka geri sayımını, bilezik takma gününü (7–10. gün) ve çifte yavru kaydını yönetir.<br/>
-              • <strong>📊 Performans &amp; Genetik Profil Kartı:</strong> Kuşun gerçek yarış performansı ile soyağacı genetik potansiyelini birbirine karıştırmadan ayrı ayrı grafiklendirir.
+              • <strong>📜 Pedigre Kağıdı (4 Kuşak • 31 Kutu • 2 Sayfa):</strong> 1. sayfada Uluslararası FCI 4 kuşak soyağacı, 2. sayfada Bireysel Performans, Genetik Profil &amp; Kişisel Sicil Dosyası üretir; QR kod okutulduğunda bağımsız doğrulama sertifikası açar.<br/>
+              • <strong>💑 Yuva &amp; Üreme:</strong> Eşleşen çiftlerin 18 günlük kuluçka geri sayımını, bilezik takma gününü (7–10. gün), eşzamanlı yuva çakışmalarını ve çifte yavru bilezik kaydını yönetir.
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
               <strong style="color:#7c3aed; font-size:11px;">🧬 3. Sekme: GENESIS AI (Yapay Zekâ Karar Destek Merkezi)</strong><br/>
-              • <strong>1. GENESIS AI – Akıllı Eşleştirme &amp; Soy Danışmanı:</strong> 5 nesil Sewall Wright COI akrabalık hesabı, ortak ata tespiti, kümes içi en uygun 5 çift önerisi, 11 özellikte yavru tahmini, koşullu BLUP ve birleşik <em>"🧬 GENESIS AI'ya Sor"</em> soru-cevap danışmanı.<br/>
-              • <strong>2. GENESIS AI – Haritalı Akıllı Yarış Simülasyonu:</strong> Türkiye 81 il/ilçe uydu ve arazi haritası üzerinde rota, rüzgâr ve rakım analizi; her kuş için yatay kaydırmasız mobil kartlarda uygunluk puanı, tahmini dönüş saati ve tek tuşla yarışa sepetleme.<br/>
+              • <strong>1. GENESIS AI – Akıllı Eşleştirme &amp; Soy Danışmanı:</strong> 5 nesil Sewall Wright COI akrabalık hesabı, ortak ata tespiti, kümes içi en uygun 5 çift önerisi, 11 özellikte yavru tahmini ve <em>"🧬 GENESIS AI'ya Sor"</em> danışmanı.<br/>
+              • <strong>2. GENESIS AI – Haritalı Akıllı Yarış Simülasyonu:</strong> Türkiye 81 il/ilçe uydu ve arazi haritası üzerinde rota, rüzgâr ve rakım analizi; her kuş için uygunluk puanı, tahmini dönüş saati ve tek tuşla yarışa sepetleme.<br/>
               • <strong>3. GENESIS AI – Akıllı Yem, Sıvı &amp; 1 Aylık Maliyet:</strong> Mevsime, hava sıcaklığına ve kuş sayısına göre günlük yem reçetesi, suluk takviyesi ve 30 günlük TL maliyet tablosu.
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
               <strong style="color:#d97706; font-size:11px;">🏁 4. Sekme: Yarışlar (3 Kategorili Resmi Yarış &amp; Performans Sistemi)</strong><br/>
-              • <strong>🏁 Yarış Yönetimi:</strong> <em>Kümesüstü Yarışları</em>, <em>Dernek Yarışları</em> ve <em>Büyük Ödüllü Yarışlar (Derby / OLR)</em> için ayrı yarış açma, kuş sepetleme, 7 canlı kuş durumu (Hazırlanıyor, Kafeste, Salındı, Eve Döndü, Bekleniyor, Yarış Dışı, Manuel Onaylı Kayıp) ve tek tuşla <strong>⚡ İndi</strong> hız (m/dk) hesabı.<br/>
-              • <strong>🧬 AI Yarış Analizi:</strong> Tamamlanan gerçek yarış sonuçlarına göre kısa/orta/uzun mesafe uzmanlarını, hava koşulu liderlerini ve sezon içi form grafiğini çıkarır.<br/>
-              • <strong>🌤️ Uçuş Hava:</strong> Rüzgâr yönü, sıcaklık ve manyetik Kp indeksine göre uçuş zorluk derecesini hesaplar.
+              • <strong>🏁 Yarış Takip:</strong> <em>Kümesüstü Yarışları</em>, <em>Dernek Yarışları</em> ve <em>Büyük Ödüllü Yarışlar (Derby / OLR)</em> için ayrı yarış açma, kuş sepetleme, 7 canlı kuş durumu ve tek tuşla <strong>⚡ İndi</strong> hız (m/dk) hesabı.<br/>
+              • <strong>🧬 AI Performans:</strong> Tamamlanan gerçek yarış sonuçlarına göre kısa/orta/uzun mesafe uzmanlarını, hava koşulu liderlerini ve sezon içi form grafiğini çıkarır.<br/>
+              • <strong>🗺️ Haritalı Rota:</strong> Doğrudan 81 il/ilçe haritalı yarış simülasyonuna geçiş sağlar.
             </div>
 
             <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:9px; padding:8px 10px; line-height:1.45;">
-              <strong style="color:#0f172a; font-size:11px;">⚙️ 5. Sekme: Profil &amp; Ayarlar (Yedekleme, Güncelleme, Lisans &amp; Kütüphane)</strong><br/>
-              • <strong>⚙️ Ayarlar &amp; Yedek:</strong> Veri kaybı olmadan canlı sürüm güncelleme (<em>⚡ Şimdi Güncelle</em>), <em>📥 Kümes Yedeğimi Al (.JSON)</em>, gece/gündüz teması ve örnek kuş temizleme.<br/>
-              • <strong>👑 Üyelik &amp; Lisans:</strong> Cihaz Kimlik Kodunuza (<em>AVG-XXXX-XXXX</em>) özel lisans aktivasyonu ve <strong>0 532 782 03 85</strong> WhatsApp lisans talep hattı.<br/>
-              • <strong>📚 Bilimsel Kütüphane:</strong> Yarış güvercini genetiği (LDHA, DRD4, CRY4, CASK, GSR) ve fizyolojisi üzerine DOI/PMID doğrulanmış hakemli akademik makale arşivi.
+              <strong style="color:#0f172a; font-size:11px;">⚙️ 5. Sekme: Profil &amp; Ayarlar (Yedek Kasası, Güncelleme, Lisans &amp; Bilim Bankası)</strong><br/>
+              • <strong>⚙️ Ayarlar &amp; Yedek:</strong> Veri kaybı olmadan canlı sürüm güncelleme (<em>⚡ Şimdi Güncelle</em>), <strong>📱 Uygulama İçi Kayıtlı Yedeklerim Kasası (Dosya Aramadan Tek Tuşla Yükle)</strong>, WhatsApp belge dosyası paylaşımı, Android görünür <code>.txt</code> yedek indirme, API anahtarı kurulumu ve 25 otomatik sistem testi.<br/>
+              • <strong>👤 Hesap &amp; Abonelik:</strong> Şifreli yetiştirici hesabı, 90 günlük ücretsiz tam sürüm takibi ve Cihaz Kimlik Kodunuza (<em>AVG-XXXX-XXXX</em>) özel lisans aktivasyonu.<br/>
+              • <strong>🔬 Bilim Bankası:</strong> Yarış güvercini genetiği (LDHA, DRD4, CRY4, CASK, GSR) üzerine DOI/PMID doğrulanmış hakemli akademik makale arşivi.
             </div>
           </div>
         ` : `
@@ -12274,7 +12372,7 @@ const AvigenUxManager = {
               • <strong>F-KER / MSTN:</strong> İpeksi telek kalitesi (F-KER) ve göğüs kası hacmini (MSTN) kontrol eden genetik işaretleyicilerdir.
             </div>
           </div>
-        `)}
+        `))}
       </div>
     `;
 
@@ -12773,11 +12871,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.7.1',
-    localBuild: 571,
-    remoteVersion: '5.7.1',
-    remoteBuild: 571,
-    remoteTitle: "AVIGEN v5.7.1 — Uygulama İçi 'Kayıtlı Yedeklerim' Tek Tuşla Geri Yükleme Kasası & Android Görünür .TXT Yedek Belgesi",
+    localVersion: '5.7.2',
+    localBuild: 572,
+    remoteVersion: '5.7.2',
+    remoteBuild: 572,
+    remoteTitle: "AVIGEN v5.7.2 — Android Geri Tuşu Kademeli Menü Koruması (Uygulamayı Kapatmaz) & Detaylı API Anahtarı / Kullanım Rehberi",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
@@ -13017,6 +13115,8 @@ const AvigenAutoUpdater = {
 // 4. Ana Sayfa dışındaki bir sekmedeyse Ana Sayfaya döner.
 // ============================================================================
 function isAtRootHomeMenuState() {
+  const verifyPage = document.getElementById('avigenStandaloneQrVerifyPage');
+  if (verifyPage && verifyPage.style.display !== 'none') return false;
   const openModals = document.querySelectorAll('.ios-modal-overlay.open');
   if (openModals && openModals.length > 0) return false;
   if (openBirdActionMenuRing) return false;
@@ -13024,10 +13124,29 @@ function isAtRootHomeMenuState() {
   if (quickRes && quickRes.classList.contains('open')) return false;
   const homePage = document.getElementById('page-home');
   if (!homePage || !homePage.classList.contains('active')) return false;
+  if (typeof isHomeMorningBriefingExpanded !== 'undefined' && isHomeMorningBriefingExpanded) return false;
+  if (typeof activeHomeSubTab !== 'undefined' && activeHomeSubTab !== 'reminders') return false;
   return true;
 }
 
+let _lastAndroidBackHandledTs = 0;
+
 function handleAndroidBackNavigation() {
+  const nowTs = Date.now();
+  // Aynı fiziksel Geri tuşu basımında birden fazla event (popstate + backbutton + native) tetiklenirse
+  // 250ms içinde ikinci kez çalışmasını engelleyerek çift sekme atlamasını ve programın kapanmasını %100 önle!
+  if (nowTs - _lastAndroidBackHandledTs < 250) {
+    return true;
+  }
+  _lastAndroidBackHandledTs = nowTs;
+
+  // 0. Bağımsız QR Doğrulama Sayfası açıksa ana programa geç
+  const verifyPage = document.getElementById('avigenStandaloneQrVerifyPage');
+  if (verifyPage && verifyPage.style.display !== 'none' && typeof enterAvigenAppFromVerifyPage === 'function') {
+    enterAvigenAppFromVerifyPage();
+    return true;
+  }
+
   // 1. Açık herhangi bir modal / pencere varsa önce onu kapat
   const openModals = Array.from(document.querySelectorAll('.ios-modal-overlay.open'));
   if (openModals.length > 0) {
@@ -13052,29 +13171,52 @@ function handleAndroidBackNavigation() {
     return true;
   }
 
-  // 4. Kuş & Yuva (#page-pedigrees) sekmesindeyken: Pedigri Kağıdı veya Yuva alt sekmesindeyse önce Kuşlarım listesine dön
+  // 4. OCR Pedigri Tarama (#page-aiscan) ekranındaysak Kuş & Yuva sekmesine dön
+  const aiScanPage = document.getElementById('page-aiscan');
+  if (aiScanPage && aiScanPage.classList.contains('active')) {
+    openIosTab('pedigrees', document.querySelectorAll('.ios-tab-btn')[1]);
+    return true;
+  }
+
+  // 5. Kuş & Yuva (#page-pedigrees) sekmesindeyken:
+  //    - Pedigri yakınlaştırılmışsa önce tam ekrana sığdır,
+  //    - Pedigri Kağıdı veya Yuva alt sekmesindeyse önce Kuşlarım listesine dön,
+  //    - Kuşlarım listesinde alt filtre seçiliyse önce "🏠 Kümesim (ALL)" filtresine dön,
+  //    - Kuşlarım ana listesindeyse Ana Sayfaya dön.
   const pedigreesPage = document.getElementById('page-pedigrees');
   if (pedigreesPage && pedigreesPage.classList.contains('active')) {
+    const pedPane = document.getElementById('birdsPedigreeViewPane');
+    if (pedPane && pedPane.style.display !== 'none' && typeof pedigreeZoomedIn !== 'undefined' && pedigreeZoomedIn && typeof resetPedigreeZoomFit === 'function') {
+      resetPedigreeZoomFit();
+      return true;
+    }
     const listPane = document.getElementById('birdsListViewPane');
     if (listPane && listPane.style.display === 'none' && typeof switchBirdsViewMode === 'function') {
       switchBirdsViewMode('list');
+      return true;
+    }
+    if (typeof activeLoftFilter !== 'undefined' && activeLoftFilter !== 'ALL' && typeof setLoftBirdFilter === 'function') {
+      const firstChip = document.querySelector('#loftFilterChips .sub-pill');
+      setLoftBirdFilter('ALL', firstChip);
       return true;
     }
     openIosTab('home', document.querySelectorAll('.ios-tab-btn')[0]);
     return true;
   }
 
-  // 5. Yarışlar (#page-flight) sekmesindeyken: Hava & Rota alt aşamasındaysa önce kurulum aşamasına, sonra Yarış Yönetimine, sonra Ana Menüye dön
-  const flightPage = document.getElementById('page-flight');
-  if (flightPage && flightPage.classList.contains('active')) {
-    const simPane = document.getElementById('racesSmartSimPane');
-    if (simPane && simPane.style.display !== 'none') {
-      if (typeof AvigenGenesisAI !== 'undefined' && AvigenGenesisAI.state.smartRaceStage !== 'setup') {
+  // 6. GENESIS AI (#page-breeding) sekmesindeyken:
+  //    - Haritalı Yarış Simülasyonu 2. veya 3. aşamadaysa önce 1. Kurulum aşamasına dön,
+  //    - Bir alt modül (tool) veya Geçmiş Analizler (history) ekranı açıksa önce GENESIS AI 3'lü Ana Başlatıcı Menüsüne dön,
+  //    - GENESIS AI Ana Başlatıcı Menüsündeyse Ana Sayfaya dön.
+  const breedingPage = document.getElementById('page-breeding');
+  if (breedingPage && breedingPage.classList.contains('active')) {
+    if (typeof AvigenGenesisAI !== 'undefined') {
+      if (AvigenGenesisAI.state.viewStage === 'tool' && AvigenGenesisAI.state.activeMode === 'smart_race' && AvigenGenesisAI.state.smartRaceStage !== 'setup') {
         AvigenGenesisAI.setSmartRaceStage('setup');
         return true;
       }
-      if (typeof switchRacesMainViewMode === 'function') {
-        switchRacesMainViewMode('tracker');
+      if (AvigenGenesisAI.state.viewStage === 'tool' || AvigenGenesisAI.state.viewStage === 'history') {
+        AvigenGenesisAI.backToGenesisLauncher();
         return true;
       }
     }
@@ -13082,14 +13224,22 @@ function handleAndroidBackNavigation() {
     return true;
   }
 
-  // 6. GENESIS AI (#page-breeding) sekmesindeyken: Ana Menüye (Ana Sayfa) dön
-  const breedingPage = document.getElementById('page-breeding');
-  if (breedingPage && breedingPage.classList.contains('active')) {
+  // 7. Yarışlar (#page-flight) sekmesindeyken:
+  //    - AI Performans, Hava veya Derece alt sekmesindeyse önce Yarış Takip ana ekranına dön,
+  //    - Yarış Takip ekranındaysa Ana Sayfaya dön.
+  const flightPage = document.getElementById('page-flight');
+  if (flightPage && flightPage.classList.contains('active')) {
+    if (typeof AvigenUxManager !== 'undefined' && AvigenUxManager.state.activeBreedingPlanSub && AvigenUxManager.state.activeBreedingPlanSub !== 'racetracker') {
+      AvigenUxManager.switchBreedingPlanSub('racetracker');
+      return true;
+    }
     openIosTab('home', document.querySelectorAll('.ios-tab-btn')[0]);
     return true;
   }
 
-  // 7. Profil & Ayarlar (#page-notes) sekmesindeyken: Alt sekmedeyse Ayarlar'a, Ayarlar'daysa Ana Menüye (Ana Sayfa) dön
+  // 8. Profil & Ayarlar (#page-notes) sekmesindeyken:
+  //    - Hesap & Abonelik, Bilim Bankası veya Not Defteri alt sekmesindeyse önce Ayarlar & Yedek'e dön,
+  //    - Ayarlar & Yedek'teyse Ana Sayfaya dön.
   const notesPage = document.getElementById('page-notes');
   if (notesPage && notesPage.classList.contains('active')) {
     if (typeof AvigenUxManager !== 'undefined' && AvigenUxManager.state.activeProfileSection !== 'preferences') {
@@ -13100,33 +13250,52 @@ function handleAndroidBackNavigation() {
     return true;
   }
 
-  // 8. Diğer herhangi bir sekmedeyse Ana Menüye (Ana Sayfa) dön
+  // 9. Ana Sayfa (#page-home) dışındaki herhangi bir ekrandaysa Ana Sayfaya dön
   const homePage = document.getElementById('page-home');
   if (homePage && !homePage.classList.contains('active')) {
     openIosTab('home', document.querySelectorAll('.ios-tab-btn')[0]);
     return true;
   }
 
-  // 9. Zaten Ana Menüdeyiz (Ana Sayfa) ve açık hiçbir pencere yok -> false döndür (Programdan çıkabilir)
-  return false;
+  // 10. Ana Sayfadayken: Açık yem/suluk reçetesi varsa kapat veya alt panel (Yuvalar/Yarışlar/Sicil) seçiliyse Takvim & Görev'e dön
+  if (typeof isHomeMorningBriefingExpanded !== 'undefined' && isHomeMorningBriefingExpanded && typeof toggleHomeMorningBriefing === 'function') {
+    toggleHomeMorningBriefing();
+    return true;
+  }
+  if (typeof activeHomeSubTab !== 'undefined' && activeHomeSubTab !== 'reminders' && typeof switchHomeSubPanel === 'function') {
+    switchHomeSubPanel('reminders');
+    return true;
+  }
+
+  // 11. Zaten Ana Sayfa kök durumundayız -> Programı ASLA kapatma! Kullanıcıyı güvenle Ana Sayfada tut.
+  return true;
 }
 window.handleAndroidBackNavigation = handleAndroidBackNavigation;
 
 let _avigenNavDepth = 0;
+let _avigenGestureHistoryCushion = 0;
 let _avigenWasAtRootHomeMenu = true;
 let _avigenHandlingPopState = false;
+let _lastGesturePushTs = 0;
 
-function pushAndroidUserGestureNavStep(stepTag = 'step') {
+function pushAndroidUserGestureNavStep(stepTag = 'step', minCushion = 1) {
   if (_avigenHandlingPopState) return;
   try {
     if (window.history && typeof window.history.pushState === 'function') {
-      _avigenNavDepth++;
-      _avigenWasAtRootHomeMenu = false;
-      window.history.pushState(
-        { avigenGuard: true, stepTag, depth: _avigenNavDepth, ts: Date.now() },
-        '',
-        `#adim-${_avigenNavDepth}`
-      );
+      const targetCushion = Math.max(1, minCushion);
+      let pushed = 0;
+      while (_avigenGestureHistoryCushion < targetCushion || pushed === 0) {
+        _avigenNavDepth++;
+        _avigenGestureHistoryCushion++;
+        pushed++;
+        _avigenWasAtRootHomeMenu = false;
+        window.history.pushState(
+          { avigenGuard: true, stepTag, depth: _avigenNavDepth, cushion: _avigenGestureHistoryCushion, ts: Date.now() },
+          '',
+          `#adim-${_avigenNavDepth}`
+        );
+        if (pushed >= 3) break;
+      }
     }
   } catch (e) {}
 }
@@ -13138,50 +13307,41 @@ function initAndroidHardwareBackButtonSupport() {
         window.history.replaceState({ avigenRoot: true }, '', (window.location.search || '') + '#ana-menu');
       }
 
-      // KRİTİK: Kullanıcı herhangi bir sekmeye, karta veya butona tıkladığında gerçek User Gesture (click capture) içinde
-      // URL hash kaydı (#adim-N) oluştur ki Chromium History Manipulation Intervention asla atlamasın ve WebView.canGoBack() %100 true dönsün!
-      document.addEventListener('click', (ev) => {
+      // KRİTİK ANDROID WEBVIEW KORUMASI:
+      // Chromium "History Manipulation Intervention" yalnızca gerçek kullanıcı dokunuşu (User Gesture: click / touchend)
+      // sırasında senkron çağrılan history.pushState kayıtlarını WebView.canGoBack() === true olarak kabul eder!
+      // Bu yüzden kullanıcı herhangi bir menüye, sekmeye veya butona her dokunduğunda 3 kademeli User-Gesture yastığı (cushion)
+      // oluşturuyoruz ki arka arkaya Geri tuşuna basılsa bile WebView geçmiş yığını asla sıfırlanmasın ve program ASLA kapanmasın!
+      const onUserGestureTapCapture = (ev) => {
         const target = ev.target && ev.target.closest
-          ? ev.target.closest('button, a, .ios-tab-btn, .sub-pill, .hero-stat-pill, .p-box, .dash-list-left, [onclick]')
+          ? ev.target.closest('button, a, select, summary, .ios-tab-btn, .sub-pill, .hero-stat-pill, .p-box, .dash-list-left, .genesis-3main-card, .sr-stage-step-btn, [onclick]')
           : null;
         if (!target) return;
-        if (_avigenNavDepth === 0 || _avigenWasAtRootHomeMenu) {
-          pushAndroidUserGestureNavStep('gesture');
-        }
-        setTimeout(() => {
-          _avigenWasAtRootHomeMenu = isAtRootHomeMenuState();
-          if (!_avigenWasAtRootHomeMenu && (!window.location.hash || window.location.hash === '#ana-menu')) {
-            pushAndroidUserGestureNavStep('subview');
-          }
-        }, 40);
-      }, true);
+        const now = Date.now();
+        if (now - _lastGesturePushTs < 90 && _avigenGestureHistoryCushion >= 3) return;
+        _lastGesturePushTs = now;
+        pushAndroidUserGestureNavStep('gesture', 3);
+      };
+
+      document.addEventListener('click', onUserGestureTapCapture, true);
+      document.addEventListener('touchend', onUserGestureTapCapture, true);
 
       window.addEventListener('popstate', () => {
         _avigenHandlingPopState = true;
+        if (_avigenGestureHistoryCushion > 0) {
+          _avigenGestureHistoryCushion--;
+        }
         try {
-          // Eğer Geri tuşuna basılmadan önce ZATEN Ana Menüdeysek (ve açık hiçbir pencere yoksa) uygulamadan çık!
-          if (_avigenWasAtRootHomeMenu && isAtRootHomeMenuState()) {
-            if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.exitApp === 'function') {
-              try { window.AvigenNativeBridge.exitApp(); return; } catch (e) {}
-            }
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && typeof window.Capacitor.Plugins.App.exitApp === 'function') {
-              try { window.Capacitor.Plugins.App.exitApp(); return; } catch (e) {}
-            }
-            return;
-          }
-
-          const handled = handleAndroidBackNavigation();
+          handleAndroidBackNavigation();
           _avigenWasAtRootHomeMenu = isAtRootHomeMenuState();
 
-          if (handled && !_avigenWasAtRootHomeMenu) {
-            // Hâlâ bir alt sekmedeyiz -> Bir sonraki Geri tuşu için kayıt tut
-            _avigenNavDepth++;
-            window.history.pushState(
-              { avigenGuard: true, depth: _avigenNavDepth, ts: Date.now() },
-              '',
-              `#adim-${_avigenNavDepth}`
-            );
-          }
+          // Bir sonraki Geri tuşu için geçmiş kaydını yenile
+          _avigenNavDepth++;
+          window.history.pushState(
+            { avigenGuard: true, depth: _avigenNavDepth, ts: Date.now() },
+            '',
+            `#adim-${_avigenNavDepth}`
+          );
         } catch (e) {
         } finally {
           _avigenHandlingPopState = false;
@@ -13190,27 +13350,15 @@ function initAndroidHardwareBackButtonSupport() {
     }
 
     document.addEventListener('backbutton', (ev) => {
-      const handled = handleAndroidBackNavigation();
+      if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+      handleAndroidBackNavigation();
       _avigenWasAtRootHomeMenu = isAtRootHomeMenuState();
-      if (handled) {
-        if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
-      } else {
-        if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.exitApp === 'function') {
-          try { window.AvigenNativeBridge.exitApp(); return; } catch (e) {}
-        }
-        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && typeof window.Capacitor.Plugins.App.exitApp === 'function') {
-          try { window.Capacitor.Plugins.App.exitApp(); } catch (e) {}
-        }
-      }
     }, false);
 
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && typeof window.Capacitor.Plugins.App.addListener === 'function') {
       window.Capacitor.Plugins.App.addListener('backButton', () => {
-        const handled = handleAndroidBackNavigation();
+        handleAndroidBackNavigation();
         _avigenWasAtRootHomeMenu = isAtRootHomeMenuState();
-        if (!handled) {
-          try { window.Capacitor.Plugins.App.exitApp(); } catch (e) {}
-        }
       });
     }
   } catch (e) {}
