@@ -203,17 +203,11 @@ jobs:
               private void evaluateAndroidBackOrFinish() {
                   if (getBridge() != null && getBridge().getWebView() != null) {
                       getBridge().getWebView().evaluateJavascript(
-                          "(function(){ try { return (window.handleAndroidBackNavigation && window.handleAndroidBackNavigation()) ? 'HANDLED' : 'EXIT'; } catch(e) { return 'EXIT'; } })()",
+                          "(function(){ try { if (window.handleAndroidBackNavigation) { window.handleAndroidBackNavigation(); } return 'HANDLED'; } catch(e) { return 'HANDLED'; } })()",
                           value -> {
-                              if (value != null && value.contains("HANDLED")) {
-                                  // Stay in app (navigated toward Ana Sayfa)
-                              } else {
-                                  finish();
-                              }
+                              // Stay in app (navigated toward Ana Sayfa without closing the program)
                           }
                       );
-                  } else {
-                      finish();
                   }
               }
 
