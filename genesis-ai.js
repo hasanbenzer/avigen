@@ -5139,26 +5139,35 @@ const AvigenGenesisAI = {
           </div>
         </div>
 
-        <!-- ALT TEK SATIR "🧬 GENESIS AI'YA SOR" ÇUBUĞU (TEK EKRANA SIĞAN KOMPAKT YAPI) -->
+        <!-- ALT TEK SATIR "🧬 GENESIS AI'YA SOR" ÇUBUĞU (SESLİ SORU & SESLİ YANIT DESTEKLİ KOMPAKT YAPI) -->
         <div style="padding:6px 9px; background:var(--ios-card-alt); border-top:1px solid var(--ios-border);" onclick="event.stopPropagation()">
-          <div style="display:flex; gap:5px; align-items:center;">
-            <input type="text" id="homeGenesisAskInput" class="ios-input" style="flex:1; padding:5px 8px; font-size:10.5px; font-weight:700;" placeholder="🧬 GENESIS AI'ya Sor (Örn: En iyi çiftim, yarış, yem, halka no...)" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.askGenesisFromHomeScreen();}" />
-            <button type="button" class="ai-send-btn" style="padding:5px 10px; font-size:10px; flex-shrink:0;" onclick="AvigenGenesisAI.askGenesisFromHomeScreen()">
+          <div style="display:flex; gap:4px; align-items:center;">
+            <input type="text" id="homeGenesisAskInput" class="ios-input" style="flex:1; min-width:0; padding:5px 8px; font-size:10.3px; font-weight:700;" placeholder="🧬 GENESIS AI'ya Yaz veya 🎙️ Konuşarak Sor..." onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.askGenesisFromHomeScreen();}" />
+            <button type="button" id="btnMic_homeGenesisAskInput" class="ios-btn ios-btn-outline" style="padding:5px 8px; font-size:10.5px; font-weight:900; flex-shrink:0; border-color:${this._isListeningVoice && this._activeVoiceInputId === 'homeGenesisAskInput' ? '#dc2626' : '#7c3aed'}; background:${this._isListeningVoice && this._activeVoiceInputId === 'homeGenesisAskInput' ? '#fee2e2' : '#f5f3ff'}; color:${this._isListeningVoice && this._activeVoiceInputId === 'homeGenesisAskInput' ? '#dc2626' : '#5b21b6'};" onclick="AvigenGenesisAI.toggleVoiceQuestion('homeGenesisAskInput', event)" title="Mikrofonla Konuşarak Soru Sor (Türkçe Ses Tanıma)">
+              ${this._isListeningVoice && this._activeVoiceInputId === 'homeGenesisAskInput' ? '🔴 Dinliyor' : '🎙️'}
+            </button>
+            <button type="button" class="ios-btn ios-btn-outline" data-genesis-autospeak-btn="1" style="padding:5px 7px; font-size:9.8px; font-weight:900; flex-shrink:0; border-color:${this.isVoiceAutoSpeakEnabled() ? '#059669' : '#cbd5e1'}; background:${this.isVoiceAutoSpeakEnabled() ? '#ecfdf5' : 'var(--ios-card)'}; color:${this.isVoiceAutoSpeakEnabled() ? '#047857' : '#64748b'};" onclick="AvigenGenesisAI.toggleVoiceAutoSpeak(event)" title="GENESIS AI Sesli Cevap (Açık / Kapalı)">
+              ${this.isVoiceAutoSpeakEnabled() ? '🔊' : '🔇'}
+            </button>
+            <button type="button" class="ai-send-btn" style="padding:5px 9px; font-size:10px; flex-shrink:0;" onclick="AvigenGenesisAI.askGenesisFromHomeScreen()">
               Sor →
             </button>
           </div>
 
-          <!-- Yanıt Kutusu (Sadece Soru Sorulduğunda Açılır, Kapatılabilir) -->
+          <!-- Yanıt Kutusu (Sadece Soru Sorulduğunda Açılır, Sesli Dinlenebilir & Kapatılabilir) -->
           <div id="homeGenesisQuickAnswerBox" style="display:${latestChat ? 'block' : 'none'}; margin-top:5px;">
             ${latestChat ? `
               <div style="background:var(--ios-card); border:1px solid #c4b5fd; border-left:3.5px solid #7c3aed; border-radius:7px; padding:6px 8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:5px; margin-bottom:3px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:3px;">
                   <span style="font-size:9px; font-weight:900; color:#4c1d95;">🧬 GENESIS AI Yanıtı (${escapeHtml(latestChat.time)})</span>
-                  <div style="display:flex; gap:4px;">
-                    <button type="button" class="ios-btn ios-btn-outline" style="padding:1px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.openModuleDirectlyFromHome('breeding', event)">
+                  <div style="display:flex; gap:4px; align-items:center;">
+                    <button type="button" class="ios-btn ios-btn-outline" data-genesis-speak-btn="1" style="padding:1.5px 6px; font-size:7.8px; font-weight:900; color:${this._isSpeakingNow ? '#dc2626' : '#047857'}; border-color:${this._isSpeakingNow ? '#fca5a5' : '#6ee7b7'}; background:${this._isSpeakingNow ? '#fef2f2' : '#ecfdf5'};" onclick="AvigenGenesisAI.toggleSpeakLatestAnswer(event)">
+                      ${this._isSpeakingNow ? '⏹️ Sustur' : '🔊 Sesli Dinle'}
+                    </button>
+                    <button type="button" class="ios-btn ios-btn-outline" style="padding:1.5px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.openModuleDirectlyFromHome('breeding', event)">
                       Detay →
                     </button>
-                    <button type="button" class="ios-btn ios-btn-outline" style="padding:1px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.clearGeminiChatHistory()">
+                    <button type="button" class="ios-btn ios-btn-outline" style="padding:1.5px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.clearGeminiChatHistory()">
                       ✕ Kapat
                     </button>
                   </div>
@@ -5638,11 +5647,17 @@ const AvigenGenesisAI = {
             </div>
           </div>
 
-          <!-- DOĞRUDAN GENESIS AI'YA SOR KUTUSU -->
+          <!-- DOĞRUDAN GENESIS AI'YA SOR KUTUSU (SESLİ SORU & SESLİ YANIT DESTEKLİ) -->
           <div class="ios-card" style="padding:8px 10px; border:1.5px solid #7c3aed; background:linear-gradient(135deg, rgba(124,58,237,0.08), rgba(2,132,199,0.06), var(--ios-card));">
-            <div style="display:flex; gap:5px; align-items:center; margin-bottom:5px;">
-              <input type="text" id="launcherGenesisAskInput" class="ios-input" style="flex:1; padding:6px 9px; font-size:10.8px; font-weight:700;" placeholder="🧬 GENESIS AI'ya Sor (Örn: En iyi 3 çiftim, COI, yarış, yem, halka no...)" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.askGeminiAdvisor(this.value);}" />
-              <button type="button" class="ai-send-btn" style="padding:6px 11px; font-size:10.3px; flex-shrink:0;" onclick="AvigenGenesisAI.askGeminiAdvisor(document.getElementById('launcherGenesisAskInput')?.value)">
+            <div style="display:flex; gap:4px; align-items:center; margin-bottom:5px;">
+              <input type="text" id="launcherGenesisAskInput" class="ios-input" style="flex:1; min-width:0; padding:6px 8px; font-size:10.5px; font-weight:700;" placeholder="🧬 GENESIS AI'ya Yaz veya 🎙️ Konuşarak Sor..." onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.askGeminiAdvisor(this.value);}" />
+              <button type="button" id="btnMic_launcherGenesisAskInput" class="ios-btn ios-btn-outline" style="padding:6px 9px; font-size:10.8px; font-weight:900; flex-shrink:0; border-color:${this._isListeningVoice && this._activeVoiceInputId === 'launcherGenesisAskInput' ? '#dc2626' : '#7c3aed'}; background:${this._isListeningVoice && this._activeVoiceInputId === 'launcherGenesisAskInput' ? '#fee2e2' : '#f5f3ff'}; color:${this._isListeningVoice && this._activeVoiceInputId === 'launcherGenesisAskInput' ? '#dc2626' : '#5b21b6'};" onclick="AvigenGenesisAI.toggleVoiceQuestion('launcherGenesisAskInput', event)" title="Mikrofonla Konuşarak Soru Sor">
+                ${this._isListeningVoice && this._activeVoiceInputId === 'launcherGenesisAskInput' ? '🔴 Dinliyor' : '🎙️ Sesli Sor'}
+              </button>
+              <button type="button" class="ios-btn ios-btn-outline" data-genesis-autospeak-btn="1" style="padding:6px 8px; font-size:10px; font-weight:900; flex-shrink:0; border-color:${this.isVoiceAutoSpeakEnabled() ? '#059669' : '#cbd5e1'}; background:${this.isVoiceAutoSpeakEnabled() ? '#ecfdf5' : 'var(--ios-card)'}; color:${this.isVoiceAutoSpeakEnabled() ? '#047857' : '#64748b'};" onclick="AvigenGenesisAI.toggleVoiceAutoSpeak(event)" title="GENESIS AI Sesli Cevap (Açık / Kapalı)">
+                ${this.isVoiceAutoSpeakEnabled() ? '🔊' : '🔇'}
+              </button>
+              <button type="button" class="ai-send-btn" style="padding:6px 10px; font-size:10.3px; flex-shrink:0;" onclick="AvigenGenesisAI.askGeminiAdvisor(document.getElementById('launcherGenesisAskInput')?.value)">
                 Sor →
               </button>
             </div>
@@ -5663,11 +5678,16 @@ const AvigenGenesisAI = {
               </div>
             ` : (latestChat ? `
               <div style="margin-top:6px; background:var(--ios-card); border:1px solid #c4b5fd; border-left:3.5px solid #7c3aed; border-radius:7px; padding:6px 8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:5px; margin-bottom:3px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:3px;">
                   <span style="font-size:9px; font-weight:900; color:#4c1d95;">🧬 GENESIS AI Yanıtı (${escapeHtml(latestChat.time)})</span>
-                  <button type="button" class="ios-btn ios-btn-outline" style="padding:1px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.clearGeminiChatHistory()">
-                    ✕ Kapat
-                  </button>
+                  <div style="display:flex; gap:4px; align-items:center;">
+                    <button type="button" class="ios-btn ios-btn-outline" data-genesis-speak-btn="1" style="padding:1.5px 6px; font-size:7.8px; font-weight:900; color:${this._isSpeakingNow ? '#dc2626' : '#047857'}; border-color:${this._isSpeakingNow ? '#fca5a5' : '#6ee7b7'}; background:${this._isSpeakingNow ? '#fef2f2' : '#ecfdf5'};" onclick="AvigenGenesisAI.toggleSpeakLatestAnswer(event)">
+                      ${this._isSpeakingNow ? '⏹️ Sustur' : '🔊 Sesli Dinle'}
+                    </button>
+                    <button type="button" class="ios-btn ios-btn-outline" style="padding:1.5px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.clearGeminiChatHistory()">
+                      ✕ Kapat
+                    </button>
+                  </div>
                 </div>
                 <div style="font-size:8.8px; font-weight:800; color:#0369a1; margin-bottom:3px;">Soru: ${escapeHtml(latestChat.question)}</div>
                 <div style="font-size:9.3px; color:var(--ios-text); line-height:1.4; max-height:150px; overflow-y:auto;">${latestChat.answerHtml}</div>
@@ -5761,11 +5781,17 @@ const AvigenGenesisAI = {
             </details>
           ` : ''}
 
-          <!-- BİRLEŞİK "🧬 GENESIS AI'YA SOR" CANLI KÜMES & SOY DANIŞMANI -->
+          <!-- BİRLEŞİK "🧬 GENESIS AI'YA SOR" CANLI KÜMES & SOY DANIŞMANI (SESLİ SORU & SESLİ YANIT DESTEKLİ) -->
           <div style="background:linear-gradient(135deg, rgba(124,58,237,0.08), rgba(2,132,199,0.07)); border:1px solid #c4b5fd; border-radius:8px; padding:6px 8px;">
-            <div style="display:flex; gap:5px; align-items:center; margin-bottom:4px;">
-              <input type="text" id="geminiPromptInput" class="ios-input" style="flex:1; padding:5px 8px; font-size:10.5px; font-weight:700;" placeholder="🧬 GENESIS AI'ya Sor (Örn: Bu çiftin COI riski, en iyi 3 çiftim, halka no...)" value="${escapeHtml(this.state.geminiDraftPrompt || '')}" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.askGeminiAdvisor();}" />
-              <button type="button" class="ai-send-btn" style="padding:5px 10px; font-size:10px; flex-shrink:0;" onclick="AvigenGenesisAI.askGeminiAdvisor()">
+            <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+              <input type="text" id="geminiPromptInput" class="ios-input" style="flex:1; min-width:0; padding:5px 8px; font-size:10.3px; font-weight:700;" placeholder="🧬 GENESIS AI'ya Yaz veya 🎙️ Konuşarak Sor..." value="${escapeHtml(this.state.geminiDraftPrompt || '')}" onkeydown="if(event.key==='Enter'){event.preventDefault();AvigenGenesisAI.askGeminiAdvisor();}" />
+              <button type="button" id="btnMic_geminiPromptInput" class="ios-btn ios-btn-outline" style="padding:5px 8px; font-size:10.3px; font-weight:900; flex-shrink:0; border-color:${this._isListeningVoice && this._activeVoiceInputId === 'geminiPromptInput' ? '#dc2626' : '#7c3aed'}; background:${this._isListeningVoice && this._activeVoiceInputId === 'geminiPromptInput' ? '#fee2e2' : '#f5f3ff'}; color:${this._isListeningVoice && this._activeVoiceInputId === 'geminiPromptInput' ? '#dc2626' : '#5b21b6'};" onclick="AvigenGenesisAI.toggleVoiceQuestion('geminiPromptInput', event)" title="Mikrofonla Konuşarak Soru Sor">
+                ${this._isListeningVoice && this._activeVoiceInputId === 'geminiPromptInput' ? '🔴 Dinliyor' : '🎙️ Sesli'}
+              </button>
+              <button type="button" class="ios-btn ios-btn-outline" data-genesis-autospeak-btn="1" style="padding:5px 7px; font-size:9.8px; font-weight:900; flex-shrink:0; border-color:${this.isVoiceAutoSpeakEnabled() ? '#059669' : '#cbd5e1'}; background:${this.isVoiceAutoSpeakEnabled() ? '#ecfdf5' : 'var(--ios-card)'}; color:${this.isVoiceAutoSpeakEnabled() ? '#047857' : '#64748b'};" onclick="AvigenGenesisAI.toggleVoiceAutoSpeak(event)" title="GENESIS AI Sesli Cevap (Açık / Kapalı)">
+                ${this.isVoiceAutoSpeakEnabled() ? '🔊' : '🔇'}
+              </button>
+              <button type="button" class="ai-send-btn" style="padding:5px 9px; font-size:10px; flex-shrink:0;" onclick="AvigenGenesisAI.askGeminiAdvisor()">
                 Sor →
               </button>
             </div>
@@ -5789,11 +5815,16 @@ const AvigenGenesisAI = {
               </div>
             ` : (latestChat ? `
               <div style="margin-top:6px; background:var(--ios-card); border:1px solid #c4b5fd; border-left:3.5px solid #7c3aed; border-radius:7px; padding:6px 8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:5px; margin-bottom:3px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:3px;">
                   <span style="font-size:9px; font-weight:900; color:#4c1d95;">🧬 GENESIS AI Yanıtı (${escapeHtml(latestChat.time)})</span>
-                  <button type="button" class="ios-btn ios-btn-outline" style="padding:1px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.clearGeminiChatHistory()">
-                    ✕ Kapat
-                  </button>
+                  <div style="display:flex; gap:4px; align-items:center;">
+                    <button type="button" class="ios-btn ios-btn-outline" data-genesis-speak-btn="1" style="padding:1.5px 6px; font-size:7.8px; font-weight:900; color:${this._isSpeakingNow ? '#dc2626' : '#047857'}; border-color:${this._isSpeakingNow ? '#fca5a5' : '#6ee7b7'}; background:${this._isSpeakingNow ? '#fef2f2' : '#ecfdf5'};" onclick="AvigenGenesisAI.toggleSpeakLatestAnswer(event)">
+                      ${this._isSpeakingNow ? '⏹️ Sustur' : '🔊 Sesli Dinle'}
+                    </button>
+                    <button type="button" class="ios-btn ios-btn-outline" style="padding:1.5px 6px; font-size:7.8px;" onclick="AvigenGenesisAI.clearGeminiChatHistory()">
+                      ✕ Kapat
+                    </button>
+                  </div>
                 </div>
                 <div style="font-size:8.8px; font-weight:800; color:#0369a1; margin-bottom:3px;">Soru: ${escapeHtml(latestChat.question)}</div>
                 <div style="font-size:9.3px; color:var(--ios-text); line-height:1.4; max-height:150px; overflow-y:auto;">${latestChat.answerHtml}</div>
@@ -7502,10 +7533,479 @@ const AvigenGenesisAI = {
   },
 
   clearGeminiChatHistory() {
+    this.stopGenesisSpeech(false);
     this.state.geminiChatHistory = [];
     this.saveState();
     this.renderGenesisModuleUI();
     this.renderHomeTeaserCard();
+  },
+
+  // ==========================================================================
+  // 🎙️ TÜRKÇE SESLİ SORU (SPEECH-TO-TEXT) & 🔊 SESLİ YANIT (TEXT-TO-SPEECH) MOTORU
+  // ==========================================================================
+  _isListeningVoice: false,
+  _activeVoiceInputId: null,
+  _activeSpeechRec: null,
+  _isSpeakingNow: false,
+  _voiceTriggeredNextAnswer: false,
+  _activeTtsAudio: null,
+  _ttsQueueAborted: false,
+
+  isVoiceAutoSpeakEnabled() {
+    try {
+      const val = localStorage.getItem('avigen_genesis_voice_autospeak_v1');
+      // Varsayılan olarak açık ('0' değilse açık)
+      return val !== '0';
+    } catch (e) {
+      return true;
+    }
+  },
+
+  toggleVoiceAutoSpeak(evt) {
+    if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+    const currentlyOn = this.isVoiceAutoSpeakEnabled();
+    const nextOn = !currentlyOn;
+    try {
+      localStorage.setItem('avigen_genesis_voice_autospeak_v1', nextOn ? '1' : '0');
+    } catch (e) {}
+
+    if (!nextOn) {
+      this.stopGenesisSpeech(false);
+    } else if (Array.isArray(this.state.geminiChatHistory) && this.state.geminiChatHistory.length > 0) {
+      this.speakGenesisText(this.state.geminiChatHistory[0].answerHtml);
+    }
+
+    this.refreshVoiceControlButtons();
+  },
+
+  refreshVoiceControlButtons() {
+    const autoOn = this.isVoiceAutoSpeakEnabled();
+    document.querySelectorAll('[data-genesis-autospeak-btn="1"]').forEach(btn => {
+      btn.textContent = autoOn ? '🔊' : '🔇';
+      btn.style.borderColor = autoOn ? '#059669' : '#cbd5e1';
+      btn.style.background = autoOn ? '#ecfdf5' : 'var(--ios-card)';
+      btn.style.color = autoOn ? '#047857' : '#64748b';
+    });
+
+    document.querySelectorAll('[data-genesis-speak-btn="1"]').forEach(btn => {
+      btn.textContent = this._isSpeakingNow ? '⏹️ Sustur' : '🔊 Sesli Dinle';
+      btn.style.color = this._isSpeakingNow ? '#dc2626' : '#047857';
+      btn.style.borderColor = this._isSpeakingNow ? '#fca5a5' : '#6ee7b7';
+      btn.style.background = this._isSpeakingNow ? '#fef2f2' : '#ecfdf5';
+    });
+
+    ['homeGenesisAskInput', 'launcherGenesisAskInput', 'geminiPromptInput'].forEach(inpId => {
+      const micBtn = document.getElementById('btnMic_' + inpId);
+      if (!micBtn) return;
+      const isAct = this._isListeningVoice && this._activeVoiceInputId === inpId;
+      if (inpId === 'homeGenesisAskInput') {
+        micBtn.textContent = isAct ? '🔴 Dinliyor' : '🎙️';
+      } else if (inpId === 'launcherGenesisAskInput') {
+        micBtn.textContent = isAct ? '🔴 Dinliyor' : '🎙️ Sesli Sor';
+      } else {
+        micBtn.textContent = isAct ? '🔴 Dinliyor' : '🎙️ Sesli';
+      }
+      micBtn.style.borderColor = isAct ? '#dc2626' : '#7c3aed';
+      micBtn.style.background = isAct ? '#fee2e2' : '#f5f3ff';
+      micBtn.style.color = isAct ? '#dc2626' : '#5b21b6';
+    });
+  },
+
+  cleanTextForTurkishSpeech(rawHtmlOrText) {
+    let txt = String(rawHtmlOrText || '');
+    txt = txt
+      .replace(/<br\s*\/?>/gi, '. ')
+      .replace(/<\/(div|p|li|h[1-6])>/gi, '. ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, ' ve ')
+      .replace(/&quot;/g, ' ')
+      .replace(/&#39;/g, ' ')
+      .replace(/&lt;/g, ' küçüktür ')
+      .replace(/&gt;/g, ' büyüktür ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/[*_`#]/g, ' ')
+      .replace(/♂/g, 'Erkek ')
+      .replace(/♀/g, 'Dişi ')
+      .replace(/×/g, ' ile ')
+      .replace(/→|->/g, ' yönünde ')
+      .replace(/\bCOI\b/gi, 'akrabalık oranı')
+      .replace(/\bEBV\b/gi, 'genetik puanı')
+      .replace(/(\d+)\s*\/\s*100\b/g, '100 üzerinden $1 puan')
+      .replace(/(\d+)\s*\/\s*99\b/g, '99 üzerinden $1')
+      .replace(/%(\d+(?:[.,]\d+)?)/g, 'yüzde $1')
+      .replace(/\bm\/dk\b/gi, 'metre bölü dakika')
+      .replace(/\bkm\/sa\b|\bkm\/s\b/gi, 'kilometre saat')
+      .replace(/\bkm\b/gi, 'kilometre')
+      .replace(/\bgr\/gün\b/gi, 'gram')
+      .replace(/\bgr\b/gi, 'gram')
+      .replace(/\bLt\b/g, 'litre')
+      .replace(/\bml\b/gi, 'mililitre');
+
+    try {
+      txt = txt.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}]/gu, ' ');
+    } catch (e) {}
+
+    return txt
+      .replace(/[•▪▸▾↻✕🔒🔑📲👑⭐🚫]/g, ' ')
+      .replace(/\s*\.\s*\./g, '.')
+      .replace(/\s+/g, ' ')
+      .trim();
+  },
+
+  stopGenesisSpeech(updateUi = true) {
+    this._ttsQueueAborted = true;
+    this._isSpeakingNow = false;
+    try {
+      if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.stopSpeaking === 'function') {
+        window.AvigenNativeBridge.stopSpeaking();
+      }
+    } catch (e) {}
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch (e) {}
+    try {
+      if (this._activeTtsAudio) {
+        this._activeTtsAudio.pause();
+        this._activeTtsAudio.currentTime = 0;
+        this._activeTtsAudio = null;
+      }
+    } catch (e) {}
+    if (updateUi) {
+      this.refreshVoiceControlButtons();
+    }
+  },
+
+  toggleSpeakLatestAnswer(evt) {
+    if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+    if (this._isSpeakingNow) {
+      this.stopGenesisSpeech(true);
+      return;
+    }
+    const latest = Array.isArray(this.state.geminiChatHistory) && this.state.geminiChatHistory.length > 0
+      ? this.state.geminiChatHistory[0]
+      : null;
+    if (latest && latest.answerHtml) {
+      this.speakGenesisText(latest.answerHtml);
+    }
+  },
+
+  splitTextIntoSpeechChunks(cleanText, maxLen = 185) {
+    const sentences = String(cleanText || '')
+      .split(/(?<=[.!?])\s+/)
+      .map(s => s.trim())
+      .filter(Boolean);
+    const chunks = [];
+    let current = '';
+    for (let i = 0; i < sentences.length; i++) {
+      const s = sentences[i];
+      if (!current) {
+        current = s;
+      } else if ((current.length + 1 + s.length) <= maxLen) {
+        current += ' ' + s;
+      } else {
+        chunks.push(current);
+        current = s;
+      }
+    }
+    if (current) chunks.push(current);
+
+    const finalChunks = [];
+    chunks.forEach(c => {
+      if (c.length <= maxLen) {
+        finalChunks.push(c);
+      } else {
+        const words = c.split(/\s+/);
+        let sub = '';
+        words.forEach(w => {
+          if (!sub) sub = w;
+          else if ((sub.length + 1 + w.length) <= maxLen) sub += ' ' + w;
+          else {
+            finalChunks.push(sub);
+            sub = w;
+          }
+        });
+        if (sub) finalChunks.push(sub);
+      }
+    });
+    return finalChunks;
+  },
+
+  playFallbackHtml5TurkishAudioChunks(chunks) {
+    if (!chunks || !chunks.length) {
+      this._isSpeakingNow = false;
+      this.refreshVoiceControlButtons();
+      return;
+    }
+    let idx = 0;
+    const playNext = () => {
+      if (this._ttsQueueAborted || idx >= chunks.length) {
+        this._isSpeakingNow = false;
+        this._activeTtsAudio = null;
+        this.refreshVoiceControlButtons();
+        return;
+      }
+      const textPart = chunks[idx++];
+      const url = 'https://translate.googleapis.com/translate_tts?ie=UTF-8&client=tw-ob&tl=tr&q=' + encodeURIComponent(textPart);
+      try {
+        const audio = new Audio(url);
+        this._activeTtsAudio = audio;
+        audio.onended = () => playNext();
+        audio.onerror = () => {
+          this._isSpeakingNow = false;
+          this._activeTtsAudio = null;
+          this.refreshVoiceControlButtons();
+        };
+        const p = audio.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {
+            this._isSpeakingNow = false;
+            this._activeTtsAudio = null;
+            this.refreshVoiceControlButtons();
+          });
+        }
+      } catch (e) {
+        this._isSpeakingNow = false;
+        this.refreshVoiceControlButtons();
+      }
+    };
+    playNext();
+  },
+
+  speakGenesisText(rawHtmlOrText) {
+    this.stopGenesisSpeech(false);
+    const cleanText = this.cleanTextForTurkishSpeech(rawHtmlOrText);
+    if (!cleanText) return;
+
+    this._ttsQueueAborted = false;
+    this._isSpeakingNow = true;
+    this.refreshVoiceControlButtons();
+
+    // 1. Öncelik: Android APK Yerleşik Türkçe TextToSpeech Köprüsü Varsa
+    try {
+      if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.speakTurkishText === 'function') {
+        window.AvigenNativeBridge.speakTurkishText(cleanText);
+        const estMs = Math.min(45000, Math.max(3000, cleanText.length * 68));
+        setTimeout(() => {
+          if (this._isSpeakingNow) {
+            this._isSpeakingNow = false;
+            this.refreshVoiceControlButtons();
+          }
+        }, estMs);
+        return;
+      }
+    } catch (e) {}
+
+    const chunks = this.splitTextIntoSpeechChunks(cleanText, 180);
+
+    // 2. Öncelik: Tarayıcı / Cihaz Yerleşik Web Speech Synthesis (tr-TR)
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function') {
+      try {
+        const synth = window.speechSynthesis;
+        const voices = synth.getVoices ? synth.getVoices() : [];
+        const trVoice = voices.find(v => String(v.lang || '').toLowerCase().startsWith('tr')) || null;
+
+        let startedAny = false;
+        let cIdx = 0;
+
+        const speakNextUtterance = () => {
+          if (this._ttsQueueAborted || cIdx >= chunks.length) {
+            this._isSpeakingNow = false;
+            this.refreshVoiceControlButtons();
+            return;
+          }
+          const u = new SpeechSynthesisUtterance(chunks[cIdx++]);
+          u.lang = 'tr-TR';
+          u.rate = 1.03;
+          u.pitch = 1.0;
+          if (trVoice) u.voice = trVoice;
+
+          u.onstart = () => {
+            startedAny = true;
+          };
+          u.onend = () => {
+            speakNextUtterance();
+          };
+          u.onerror = () => {
+            if (!startedAny && !this._ttsQueueAborted) {
+              this.playFallbackHtml5TurkishAudioChunks(chunks);
+            } else {
+              this._isSpeakingNow = false;
+              this.refreshVoiceControlButtons();
+            }
+          };
+          synth.speak(u);
+        };
+
+        speakNextUtterance();
+
+        // Android WebView'da speechSynthesis sessiz kalırsa 850ms içinde HTML5 Türkçe ses akışına geç
+        setTimeout(() => {
+          if (!this._ttsQueueAborted && this._isSpeakingNow && !startedAny && !synth.speaking) {
+            try { synth.cancel(); } catch (e) {}
+            this.playFallbackHtml5TurkishAudioChunks(chunks);
+          }
+        }, 850);
+        return;
+      } catch (e) {}
+    }
+
+    // 3. Öncelik: HTML5 Türkçe Ses Akışı
+    this.playFallbackHtml5TurkishAudioChunks(chunks);
+  },
+
+  onNativeVoiceResult(spokenText, targetInputId) {
+    this._isListeningVoice = false;
+    this._activeVoiceInputId = null;
+    this.refreshVoiceControlButtons();
+
+    const cleanSpoken = String(spokenText || '').trim();
+    if (!cleanSpoken) return;
+
+    const inpId = targetInputId || 'homeGenesisAskInput';
+    const inpEl = document.getElementById(inpId);
+    if (inpEl) inpEl.value = cleanSpoken;
+
+    this._voiceTriggeredNextAnswer = true;
+    if (inpId === 'homeGenesisAskInput') {
+      this.askGenesisFromHomeScreen(cleanSpoken);
+    } else {
+      this.askGeminiAdvisor(cleanSpoken);
+    }
+  },
+
+  toggleVoiceQuestion(inputId = 'homeGenesisAskInput', evt) {
+    if (evt && typeof evt.stopPropagation === 'function') evt.stopPropagation();
+
+    // Konuşma dinlenirken mevcut sesli okumayı sustur
+    this.stopGenesisSpeech(false);
+
+    // Zaten dinliyorsa durdur
+    if (this._isListeningVoice) {
+      this._isListeningVoice = false;
+      this._activeVoiceInputId = null;
+      try {
+        if (this._activeSpeechRec) {
+          this._activeSpeechRec.stop();
+        }
+      } catch (e) {}
+      this.refreshVoiceControlButtons();
+      return;
+    }
+
+    // 1. Öncelik: Android APK Yerleşik Google Türkçe Ses Tanıma Köprüsü Varsa
+    if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.startVoiceRecognition === 'function') {
+      try {
+        this._isListeningVoice = true;
+        this._activeVoiceInputId = inputId;
+        this.refreshVoiceControlButtons();
+        window.AvigenNativeBridge.startVoiceRecognition(inputId);
+        setTimeout(() => {
+          if (this._isListeningVoice) {
+            this._isListeningVoice = false;
+            this._activeVoiceInputId = null;
+            this.refreshVoiceControlButtons();
+          }
+        }, 12000);
+        return;
+      } catch (e) {}
+    }
+
+    // 2. Öncelik: Tarayıcı Web Speech API (SpeechRecognition / webkitSpeechRecognition)
+    const SpeechRec = typeof window !== 'undefined'
+      ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+      : null;
+
+    const inputEl = document.getElementById(inputId);
+
+    if (!SpeechRec) {
+      if (inputEl) {
+        inputEl.focus();
+        inputEl.placeholder = '🎙️ Klavyenizdeki Mikrofon tuşuna basıp konuşabilirsiniz...';
+      }
+      alert('🎙️ Sesli Soru İpucu:\n\nKullandığınız ekran klavyesinin sağ üstündeki 🎙️ Mikrofon tuşuna basarak sorunuzu konuşarak yazdırabilirsiniz. Sorunuz gönderildiğinde GENESIS AI yanıtı size 🔊 Türkçe sesli olarak okuyacaktır.');
+      return;
+    }
+
+    try {
+      const rec = new SpeechRec();
+      this._activeSpeechRec = rec;
+      this._isListeningVoice = true;
+      this._activeVoiceInputId = inputId;
+      this.refreshVoiceControlButtons();
+
+      rec.lang = 'tr-TR';
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.maxAlternatives = 1;
+
+      const origPlaceholder = inputEl ? inputEl.placeholder : '';
+      if (inputEl) {
+        inputEl.value = '';
+        inputEl.placeholder = '🔴 Dinliyorum... Sorunuzu şimdi söyleyin...';
+      }
+
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      rec.onresult = (event) => {
+        interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += t + ' ';
+          } else {
+            interimTranscript += t;
+          }
+        }
+        const combined = (finalTranscript + interimTranscript).trim();
+        if (inputEl && combined) {
+          inputEl.value = combined;
+        }
+      };
+
+      rec.onerror = (errEvt) => {
+        this._isListeningVoice = false;
+        this._activeVoiceInputId = null;
+        if (inputEl && origPlaceholder) inputEl.placeholder = origPlaceholder;
+        this.refreshVoiceControlButtons();
+
+        const errCode = errEvt && errEvt.error ? String(errEvt.error) : '';
+        if (errCode === 'not-allowed' || errCode === 'service-not-allowed') {
+          if (inputEl) {
+            inputEl.focus();
+            inputEl.placeholder = '🎙️ Klavyenizdeki Mikrofon tuşuyla konuşarak sorabilirsiniz...';
+          }
+          alert('🎙️ Mikrofon İzni / Klavye Mikrofonu:\n\nTarayıcı mikrofon izni kapalıysa telefon klavyenizin üzerindeki 🎙️ Mikrofon simgesine basarak konuşabilirsiniz. GENESIS AI cevabı size 🔊 sesli olarak okuyacaktır.');
+        }
+      };
+
+      rec.onend = () => {
+        const recognized = (finalTranscript || interimTranscript || (inputEl ? inputEl.value : '')).trim();
+        this._isListeningVoice = false;
+        this._activeVoiceInputId = null;
+        if (inputEl && origPlaceholder) inputEl.placeholder = origPlaceholder;
+        this.refreshVoiceControlButtons();
+
+        if (recognized.length >= 2) {
+          this._voiceTriggeredNextAnswer = true;
+          if (inputId === 'homeGenesisAskInput') {
+            this.askGenesisFromHomeScreen(recognized);
+          } else {
+            this.askGeminiAdvisor(recognized);
+          }
+        }
+      };
+
+      rec.start();
+    } catch (err) {
+      this._isListeningVoice = false;
+      this._activeVoiceInputId = null;
+      this.refreshVoiceControlButtons();
+      if (inputEl) inputEl.focus();
+    }
   },
 
   formatGeminiMarkdownToSafeHtml(rawText) {
@@ -8030,6 +8530,11 @@ const AvigenGenesisAI = {
     this.saveState();
     this.renderGenesisModuleUI();
     this.renderHomeTeaserCard();
+
+    if (this._voiceTriggeredNextAnswer || this.isVoiceAutoSpeakEnabled()) {
+      this._voiceTriggeredNextAnswer = false;
+      this.speakGenesisText(finalAnswerMarkdown);
+    }
   },
 
   askGeminiAboutCurrentReport(reportMode) {

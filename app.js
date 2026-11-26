@@ -12276,7 +12276,7 @@ const AvigenUxManager = {
                 • <strong>1. 💞 Akıllı Eşleştirme &amp; Soy Danışmanı:</strong> 5 nesil Sewall Wright COI akrabalık katsayısı, ortak şampiyon ata tespiti, kümesinizdeki en uyumlu 5 çiftin otomatik taranması ve 11 özellikte yavru potansiyeli.<br/>
                 • <strong>2. 🗺️ 81 İl/İlçe Haritalı Akıllı Yarış Simülasyonu:</strong> Türkiye haritasında salım-kümes rotası, rüzgâr/sıcaklık/rakım riski, her kuş için uygunluk puanı, tahmini hız (m/dk) ve tek tuşla sepetleme.<br/>
                 • <strong>3. 🌾 Akıllı Yem, Suluk Kürü &amp; 1 Aylık Maliyet:</strong> Günün tarihine, mevsime, hava sıcaklığına ve kuş sayısına göre günlük gramaj, suluk takviyesi ve 30 günlük maliyet tablosu.<br/>
-                • <strong>🧬 GENESIS AI'ya Sor:</strong> Türkçe serbest soru yazarak kümes verilerinize özel danışman yanıtı alabilirsiniz (Ücretsiz API anahtarı kurulumu için üstteki <strong>🔑 API Anahtarı</strong> sekmesine bakın).
+                • <strong>🧬 GENESIS AI'ya Sor (🎙️ Sesli Soru &amp; 🔊 Sesli Cevap):</strong> Soru kutusuna yazarak veya yanındaki <strong>🎙️</strong> mikrofon tuşuna basıp konuşarak Türkçe soru sorabilir; cevabı hem yazılı okuyabilir hem de <strong>🔊 Sesli Dinle</strong> özelliğiyle Türkçe sesli olarak dinleyebilirsiniz (Ücretsiz API anahtarı kurulumu için üstteki <strong>🔑 API Anahtarı</strong> sekmesine bakın).
               </div>
             </div>
 
@@ -12947,11 +12947,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.7.4',
-    localBuild: 574,
-    remoteVersion: '5.7.4',
-    remoteBuild: 574,
-    remoteTitle: "AVIGEN v5.7.4 — Bağımsız Tek Ekran PDF/WhatsApp Köprüsü (pedigri-pdf.html) & Tarayıcısız Anında WhatsApp Dijital Sertifika Gönderimi",
+    localVersion: '5.7.5',
+    localBuild: 575,
+    remoteVersion: '5.7.5',
+    remoteBuild: 575,
+    remoteTitle: "AVIGEN v5.7.5 — GENESIS AI 🎙️ Konuşarak Sesli Soru (Speech-to-Text) & 🔊 Türkçe Sesli Cevap (Text-to-Speech) Danışman Motoru",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
