@@ -145,10 +145,13 @@ jobs:
                 `<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />`,
                 `<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />`,
                 `<uses-permission android:name="android.permission.CAMERA" />`,
+                `<uses-permission android:name="android.permission.RECORD_AUDIO" />`,
+                `<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />`,
                 `<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />`,
                 `<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />`,
                 `<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />`,
                 `<uses-feature android:name="android.hardware.camera" android:required="false" />`,
+                `<uses-feature android:name="android.hardware.microphone" android:required="false" />`,
                 `<uses-feature android:name="android.hardware.location.gps" android:required="false" />`
               ].join("\n    ");
               if (!mf.includes("ACCESS_FINE_LOCATION")) {
@@ -187,6 +190,8 @@ jobs:
           import android.os.Bundle;
           import android.os.Environment;
           import android.provider.MediaStore;
+          import android.speech.RecognizerIntent;
+          import android.speech.tts.TextToSpeech;
           import android.util.Base64;
           import android.view.KeyEvent;
           import android.webkit.JavascriptInterface;
@@ -198,8 +203,16 @@ jobs:
           import java.io.File;
           import java.io.FileOutputStream;
           import java.io.OutputStream;
+          import java.util.ArrayList;
+          import java.util.Locale;
+          import org.json.JSONObject;
 
           public class MainActivity extends BridgeActivity {
+              private static final int REQ_VOICE_SPEECH = 7701;
+              private String pendingVoiceInputId = "homeGenesisAskInput";
+              private TextToSpeech avigenTts = null;
+              private boolean avigenTtsReady = false;
+
               private void evaluateAndroidBackOrFinish() {
                   if (getBridge() != null && getBridge().getWebView() != null) {
                       getBridge().getWebView().evaluateJavascript(
@@ -215,10 +228,20 @@ jobs:
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
+                  try {
+                      avigenTts = new TextToSpeech(this, status -> {
+                          if (status == TextToSpeech.SUCCESS && avigenTts != null) {
+                              int res = avigenTts.setLanguage(new Locale("tr", "TR"));
+                              avigenTtsReady = (res != TextToSpeech.LANG_MISSING_DATA && res != TextToSpeech.LANG_NOT_SUPPORTED);
+                          }
+                      });
+                  } catch (Exception ignored) {}
+
                   if (getBridge() != null && getBridge().getWebView() != null) {
                       WebView wv = getBridge().getWebView();
                       wv.getSettings().setJavaScriptEnabled(true);
                       wv.getSettings().setDomStorageEnabled(true);
+                      wv.getSettings().setMediaPlaybackRequiresUserGesture(false);
                       wv.addJavascriptInterface(new AvigenJsBridge(), "AvigenNativeBridge");
                   }
 
@@ -228,6 +251,40 @@ jobs:
                           evaluateAndroidBackOrFinish();
                       }
                   });
+              }
+
+              @Override
+              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+                  super.onActivityResult(requestCode, resultCode, data);
+                  if (requestCode == REQ_VOICE_SPEECH) {
+                      String recognizedText = "";
+                      if (resultCode == RESULT_OK && data != null) {
+                          ArrayList<String> matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                          if (matches != null && !matches.isEmpty() && matches.get(0) != null) {
+                              recognizedText = matches.get(0).trim();
+                          }
+                      }
+                      final String finalSpoken = recognizedText;
+                      final String finalInpId = pendingVoiceInputId != null ? pendingVoiceInputId : "homeGenesisAskInput";
+                      runOnUiThread(() -> {
+                          if (getBridge() != null && getBridge().getWebView() != null) {
+                              String js = "(function(){ try { if (window.AvigenGenesisAI && window.AvigenGenesisAI.onNativeVoiceResult) { window.AvigenGenesisAI.onNativeVoiceResult("
+                                  + JSONObject.quote(finalSpoken) + ", " + JSONObject.quote(finalInpId) + "); } } catch(e){} })()";
+                              getBridge().getWebView().evaluateJavascript(js, null);
+                          }
+                      });
+                  }
+              }
+
+              @Override
+              public void onDestroy() {
+                  try {
+                      if (avigenTts != null) {
+                          avigenTts.stop();
+                          avigenTts.shutdown();
+                      }
+                  } catch (Exception ignored) {}
+                  super.onDestroy();
               }
 
               @Override
@@ -245,6 +302,45 @@ jobs:
                   @JavascriptInterface
                   public void exitApp() {
                       runOnUiThread(() -> finish());
+                  }
+
+                  @JavascriptInterface
+                  public void startVoiceRecognition(String targetInputId) {
+                      runOnUiThread(() -> {
+                          try {
+                              pendingVoiceInputId = (targetInputId != null && !targetInputId.isEmpty()) ? targetInputId : "homeGenesisAskInput";
+                              Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                              intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                              intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR");
+                              intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "GENESIS AI'ya Sorunuzu Soyleyin...");
+                              startActivityForResult(intent, REQ_VOICE_SPEECH);
+                          } catch (Exception e) {
+                              Toast.makeText(MainActivity.this, "Ses tanima baslatilamadi: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                          }
+                      });
+                  }
+
+                  @JavascriptInterface
+                  public void speakTurkishText(String text) {
+                      runOnUiThread(() -> {
+                          try {
+                              if (text == null || text.trim().isEmpty()) return;
+                              if (avigenTts != null && avigenTtsReady) {
+                                  avigenTts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "avigen_tts_" + System.currentTimeMillis());
+                              }
+                          } catch (Exception ignored) {}
+                      });
+                  }
+
+                  @JavascriptInterface
+                  public void stopSpeaking() {
+                      runOnUiThread(() -> {
+                          try {
+                              if (avigenTts != null) {
+                                  avigenTts.stop();
+                              }
+                          } catch (Exception ignored) {}
+                      });
                   }
 
                   @JavascriptInterface
