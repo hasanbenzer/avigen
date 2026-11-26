@@ -1,4 +1,4 @@
-const CACHE_NAME = 'avigen-pwa-v42';
+const CACHE_NAME = 'avigen-pwa-v43';
 const ASSETS = [
   './',
   './index.html',

@@ -7629,8 +7629,17 @@ const AvigenGenesisAI = {
       .replace(/♀/g, 'Dişi ')
       .replace(/×/g, ' ile ')
       .replace(/→|->/g, ' yönünde ')
+      .replace(/~/g, 'yaklaşık ')
+      .replace(/°C\b/gi, ' derece')
       .replace(/\bCOI\b/gi, 'akrabalık oranı')
       .replace(/\bEBV\b/gi, 'genetik puanı')
+      .replace(/\bALLROUND\b/gi, 'Her Mesafe')
+      .replace(/\bMARATHON\b/gi, 'Maraton')
+      .replace(/\bSPRINT\b/gi, 'Kısa Mesafe')
+      .replace(/\bOutcross\b/gi, 'Yabancı Kan')
+      .replace(/(\d+)\s*[–—-]\s*(\d+)\s*(km|kilometre|gün|dakika|saat|yaş|yıl|gr|gram|derece|m\b)/gi, '$1 ila $2 $3')
+      .replace(/([A-Za-zÇĞİÖŞÜçğıöşü0-9])-([A-Za-zÇĞİÖŞÜçğıöşü0-9])/g, '$1 $2')
+      .replace(/([A-Za-zÇĞİÖŞÜçğıöşü0-9])-([A-Za-zÇĞİÖŞÜçğıöşü0-9])/g, '$1 $2')
       .replace(/(\d+)\s*\/\s*100\b/g, '100 üzerinden $1 puan')
       .replace(/(\d+)\s*\/\s*99\b/g, '99 üzerinden $1')
       .replace(/%(\d+(?:[.,]\d+)?)/g, 'yüzde $1')
@@ -7647,7 +7656,7 @@ const AvigenGenesisAI = {
     } catch (e) {}
 
     return txt
-      .replace(/[•▪▸▾↻✕🔒🔑📲👑⭐🚫]/g, ' ')
+      .replace(/[•▪▸▾↻✕🔒🔑📲👑⭐🚫\[\]]/g, ' ')
       .replace(/\s*\.\s*\./g, '.')
       .replace(/\s+/g, ' ')
       .trim();
@@ -7662,8 +7671,10 @@ const AvigenGenesisAI = {
       }
     } catch (e) {}
     try {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis) {
+        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+          window.speechSynthesis.cancel();
+        }
       }
     } catch (e) {}
     try {
@@ -7694,7 +7705,8 @@ const AvigenGenesisAI = {
 
   splitTextIntoSpeechChunks(cleanText, maxLen = 185) {
     const sentences = String(cleanText || '')
-      .split(/(?<=[.!?])\s+/)
+      .replace(/([.!?])\s+/g, '$1\n')
+      .split(/\n+/)
       .map(s => s.trim())
       .filter(Boolean);
     const chunks = [];
@@ -8069,7 +8081,9 @@ const AvigenGenesisAI = {
       const rLow = (b.ring || '').toLowerCase();
       const rClean = rLow.replace(/[-\s./]+/g, '');
       const nLow = (b.name || '').toLowerCase();
+      const rDigits = (rClean.match(/\d+$/) || [''])[0];
       return (rClean.length >= 4 && cleanQ.includes(rClean.slice(-5))) ||
+             (rDigits.length >= 4 && /\d{4}/.test(cleanQ) && cleanQ.includes(rDigits.slice(-4))) ||
              (rLow.length >= 4 && q.includes(rLow)) ||
              (nLow.length >= 4 && nLow !== 'isimsiz güvercin' && q.includes(nLow));
     });
@@ -8152,7 +8166,9 @@ const AvigenGenesisAI = {
           const rLow = (b.ring || '').toLowerCase();
           const rClean = rLow.replace(/[-\s./]+/g, '');
           const nLow = (b.name || '').toLowerCase();
+          const rDigits = (rClean.match(/\d+$/) || [''])[0];
           return (rClean.length >= 4 && cleanQuery.includes(rClean.slice(-5))) ||
+                 (rDigits.length >= 4 && /\d{4}/.test(cleanQuery) && cleanQuery.includes(rDigits.slice(-4))) ||
                  (rLow.length >= 4 && qLower.includes(rLow)) ||
                  (nLow.length >= 4 && nLow !== 'isimsiz güvercin' && qLower.includes(nLow));
         });

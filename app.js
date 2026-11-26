@@ -11906,7 +11906,7 @@ const AvigenUxManager = {
           </div>
 
           <button type="button" class="ios-btn ios-btn-outline" style="width:100%; padding:7px; font-size:10px;" onclick="AvigenSystemAuditQA.runAndRenderInSecurityPane()">
-            🧪 25 Otomatik Sistem, Yol Haritası &amp; Bilimsel Doğruluk Testini Çalıştır
+            🧪 26 Otomatik Sistem, Yol Haritası, Sesli Danışman &amp; Bilimsel Doğruluk Testini Çalıştır
           </button>
           <div id="avigenQaTestOutputBox" style="margin-top:7px;"></div>
         </div>
@@ -12947,11 +12947,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.7.5',
-    localBuild: 575,
-    remoteVersion: '5.7.5',
-    remoteBuild: 575,
-    remoteTitle: "AVIGEN v5.7.5 — GENESIS AI 🎙️ Konuşarak Sesli Soru (Speech-to-Text) & 🔊 Türkçe Sesli Cevap (Text-to-Speech) Danışman Motoru",
+    localVersion: '5.7.6',
+    localBuild: 576,
+    remoteVersion: '5.7.6',
+    remoteBuild: 576,
+    remoteTitle: "AVIGEN v5.7.6 — GENESIS AI 🎙️ Konuşarak Sesli Soru (STT) & 🔊 Türkçe Diksiyonlu Sesli Cevap (TTS) + T26 Ses Denetim Testi",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
@@ -13911,6 +13911,52 @@ const AvigenSystemAuditQA = {
       commDetail = 'Ticari denetim hatası: ' + (e.message || e);
     }
     assert('T25', '5. Ticari Hazırlık & Güvenlik', '90 Gün Deneme, STANDART/GENESIS AI Paketleri, Cihaza Özel Lisans & Anti-Cheat 1-2', commAuditOk, commDetail);
+
+    // T26: 6. Sesli Konuşma / Soru Sorma (STT) & Türkçe Diksiyonlu Sesli Dinleme (TTS) Denetimi
+    let voiceAuditOk = false;
+    let voiceDetail = '';
+    try {
+      const gAi = typeof AvigenGenesisAI !== 'undefined' ? AvigenGenesisAI : null;
+      const sampleRaw = '💞 **1. Öneri:** ♂ **TUGF26-A-16-03033 (PALA İBO)** × ♀ **TR-20-067372-D** — Uyum: **85/100** • COI: **%3,12** • **100–350 km** • **~1250 m/dk** • **18°C**';
+      const cleanedSpeech = gAi && typeof gAi.cleanTextForTurkishSpeech === 'function'
+        ? gAi.cleanTextForTurkishSpeech(sampleRaw)
+        : '';
+      const chunks = gAi && typeof gAi.splitTextIntoSpeechChunks === 'function'
+        ? gAi.splitTextIntoSpeechChunks(cleanedSpeech, 180)
+        : [];
+      const spokenRingAns = gAi && typeof gAi.generateLocalScientificFallbackAnswer === 'function'
+        ? gAi.generateLocalScientificFallbackAnswer('03033 numaralı kuş kiminle eşleşmeli?')
+        : '';
+      const hasHomeMicBtn = Boolean(document.getElementById('btnMic_homeGenesisAskInput'));
+      const hasAutoSpeakBtn = Boolean(document.querySelector('[data-genesis-autospeak-btn="1"]'));
+
+      voiceAuditOk = Boolean(
+        gAi &&
+        typeof gAi.toggleVoiceQuestion === 'function' &&
+        typeof gAi.onNativeVoiceResult === 'function' &&
+        typeof gAi.speakGenesisText === 'function' &&
+        typeof gAi.stopGenesisSpeech === 'function' &&
+        typeof gAi.toggleSpeakLatestAnswer === 'function' &&
+        cleanedSpeech.includes('Erkek') &&
+        cleanedSpeech.includes('Dişi') &&
+        cleanedSpeech.includes('100 üzerinden 85 puan') &&
+        cleanedSpeech.includes('akrabalık oranı') &&
+        cleanedSpeech.includes('yüzde 3,12') &&
+        cleanedSpeech.includes('100 ila 350 kilometre') &&
+        cleanedSpeech.includes('metre bölü dakika') &&
+        cleanedSpeech.includes('18 derece') &&
+        !cleanedSpeech.includes('-16-') &&
+        chunks.length >= 1 &&
+        chunks.every(c => c.length <= 185) &&
+        spokenRingAns.includes('03033') &&
+        hasHomeMicBtn &&
+        hasAutoSpeakBtn
+      );
+      voiceDetail = `STT/TTS Motoru • Türkçe Diksiyon ("${cleanedSpeech.slice(0, 72)}...") • Halka No Sesli Eşleşme (03033) & Mikrofon/Hoparlör Kontrolleri doğrulandı.`;
+    } catch (e) {
+      voiceDetail = 'Sesli konuşma/dinleme test hatası: ' + (e.message || e);
+    }
+    assert('T26', '6. Sesli Soru & Dinleme', 'GENESIS AI 🎙️ Konuşarak Soru Sorma (STT) & 🔊 Türkçe Diksiyonlu Sesli Yanıt (TTS)', voiceAuditOk, voiceDetail);
 
     if (hadEmptyLoftForTest) {
       pedigrees = savedPedigreesBeforeQa;
