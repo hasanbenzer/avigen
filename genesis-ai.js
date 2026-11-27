@@ -194,7 +194,10 @@ const AvigenGenesisAI = {
       const rtSig = (typeof AvigenRaceTracker !== 'undefined' && Array.isArray(AvigenRaceTracker.events))
         ? AvigenRaceTracker.events.map(ev => `${ev.id}:${ev.distanceKm}:${ev.status}:${ev.weather || ''}:${(ev.entries || []).map(e => `${e.ring}:${e.resultStatus}:${e.rank || ''}:${e.speedMpm || ''}:${e.durationMinutes || ''}`).join(',')}`).join('|')
         : '';
-      return `${pCount}_${rSig}_${rtSig}_${pRings}`;
+      const apSig = (typeof activePairsList !== 'undefined' && Array.isArray(activePairsList))
+        ? activePairsList.map(ap => `${ap.id}:${ap.sire || ''}:${ap.dam || ''}`).join('|')
+        : '';
+      return `${pCount}_${rSig}_${rtSig}_${apSig}_${pRings}`;
     } catch (e) {
       return String(Date.now());
     }
@@ -5607,12 +5610,18 @@ const AvigenGenesisAI = {
       return;
     }
 
-    const { males, females, all } = getAllBreedingCandidates();
+    const { males: rawMales, females: rawFemales, all } = getAllBreedingCandidates();
+    const nestedNormSetForUi = typeof getActiveNestRingNormSet === 'function' ? getActiveNestRingNormSet() : new Set();
+    const normRForUi = (r) => String(r || '').trim().toUpperCase().replace(/[-\s./_]+/g, '');
+    const freeMalesList = rawMales.filter(m => !nestedNormSetForUi.has(normRForUi(m.ring)));
+    const freeFemalesList = rawFemales.filter(f => !nestedNormSetForUi.has(normRForUi(f.ring)));
+    const males = freeMalesList.length ? freeMalesList : rawMales;
+    const females = freeFemalesList.length ? freeFemalesList : rawFemales;
     const allLoftBirds = collectUniqueLoftBirds().filter(b => b.isActiveLoftBird);
     if (!['breeding', 'smart_race', 'nutrition'].includes(this.state.activeMode)) {
       this.state.activeMode = 'breeding';
     }
-    // Seçili Baba adayı gerçekten Erkek (males) listesinde mi, seçili Anne adayı gerçekten Dişi (females) listesinde mi doğrula!
+    // Seçili Baba adayı gerçekten boştaki Erkek (males) listesinde mi, seçili Anne adayı gerçekten boştaki Dişi (females) listesinde mi doğrula!
     if (!this.state.selectedSireRef || (males.length > 0 && !males.some(m => m.id === this.state.selectedSireRef))) {
       this.state.selectedSireRef = males[0] ? males[0].id : '';
     }
@@ -5817,25 +5826,19 @@ const AvigenGenesisAI = {
         <div class="genesis-tool-controls" style="display:flex; flex-direction:column; gap:6px;">
           <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:6px; align-items:end;">
             <div style="min-width:0;">
-              <label style="font-size:9.5px; font-weight:800; color:#0284c7;">1. ♂ Erkek Kuş Seçimi (${males.length} Aday)</label>
+              <label style="font-size:9.5px; font-weight:800; color:#0284c7;">1. ♂ Erkek Kuş Seçimi (${males.length} Boşta)</label>
               <select id="genesisSireSelect" class="ios-select" style="width:100%; font-size:11px; font-weight:800; padding:6px;" onchange="AvigenGenesisAI.onGenesisSelectionChange()">
                 ${males.length
-                  ? males.map(c => {
-                      const nLbl = activeNestByRing.get(c.ring.toUpperCase());
-                      return `<option value="${c.id}" ${c.id === this.state.selectedSireRef ? 'selected' : ''}>♂ ${escapeHtml(c.ring)} (${escapeHtml(c.name)})${nLbl ? ` • 🪺 ${escapeHtml(nLbl)}` : ''}</option>`;
-                    }).join('')
-                  : `<option value="">⚠️ Kümesinizde kayıtlı ♂ Erkek kuş yok</option>`}
+                  ? males.map(c => `<option value="${c.id}" ${c.id === this.state.selectedSireRef ? 'selected' : ''}>♂ ${escapeHtml(c.ring)} (${escapeHtml(c.name)})</option>`).join('')
+                  : `<option value="">⚠️ Kümesinizde boşta ♂ Erkek kuş yok</option>`}
               </select>
             </div>
             <div style="min-width:0;">
-              <label style="font-size:9.5px; font-weight:800; color:#db2777;">2. ♀ Dişi Kuş Seçimi (${females.length} Aday)</label>
+              <label style="font-size:9.5px; font-weight:800; color:#db2777;">2. ♀ Dişi Kuş Seçimi (${females.length} Boşta)</label>
               <select id="genesisDamSelect" class="ios-select" style="width:100%; font-size:11px; font-weight:800; padding:6px;" onchange="AvigenGenesisAI.onGenesisSelectionChange()">
                 ${females.length
-                  ? females.map(c => {
-                      const nLbl = activeNestByRing.get(c.ring.toUpperCase());
-                      return `<option value="${c.id}" ${c.id === this.state.selectedDamRef ? 'selected' : ''}>♀ ${escapeHtml(c.ring)} (${escapeHtml(c.name)})${nLbl ? ` • 🪺 ${escapeHtml(nLbl)}` : ''}</option>`;
-                    }).join('')
-                  : `<option value="">⚠️ Kümesinizde kayıtlı ♀ Dişi kuş yok</option>`}
+                  ? females.map(c => `<option value="${c.id}" ${c.id === this.state.selectedDamRef ? 'selected' : ''}>♀ ${escapeHtml(c.ring)} (${escapeHtml(c.name)})</option>`).join('')
+                  : `<option value="">⚠️ Kümesinizde boşta ♀ Dişi kuş yok</option>`}
               </select>
             </div>
             <button class="ai-send-btn" style="padding:7px 11px; font-size:11px; flex-shrink:0;" onclick="AvigenGenesisAI.triggerAnimatedAnalysis()">

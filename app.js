@@ -2566,12 +2566,25 @@ function openHomeItemModal(itemId = '', forcedType = '') {
       </div>
     `;
   } else if (modalType === 'pairs') {
+    const otherNestedNormSet = new Set();
+    (activePairsList || []).forEach(ap => {
+      if (itemId && ap.id === itemId) return;
+      const sr = extractCleanRingFromText(ap.sire);
+      const dr = extractCleanRingFromText(ap.dam);
+      if (sr) otherNestedNormSet.add(normalizeRingForLookup(sr));
+      if (dr) otherNestedNormSet.add(normalizeRingForLookup(dr));
+    });
+    const availMales = males.filter(m => !otherNestedNormSet.has(normalizeRingForLookup(m.ring)));
+    const availFemales = females.filter(f => !otherNestedNormSet.has(normalizeRingForLookup(f.ring)));
+    const poolMales = availMales.length ? availMales : males;
+    const poolFemales = availFemales.length ? availFemales : females;
+
     const existing = activePairsList.find(x => x.id === itemId) || {
       nest: `Yuva #${activePairsList.length + 1}`,
       eventType: 'egg',
       eventDate: getIsoDateDaysAgo(6),
-      sire: males[0] ? `${males[0].ring} (${males[0].name})` : '',
-      dam: females[0] ? `${females[0].ring} (${females[0].name})` : '',
+      sire: poolMales[0] ? `${poolMales[0].ring} (${poolMales[0].name})` : '',
+      dam: poolFemales[0] ? `${poolFemales[0].ring} (${poolFemales[0].name})` : '',
       clutchStatus: '1. Ağız • 2 Dolu Yumurta',
       fosterNest: 'Kendi Anne-Babası Bakıyor',
       detail: ''
@@ -2612,11 +2625,11 @@ function openHomeItemModal(itemId = '', forcedType = '') {
       </div>
       <div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
-          <label style="font-size:11px; font-weight:800;">♂ Baba (Kümesteki Erkek Güvercin)</label>
+          <label style="font-size:11px; font-weight:800;">♂ Baba (Boştaki Erkekler: ${poolMales.length})</label>
           <button type="button" class="nest-mini-action-btn" onclick="openQuickBirdProfileByRing(document.getElementById('hmPairSire')?.value, event)">📊 Baba Profilini Gör</button>
         </div>
         <select id="hmPairSire" class="ios-select" style="font-weight:800;" onchange="checkPairModalConflictLive()">
-          ${(males.length ? males : all).map(m => {
+          ${(poolMales.length ? poolMales : all).map(m => {
             const label = `${m.ring} (${m.name})`;
             const isSel = existing.sire && existing.sire.toUpperCase().includes(m.ring.toUpperCase());
             return `<option value="${escapeHtml(label)}" ${isSel ? 'selected' : ''}>${m.flag} ♂ ${escapeHtml(m.ring)} — ${escapeHtml(m.name)}</option>`;
@@ -2625,11 +2638,11 @@ function openHomeItemModal(itemId = '', forcedType = '') {
       </div>
       <div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
-          <label style="font-size:11px; font-weight:800;">♀ Anne (Kümesteki Dişi Güvercin)</label>
+          <label style="font-size:11px; font-weight:800;">♀ Anne (Boştaki Dişiler: ${poolFemales.length})</label>
           <button type="button" class="nest-mini-action-btn" onclick="openQuickBirdProfileByRing(document.getElementById('hmPairDam')?.value, event)">📊 Anne Profilini Gör</button>
         </div>
         <select id="hmPairDam" class="ios-select" style="font-weight:800;" onchange="checkPairModalConflictLive()">
-          ${(females.length ? females : all).map(f => {
+          ${(poolFemales.length ? poolFemales : all).map(f => {
             const label = `${f.ring} (${f.name})`;
             const isSel = existing.dam && existing.dam.toUpperCase().includes(f.ring.toUpperCase());
             return `<option value="${escapeHtml(label)}" ${isSel ? 'selected' : ''}>${f.flag} ♀ ${escapeHtml(f.ring)} — ${escapeHtml(f.name)}</option>`;
@@ -14257,10 +14270,10 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.8.2',
-    localBuild: 582,
-    remoteVersion: '5.8.2',
-    remoteBuild: 582,
+    localVersion: '5.8.3',
+    localBuild: 583,
+    remoteVersion: '5.8.3',
+    remoteBuild: 583,
     remoteTitle: "AVIGEN v5.8.0 — Yetiştirici Verimlilik & Doğruluk Paketi: Otomatik Damızlık/Yarışçı/Yavru Kadro Tespiti, Tek Kuş İçin En İyi 5 Eş Seçici, Aktif Yuva Çakışma Rozeti, Pedigri Ata/Kardeş/Yavru Geçişi",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
