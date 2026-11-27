@@ -81,6 +81,7 @@ const AvigenGenesisAI = {
     cortexLearningLog: [],
     cortexModelVersion: 'v2.2.0',
     hasVerifiedDnaLabData: false,
+    geminiApiKey: '',
     geminiModel: 'gemini-2.0-flash',
     geminiTopic: 'breeding_advice',
     geminiDraftPrompt: '',
@@ -258,6 +259,12 @@ const AvigenGenesisAI = {
       }
       if (typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.hasGeneticsAiAccess === 'function') {
         this.state.isPremiumActive = AvigenUxManager.hasGeneticsAiAccess();
+      }
+      // Kayıtlı Bulut Sinir Ağı (API) Anahtarını tüm yedek ve depolama katmanlarından senkronize et (Güncellemelerde asla silinmez!)
+      const syncedKey = this.getGeminiApiKey();
+      if (syncedKey) {
+        this.state.geminiApiKey = syncedKey;
+        try { localStorage.setItem('avigen_gemini_free_api_key_v1', syncedKey); } catch (e) {}
       }
     } catch (e) {}
   },
@@ -7658,26 +7665,99 @@ const AvigenGenesisAI = {
   // ==========================================================================
   getGeminiApiKey() {
     try {
-      return (localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim();
+      let key = (localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim();
+      if (!key && this.state && this.state.geminiApiKey) {
+        key = String(this.state.geminiApiKey).trim();
+      }
+      if (!key && typeof AvigenUxManager !== 'undefined' && AvigenUxManager.state && AvigenUxManager.state.geminiApiKey) {
+        key = String(AvigenUxManager.state.geminiApiKey).trim();
+      }
+      if (!key && window.AvigenNativeBridge && typeof window.AvigenNativeBridge.getSavedString === 'function') {
+        try { key = String(window.AvigenNativeBridge.getSavedString('avigen_gemini_free_api_key_v1') || '').trim(); } catch (e) {}
+      }
+      if (!key) {
+        try {
+          const snapRaw = localStorage.getItem('avigen_auto_safety_snapshot_v1');
+          if (snapRaw) {
+            const snap = JSON.parse(snapRaw);
+            key = String(snap?.gemini_api_key || snap?.user_account_state?.geminiApiKey || '').trim();
+          }
+        } catch (e) {}
+      }
+      if (key) {
+        try { localStorage.setItem('avigen_gemini_free_api_key_v1', key); } catch (e) {}
+        if (this.state) this.state.geminiApiKey = key;
+      }
+      return key;
     } catch (e) {
       return '';
     }
   },
 
+  autoPersistGeminiKeyFromInput(rawVal) {
+    const clean = String(rawVal || '').trim();
+    if (clean.length < 20) return;
+    try {
+      localStorage.setItem('avigen_gemini_free_api_key_v1', clean);
+      this.state.geminiApiKey = clean;
+      this.saveState();
+      if (typeof AvigenUxManager !== 'undefined' && AvigenUxManager.state) {
+        AvigenUxManager.state.geminiApiKey = clean;
+        AvigenUxManager.saveState();
+      }
+      if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.saveString === 'function') {
+        try { window.AvigenNativeBridge.saveString('avigen_gemini_free_api_key_v1', clean); } catch (e) {}
+      }
+    } catch (e) {}
+  },
+
+  clearSavedGeminiApiKey() {
+    try {
+      localStorage.removeItem('avigen_gemini_free_api_key_v1');
+      this.state.geminiApiKey = '';
+      this.saveState();
+      if (typeof AvigenUxManager !== 'undefined' && AvigenUxManager.state) {
+        AvigenUxManager.state.geminiApiKey = '';
+        AvigenUxManager.saveState();
+      }
+      if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.saveString === 'function') {
+        try { window.AvigenNativeBridge.saveString('avigen_gemini_free_api_key_v1', ''); } catch (e) {}
+      }
+    } catch (e) {}
+  },
+
   saveGeminiApiKeyFromInput(inputId) {
-    const el = document.getElementById(inputId || 'genesisGeminiApiKeyInput');
+    const el = document.getElementById(inputId || 'genesisGeminiApiKeyInput')
+      || document.getElementById('settingsGeminiApiKeyInput')
+      || document.getElementById('guideGeminiApiKeyInput');
     if (!el) return;
     const raw = (el.value || '').trim();
     try {
       if (raw) {
         localStorage.setItem('avigen_gemini_free_api_key_v1', raw);
-        alert('✅ GENESIS AI Bulut Sinir Ağı anahtarınız kaydedildi!\n\nArtık tüm sorularınız GENESIS AI tarafından canlı kümes verileriniz üzerinden yanıtlanacaktır.');
+        this.state.geminiApiKey = raw;
+        this.saveState();
+        if (typeof AvigenUxManager !== 'undefined' && AvigenUxManager.state) {
+          AvigenUxManager.state.geminiApiKey = raw;
+          AvigenUxManager.saveState();
+        }
+        if (window.AvigenNativeBridge && typeof window.AvigenNativeBridge.saveString === 'function') {
+          try { window.AvigenNativeBridge.saveString('avigen_gemini_free_api_key_v1', raw); } catch (e) {}
+        }
+        if (typeof saveCurrentLoftToInAppVault === 'function') {
+          try { saveCurrentLoftToInAppVault('API Anahtarı Kaydı'); } catch (e) {}
+        }
+        this._geminiQueryCache = {};
+        alert('✅ GENESIS AI Bulut Sinir Ağı anahtarınız kalıcı olarak kaydedildi!\n\nAnahtarınız artık canlı güncellemelerde ve yedek yüklemelerinde silinmeden sabit korunacaktır.');
       } else {
-        localStorage.removeItem('avigen_gemini_free_api_key_v1');
+        this.clearSavedGeminiApiKey();
         alert('ℹ️ Bulut motor anahtarı kaldırıldı. GENESIS AI yerleşik bilimsel kümes motoruyla çalışmaya devam edecektir.');
       }
     } catch (e) {}
     this.renderGenesisModuleUI();
+    if (typeof AvigenUxManager !== 'undefined' && typeof AvigenUxManager.renderProfileAccountSection === 'function') {
+      AvigenUxManager.renderProfileAccountSection();
+    }
     if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
   },
 
@@ -8110,6 +8190,7 @@ const AvigenGenesisAI = {
 
       let finalTranscript = '';
       let interimTranscript = '';
+      let silenceStopTimer = null;
 
       rec.onresult = (event) => {
         interimTranscript = '';
@@ -8125,9 +8206,17 @@ const AvigenGenesisAI = {
         if (inputEl && combined) {
           inputEl.value = combined;
         }
+        // Konuşma algılandıktan sonra 1.6 saniye sessizlik olursa otomatik tamamla
+        if (silenceStopTimer) clearTimeout(silenceStopTimer);
+        if (combined.length >= 2) {
+          silenceStopTimer = setTimeout(() => {
+            try { rec.stop(); } catch (e) {}
+          }, 1600);
+        }
       };
 
       rec.onerror = (errEvt) => {
+        if (silenceStopTimer) clearTimeout(silenceStopTimer);
         this._isListeningVoice = false;
         this._activeVoiceInputId = null;
         if (inputEl && origPlaceholder) inputEl.placeholder = origPlaceholder;
@@ -8144,6 +8233,7 @@ const AvigenGenesisAI = {
       };
 
       rec.onend = () => {
+        if (silenceStopTimer) clearTimeout(silenceStopTimer);
         const recognized = (finalTranscript || interimTranscript || (inputEl ? inputEl.value : '')).trim();
         this._isListeningVoice = false;
         this._activeVoiceInputId = null;
@@ -8157,6 +8247,8 @@ const AvigenGenesisAI = {
           } else {
             this.askGeminiAdvisor(recognized);
           }
+        } else if (inputEl) {
+          inputEl.placeholder = '🎙️ Ses duyulamadı, tekrar 🎙️ basıp konuşun veya yazın...';
         }
       };
 
@@ -8221,20 +8313,26 @@ const AvigenGenesisAI = {
 
   // Kullanıcının sorusu doğrudan kendi kümesindeki spesifik hesaplamayı mı istiyor kontrol eder
   isDirectLoftCalculationQuery(qRaw, topicKey) {
+    // ÖNEMLİ: Eğer kullanıcı kendi Bulut Sinir Ağı (API) Anahtarını girdiyse ve hızlı şablon butonuna (topicKey) basmadıysa,
+    // her sesli/yazılı soruyu kümes bağlamıyla birlikte doğrudan Bulut Sinir Ağına gönder ki her soruya özel ve farklı yanıt üretilsin!
+    if (!topicKey && this.getGeminiApiKey()) {
+      return false;
+    }
     if (topicKey) return true;
     const q = String(qRaw || '').toLowerCase().trim();
     if (!q) return true;
     const allBirds = typeof collectUniqueLoftBirds === 'function' ? collectUniqueLoftBirds() : [];
     const cleanQ = q.replace(/[-\s./]+/g, '');
+    const genericExcludedNames = new Set(['isimsiz güvercin', 'isimsiz', 'güvercin', 'yavru', 'damızlık', 'yarışçı', 'şampiyon', 'erkek', 'dişi']);
     const hasBirdRingOrName = allBirds.some(b => {
       const rLow = (b.ring || '').toLowerCase();
       const rClean = rLow.replace(/[-\s./]+/g, '');
-      const nLow = (b.name || '').toLowerCase();
+      const nLow = (b.name || '').toLowerCase().trim();
       const rDigits = (rClean.match(/\d+$/) || [''])[0];
-      return (rClean.length >= 4 && cleanQ.includes(rClean.slice(-5))) ||
+      return (rClean.length >= 5 && cleanQ.includes(rClean.slice(-5))) ||
              (rDigits.length >= 4 && /\d{4}/.test(cleanQ) && cleanQ.includes(rDigits.slice(-4))) ||
-             (rLow.length >= 4 && q.includes(rLow)) ||
-             (nLow.length >= 4 && nLow !== 'isimsiz güvercin' && q.includes(nLow));
+             (rLow.length >= 5 && q.includes(rLow)) ||
+             (nLow.length >= 5 && !genericExcludedNames.has(nLow) && !nLow.includes('yavrusu') && q.includes(nLow));
     });
     if (hasBirdRingOrName) return true;
     if (
@@ -8488,7 +8586,7 @@ const AvigenGenesisAI = {
       }
 
       // 13. KÜMESİMDEKİ EN İYİ ÇİFTLER / EŞLEŞTİRME ÖNERİSİ SORULARI:
-      if (topicKey === 'breeding_advice' || qLower.includes('eşleş') || qLower.includes('çift') || qLower.includes('damızlık') || qLower.includes('kümesim') || !qRaw) {
+      if (topicKey === 'breeding_advice' || qLower.includes('en iyi çift') || qLower.includes('en uyumlu') || qLower.includes('hangi çift') || qLower.includes('kiminle eşleş') || !qRaw) {
         const topPairs = getTopPairs();
         const rep = getRep();
         const pairsLines = topPairs.length
@@ -8498,7 +8596,30 @@ const AvigenGenesisAI = {
         return [
           `**💞 Kümesinizdeki En Uyumlu Damızlık Eşleşmeler & GENESIS AI Özeti**`,
           pairsLines,
-          `- **Seçili Aktif Çiftiniz:** ♂ **${rep.sireInfo?.ring || '-'} (${rep.sireInfo?.name || '-'})** × ♀ **${rep.damInfo?.ring || '-'} (${rep.damInfo?.name || '-'})** çifti **${rep.totalScore || 80}/100 (${rep.decisionLabel || 'Uyumlu'})** uyum ve **%${Number(rep.coi || 0).toFixed(2)} COI** değerine sahiptir. Detaylı kırılım **aşağıdaki raporda** listelenmiştir.`
+          `- **Seçili Aktif Çiftiniz:** ♂ **${rep.sireInfo?.ring || '-'} (${rep.sireInfo?.name || '-'})** × ♀ **${rep.damInfo?.ring || '-'} (${rep.damInfo?.name || '-'})** çifti **${rep.totalScore || 80}/100 (${rep.decisionLabel || 'Uyumlu'})** uyum ve **%${Number(rep.coi || 0).toFixed(2)} COI** değerine sahiptir.`
+        ].join('\n');
+      }
+
+      // 13B. GENEL EŞLEŞTİRME, DAMIZLIK SEÇİMİ VEYA KÜMES YÖNETİMİ SORULARI (Her soruya aynı çift listesini okumamak için konuya özel yanıt):
+      if (qLower.includes('eşleş') || qLower.includes('damızlık') || qLower.includes('çiftleş') || qLower.includes('sezon') || qLower.includes('hazırlık')) {
+        return [
+          `**🥚 Damızlık Seçimi ve Eşleştirme Hazırlığı İçin Altın Kurallar**`,
+          `- **Eşleştirme Öncesi Hazırlık:** Eşleştirmeden 3–4 hafta önce iç/dış parazit ve Salmonella/PMV kontrolleri tamamlanmalı; dişilere **E Vitamini + Selenyum + Kalsiyum/D3** takviyesi verilmelidir.`,
+          `- **Kan Uyumu:** Yarış uçuracağınız yavrular için **%0–%3 COI (Yabancı Kan / Outcross)**; damızlıkta şampiyon kanı sabitlemek için ise **%3–%12,5 COI (Şampiyon Ortak Ata / Linebreeding)** tercih edilmelidir.`,
+          `- **Fiziksel Tamamlayıcılık:** Uzun/esnek gövdeli bir kuşu daha kompakt/güçlü bel yapısına sahip bir eşle, sakin gözlü bir kuşu canlı/keskin irisli bir eşle dengelemek yavru kalitesini yükseltir.`
+        ].join('\n');
+      }
+      if (qLower.includes('kümes') && (qLower.includes('kaç') || qLower.includes('durum') || qLower.includes('özet') || qLower.includes('sayı') || qLower.includes('nasıl'))) {
+        const mCnt = activeBirds.filter(b => b.sex === 'M').length;
+        const fCnt = activeBirds.filter(b => b.sex === 'F').length;
+        const bCnt = activeBirds.filter(b => b.roleCategory === 'BREEDER').length;
+        const rCnt = activeBirds.filter(b => b.roleCategory === 'RACER').length;
+        const yCnt = activeBirds.filter(b => b.roleCategory === 'YOUNG').length;
+        const nCnt = (typeof activePairsList !== 'undefined' && Array.isArray(activePairsList)) ? activePairsList.length : 0;
+        return [
+          `**🏠 Kümesinizin Güncel Kadro ve Yuva Durumu**`,
+          `- **Toplam Aktif Kuş:** Kümesinizde **${activeBirds.length} aktif güvercin** (**${mCnt} Erkek**, **${fCnt} Dişi**) kayıtlıdır.`,
+          `- **Kadro Dağılımı:** **${bCnt} Damızlık**, **${rCnt} Yarışçı** ve **${yCnt} Yavru** bulunmakta olup şu anda **${nCnt} aktif yuva** takiptedir.`
         ].join('\n');
       }
 
@@ -8606,10 +8727,10 @@ const AvigenGenesisAI = {
         'Yanıtını 3-5 kısa ve net madde veya paragraf halinde Türkçe yaz.'
       ].join(' ');
 
-      // 1. ÖNCE KULLANICININ KAYITLI BULUT ANAHTARI VARSA ONU KULLAN:
+      // 1. ÖNCE KULLANICININ KAYITLI BULUT ANAHTARI VARSA ONU KULLAN (Tüm Güncel Gemini 2.5 / 2.0 / 1.5 Modelleriyle):
       if (apiKey) {
-        const fullUserContent = `KULLANICININ SORUSU: ${promptText}\n\n(Gerekirse başvurabileceğin kümes verileri:\n${loftContext})`;
-        const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+        const fullUserContent = `KULLANICININ SORUSU: ${promptText}\n\n(Sadece soru kullanıcının kendi kümesi, kuşu, eşleştirmesi, yarışı veya yemi hakkındaysa şu canlı kümes verilerini kullan; genel bir soruyorsa doğrudan sorulan soruya özgün yanıt ver:\n${loftContext})`;
+        const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
 
         for (let i = 0; i < candidateModels.length; i++) {
           const modelName = candidateModels[i];
@@ -8622,8 +8743,8 @@ const AvigenGenesisAI = {
                 systemInstruction: { parts: [{ text: systemInstructionText }] },
                 contents: [{ role: 'user', parts: [{ text: fullUserContent }] }],
                 generationConfig: {
-                  temperature: 0.4,
-                  maxOutputTokens: 450
+                  temperature: 0.55,
+                  maxOutputTokens: 500
                 }
               })
             });
@@ -8633,6 +8754,7 @@ const AvigenGenesisAI = {
               if (textOut.trim()) {
                 finalAnswerMarkdown = textOut.trim();
                 this._geminiQueryCache[cacheKey] = finalAnswerMarkdown;
+                sourceBadge = '🟢 GENESIS AI Bulut';
                 break;
               }
             }

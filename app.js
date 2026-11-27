@@ -7037,6 +7037,9 @@ function buildFullAvigenSnapshotPayload() {
     genesis_analysis_history: typeof AvigenGenesisAI !== 'undefined' ? AvigenGenesisAI.analysisHistory : [],
     performance_config: typeof AvigenPerformanceEngine !== 'undefined' ? AvigenPerformanceEngine.state.distanceLimits : null,
     user_account_state: typeof AvigenUxManager !== 'undefined' ? AvigenUxManager.state : null,
+    gemini_api_key: typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.getGeminiApiKey === 'function'
+      ? AvigenGenesisAI.getGeminiApiKey()
+      : (localStorage.getItem('avigen_gemini_free_api_key_v1') || ''),
     race_tracking_events: typeof AvigenRaceTracker !== 'undefined' ? AvigenRaceTracker.events : [],
     race_relational_db: typeof AvigenRaceTracker !== 'undefined' ? AvigenRaceTracker.db : null
   };
@@ -7090,8 +7093,20 @@ function applyRestoredBackupDataObject(data) {
     AvigenPerformanceEngine.saveConfig();
   }
   if (typeof AvigenUxManager !== 'undefined') {
+    const existingSavedKey = (typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.getGeminiApiKey === 'function')
+      ? AvigenGenesisAI.getGeminiApiKey()
+      : (localStorage.getItem('avigen_gemini_free_api_key_v1') || '');
     if (data.user_account_state) {
       AvigenUxManager.state = { ...AvigenUxManager.state, ...data.user_account_state };
+    }
+    const restoredApiKey = String(data.gemini_api_key || data.user_account_state?.geminiApiKey || existingSavedKey || '').trim();
+    if (restoredApiKey) {
+      AvigenUxManager.state.geminiApiKey = restoredApiKey;
+      try { localStorage.setItem('avigen_gemini_free_api_key_v1', restoredApiKey); } catch (e) {}
+      if (typeof AvigenGenesisAI !== 'undefined' && AvigenGenesisAI.state) {
+        AvigenGenesisAI.state.geminiApiKey = restoredApiKey;
+        AvigenGenesisAI.saveState();
+      }
     }
     // Cihaz Kimliğini koru (başkasının yedeği yüklense bile bu cihazın kendi Device ID'si korunur ve imza doğrulanır)
     if (currentDeviceId) {
@@ -7499,7 +7514,8 @@ function buildUserOnlyCompactBackupJson(fullPayload) {
       racesList: fullPayload.racesList || [],
       birdDossierList: fullPayload.birdDossierList || [],
       notesList: fullPayload.notesList || [],
-      race_tracking_events: fullPayload.race_tracking_events || []
+      race_tracking_events: fullPayload.race_tracking_events || [],
+      gemini_api_key: fullPayload.gemini_api_key || ''
     };
     return JSON.stringify(slimPayload);
   } catch (e) {
@@ -13080,19 +13096,24 @@ const AvigenUxManager = {
         </div>
 
         <!-- 0.5 GENESIS AI – BULUT SİNİR AĞI BAĞLANTISI (BOŞ OLDUĞUNDA ADIM ADIM KURULUM VE BİLGİLENDİRME REHBERLİ) -->
+        ${(() => {
+          const currentSavedApiKey = (typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.getGeminiApiKey === 'function')
+            ? AvigenGenesisAI.getGeminiApiKey()
+            : (localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim();
+          return `
         <div class="ios-card" style="padding:11px 12px; border:1.5px solid #7c3aed; background:linear-gradient(135deg, rgba(124,58,237,0.06), rgba(2,132,199,0.05));">
           <div class="ios-card-title" style="margin-bottom:5px; display:flex; justify-content:space-between; align-items:center;">
             <span style="color:#4c1d95;">🧬 GENESIS AI – Bulut Sinir Ağı Ayarı</span>
-            <span class="gene-badge ${this.hasGeneticsAiAccess() ? ((localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim() ? 'gene-green' : 'gene-purple') : 'gene-gold'}">
-              ${this.hasGeneticsAiAccess() ? ((localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim() ? '🟢 Canlı Sinir Ağı Aktif' : '🧬 Yerleşik Motor Aktif') : '🔒 AVIGEN AI Aboneliği'}
+            <span class="gene-badge ${this.hasGeneticsAiAccess() ? (currentSavedApiKey ? 'gene-green' : 'gene-purple') : 'gene-gold'}">
+              ${this.hasGeneticsAiAccess() ? (currentSavedApiKey ? '🟢 Canlı Sinir Ağı Aktif' : '🧬 Yerleşik Motor Aktif') : '🔒 AVIGEN AI Aboneliği'}
             </span>
           </div>
           ${this.hasGeneticsAiAccess() ? `
             <div style="font-size:9.8px; color:var(--ios-subtext); margin-bottom:7px; line-height:1.38;">
-              <strong>GENESIS AI</strong> tüm sorularınızı yerleşik bilimsel kümes motoruyla anında yanıtlar. İsteğe bağlı kişisel <strong>GENESIS AI Bulut Sinir Ağı Anahtarınızı</strong> girerek derin doğal dil sinir ağını da aktif edebilirsiniz:
+              <strong>GENESIS AI</strong> tüm sorularınızı yerleşik bilimsel kümes motoruyla anında yanıtlar. İsteğe bağlı kişisel <strong>GENESIS AI Bulut Sinir Ağı Anahtarınızı</strong> girerek derin doğal dil sinir ağını da aktif edebilirsiniz (Girdiğiniz anahtar güncellemelerde ve yedeklerde sabit korunur):
             </div>
             <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-bottom:7px;">
-              <input type="password" id="settingsGeminiApiKeyInput" class="ios-input" style="flex:1; min-width:165px; padding:7px 9px; font-size:11px; font-weight:800;" placeholder="AIzaSy... ile başlayan Bulut Anahtarınızı girin" value="${escapeHtml((localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim())}" />
+              <input type="text" id="settingsGeminiApiKeyInput" class="ios-input" style="flex:1; min-width:165px; padding:7px 9px; font-size:11px; font-weight:800;" placeholder="AIzaSy... ile başlayan Bulut Anahtarınızı girin" value="${escapeHtml(currentSavedApiKey)}" oninput="if(typeof AvigenGenesisAI!=='undefined' && typeof AvigenGenesisAI.autoPersistGeminiKeyFromInput==='function'){AvigenGenesisAI.autoPersistGeminiKeyFromInput(this.value);}" onchange="if(typeof AvigenGenesisAI!=='undefined' && typeof AvigenGenesisAI.autoPersistGeminiKeyFromInput==='function'){AvigenGenesisAI.autoPersistGeminiKeyFromInput(this.value);}" />
               <button type="button" class="ios-btn ios-btn-outline" style="padding:7px 9px; font-size:9.8px; font-weight:800;" onclick="(async()=>{const el=document.getElementById('settingsGeminiApiKeyInput');if(!el)return;let txt='';if(navigator.clipboard&&navigator.clipboard.readText){try{txt=await navigator.clipboard.readText();}catch(e){}}if(!txt.trim()){const m=prompt('📋 Kopyaladığınız AIzaSy... ile başlayan Bulut Sinir Ağı Anahtarını buraya yapıştırın:',el.value||'');if(m===null)return;txt=m;}if(txt.trim()){el.value=txt.trim();if(typeof AvigenGenesisAI!=='undefined'){AvigenGenesisAI.saveGeminiApiKeyFromInput('settingsGeminiApiKeyInput');}}})()">
                 📋 Yapıştır
               </button>
@@ -13100,7 +13121,7 @@ const AvigenUxManager = {
                 💾 Kaydet
               </button>
             </div>
-            ${!(localStorage.getItem('avigen_gemini_free_api_key_v1') || '').trim() ? `
+            ${!currentSavedApiKey ? `
               <div style="background:#f5f3ff; border:1.5px solid #c4b5fd; border-radius:9px; padding:8px 10px; font-size:9.3px; color:#4c1d95; line-height:1.45;">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
                   <span style="font-weight:900; font-size:10px; color:#5b21b6;">
@@ -13125,8 +13146,8 @@ const AvigenUxManager = {
               </div>
             ` : `
               <div style="background:#ecfdf5; border:1px solid #6ee7b7; border-radius:8px; padding:6px 9px; font-size:9.2px; color:#065f46; display:flex; justify-content:space-between; align-items:center;">
-                <span>✅ <strong>Kişisel Bulut Sinir Ağı Anahtarınız Kayıtlı ve Aktif!</strong></span>
-                <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.5px; color:#dc2626; border-color:#fca5a5;" onclick="localStorage.removeItem('avigen_gemini_free_api_key_v1'); AvigenUxManager.renderProfileAccountSection();">Anahtarı Temizle</button>
+                <span>✅ <strong>Kişisel Bulut Sinir Ağı Anahtarınız Sabit Kayıtlı ve Aktif! (${escapeHtml(currentSavedApiKey.slice(0, 10))}••••)</strong></span>
+                <button type="button" class="ios-btn ios-btn-outline" style="padding:2px 7px; font-size:8.5px; color:#dc2626; border-color:#fca5a5;" onclick="if(confirm('Kayıtlı Bulut Sinir Ağı Anahtarınızı silmek istediğinize emin misiniz?')){if(typeof AvigenGenesisAI!=='undefined') AvigenGenesisAI.clearSavedGeminiApiKey(); AvigenUxManager.renderProfileAccountSection();}">Anahtarı Temizle</button>
               </div>
             `}
           ` : `
@@ -13147,7 +13168,8 @@ const AvigenUxManager = {
               </button>
             </div>
           `}
-        </div>
+        </div>`;
+        })()}
 
         <!-- 1. GÖRSEL TEMA SEÇİMİ & YARIŞ MESAFE SINIRLARI (BİRLEŞİK PRATİK KART) -->
         <div class="ios-card" style="padding:11px 12px;">
@@ -14270,10 +14292,10 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.8.3',
-    localBuild: 583,
-    remoteVersion: '5.8.3',
-    remoteBuild: 583,
+    localVersion: '5.8.4',
+    localBuild: 584,
+    remoteVersion: '5.8.4',
+    remoteBuild: 584,
     remoteTitle: "AVIGEN v5.8.0 — Yetiştirici Verimlilik & Doğruluk Paketi: Otomatik Damızlık/Yarışçı/Yavru Kadro Tespiti, Tek Kuş İçin En İyi 5 Eş Seçici, Aktif Yuva Çakışma Rozeti, Pedigri Ata/Kardeş/Yavru Geçişi",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
@@ -14423,8 +14445,13 @@ const AvigenAutoUpdater = {
   },
 
   async applyWebLiveUpdate() {
-    // 0. Güncelleme öncesi kullanıcının tüm mevcut kümes, kuş, pedigri, yuva ve yarış verilerinin otomatik güvenlik yedeğini al
+    // 0. Güncelleme öncesi kullanıcının girdiği ama henüz Kaydet'e basmadığı API anahtarı varsa kaydet,
+    // ardından tüm kümes, kuş, pedigri, yuva, yarış ve API anahtarı verilerinin otomatik güvenlik yedeğini al
     try {
+      const pendingKeyEl = document.getElementById('settingsGeminiApiKeyInput') || document.getElementById('guideGeminiApiKeyInput');
+      if (pendingKeyEl && pendingKeyEl.value && pendingKeyEl.value.trim().length >= 20 && typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.autoPersistGeminiKeyFromInput === 'function') {
+        AvigenGenesisAI.autoPersistGeminiKeyFromInput(pendingKeyEl.value.trim());
+      }
       if (typeof saveMypedigreData === 'function') {
         saveMypedigreData();
       }
