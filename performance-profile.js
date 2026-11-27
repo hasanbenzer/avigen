@@ -232,11 +232,26 @@ const AvigenPerformanceEngine = {
       }
     });
 
-    // D. Bu Güvercinin Yavrularını (Offspring) Bul (Kümeste Babası veya Annesi bu kuş olan kayıtlar)
+    // D. Bu Güvercinin Yavrularını (Offspring) ve Öz/Üvey Kardeşlerini (Siblings) Bul
     const offspringBirds = allBirds.filter(b =>
       b.ring.toUpperCase() !== cleanRing &&
       (b.sireRing.toUpperCase() === cleanRing || b.damRing.toUpperCase() === cleanRing)
     );
+    const mySireClean = (bird.sireRing || '').trim().toUpperCase();
+    const myDamClean = (bird.damRing || '').trim().toUpperCase();
+    const siblingBirds = allBirds.filter(b => {
+      if (b.ring.toUpperCase() === cleanRing) return false;
+      const bs = (b.sireRing || '').trim().toUpperCase();
+      const bd = (b.damRing || '').trim().toUpperCase();
+      const sameS = Boolean(mySireClean && mySireClean !== '-' && bs === mySireClean);
+      const sameD = Boolean(myDamClean && myDamClean !== '-' && bd === myDamClean);
+      return sameS || sameD;
+    }).map(b => {
+      const bs = (b.sireRing || '').trim().toUpperCase();
+      const bd = (b.damRing || '').trim().toUpperCase();
+      const isFull = Boolean(mySireClean && mySireClean !== '-' && bs === mySireClean && myDamClean && myDamClean !== '-' && bd === myDamClean);
+      return { ...b, siblingType: isFull ? 'Öz Kardeş' : (bs === mySireClean ? 'Babadan Kardeş' : 'Anneden Kardeş') };
+    });
 
     // E. Atalarının (1. Kuşak %50 -> 4. Kuşak %6.25) GERÇEK Yarış/Performans Kayıtlarını Topla
     //    (ÖNEMLİ DÜZELTME: Yalnızca ismi "Porsche" veya "Harry" diye sahte 505 km / 1355 m/dk yarış uydurulmaz!
@@ -326,7 +341,8 @@ const AvigenPerformanceEngine = {
       releasePoints: Array.from(releasePoints),
       hasGpsData,
       loftFlightMinutes,
-      offspringBirds
+      offspringBirds,
+      siblingBirds
     };
   },
 
@@ -350,7 +366,8 @@ const AvigenPerformanceEngine = {
       releasePoints,
       hasGpsData,
       loftFlightMinutes,
-      offspringBirds
+      offspringBirds,
+      siblingBirds
     } = data;
     const lim = this.state.distanceLimits;
     const ref = this.state.referenceBenchmarks;
@@ -795,6 +812,8 @@ const AvigenPerformanceEngine = {
     return {
       bird,
       parsedRaces,
+      offspringBirds: offspringBirds || [],
+      siblingBirds: siblingBirds || [],
       statsSummary: {
         totalRaceCount,
         directRaceAvgScore,
@@ -1219,6 +1238,38 @@ const AvigenPerformanceEngine = {
           </div>
           ${core4Pillars.map(m => this.renderMetricBarRow(m)).join('')}
         </div>
+
+        ${(Array.isArray(prof.offspringBirds) && prof.offspringBirds.length > 0) || (Array.isArray(prof.siblingBirds) && prof.siblingBirds.length > 0) ? `
+          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #7c3aed; border-radius:9px; padding:7px 9px; margin-bottom:8px; font-size:9.5px;">
+            <div style="font-weight:900; color:#5b21b6; margin-bottom:5px;">
+              🧬 Kümesteki Aile Bağları (Yavruları &amp; Kardeşleri — Dokunarak Profillerine Geçin)
+            </div>
+            ${prof.offspringBirds.length > 0 ? `
+              <div style="margin-bottom:4px;">
+                <span style="font-weight:800; color:#047857;">🐣 Kayıtlı Yavruları (${prof.offspringBirds.length}):</span>
+                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:3px;">
+                  ${prof.offspringBirds.map(ob => `
+                    <button type="button" class="nest-mini-action-btn" onclick="AvigenPerformanceEngine.openProfileModal('${escapeHtml(ob.ring)}')" title="${escapeHtml(ob.name)} Profilini Aç">
+                      ${ob.flag} ${escapeHtml(ob.ring)} (${escapeHtml(ob.name)})
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+            ${prof.siblingBirds.length > 0 ? `
+              <div>
+                <span style="font-weight:800; color:#0284c7;">🧬 Öz &amp; Üvey Kardeşleri (${prof.siblingBirds.length}):</span>
+                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:3px;">
+                  ${prof.siblingBirds.slice(0, 8).map(sb => `
+                    <button type="button" class="nest-mini-action-btn" onclick="AvigenPerformanceEngine.openProfileModal('${escapeHtml(sb.ring)}')" title="${escapeHtml(sb.siblingType)} — Profilini Aç">
+                      ${sb.flag} ${escapeHtml(sb.ring)} (${escapeHtml(sb.siblingType)})
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
 
         <!-- 4. YARIŞ PERFORMANSI VE YARIŞ GEÇMİŞİ ÖZETİ -->
         ${typeof AvigenRaceTracker !== 'undefined' ? AvigenRaceTracker.renderBirdRaceHistorySection(bird.ring, false) : ''}

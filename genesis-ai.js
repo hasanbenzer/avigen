@@ -1439,7 +1439,7 @@ const AvigenGenesisAI = {
         })
         .filter(item => item.feedbackStatus !== 'REJECTED')
         .sort((a, b) => b.score - a.score)
-        .slice(0, 3);
+        .slice(0, 5);
 
       altMalesForDam = males
         .filter(m => m.id !== sRef && m.ring !== damInfo.ring)
@@ -1450,7 +1450,7 @@ const AvigenGenesisAI = {
         })
         .filter(item => item.feedbackStatus !== 'REJECTED')
         .sort((a, b) => b.score - a.score)
-        .slice(0, 3);
+        .slice(0, 5);
     }
 
     // ------------------------------------------------------------------------
@@ -5762,6 +5762,16 @@ const AvigenGenesisAI = {
     if (this.state.activeMode === 'breeding') {
       const topLoftPairs = this.getTopLoftBreedingPairs(5);
       const curGoal = this.state.breedingTargetGoal || 'balanced';
+      const activeNestByRing = new Map();
+      if (typeof activePairsList !== 'undefined' && Array.isArray(activePairsList)) {
+        activePairsList.forEach(ap => {
+          const sr = typeof extractCleanRingFromText === 'function' ? extractCleanRingFromText(ap.sire) : '';
+          const dr = typeof extractCleanRingFromText === 'function' ? extractCleanRingFromText(ap.dam) : '';
+          if (sr) activeNestByRing.set(sr, ap.nest || 'Aktif Yuva');
+          if (dr) activeNestByRing.set(dr, ap.nest || 'Aktif Yuva');
+        });
+      }
+      const curRepQuick = this.analyzeBreedingIntelligence(this.state.selectedSireRef, this.state.selectedDamRef);
       controlsHtml = `
         <div class="genesis-tool-controls" style="display:flex; flex-direction:column; gap:6px;">
           <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:6px; align-items:end;">
@@ -5769,7 +5779,10 @@ const AvigenGenesisAI = {
               <label style="font-size:9.5px; font-weight:800; color:#0284c7;">1. ♂ Erkek Kuş Seçimi (${males.length} Aday)</label>
               <select id="genesisSireSelect" class="ios-select" style="width:100%; font-size:11px; font-weight:800; padding:6px;" onchange="AvigenGenesisAI.onGenesisSelectionChange()">
                 ${males.length
-                  ? males.map(c => `<option value="${c.id}" ${c.id === this.state.selectedSireRef ? 'selected' : ''}>♂ ${escapeHtml(c.ring)} (${escapeHtml(c.name)})</option>`).join('')
+                  ? males.map(c => {
+                      const nLbl = activeNestByRing.get(c.ring.toUpperCase());
+                      return `<option value="${c.id}" ${c.id === this.state.selectedSireRef ? 'selected' : ''}>♂ ${escapeHtml(c.ring)} (${escapeHtml(c.name)})${nLbl ? ` • 🪺 ${escapeHtml(nLbl)}` : ''}</option>`;
+                    }).join('')
                   : `<option value="">⚠️ Kümesinizde kayıtlı ♂ Erkek kuş yok</option>`}
               </select>
             </div>
@@ -5777,7 +5790,10 @@ const AvigenGenesisAI = {
               <label style="font-size:9.5px; font-weight:800; color:#db2777;">2. ♀ Dişi Kuş Seçimi (${females.length} Aday)</label>
               <select id="genesisDamSelect" class="ios-select" style="width:100%; font-size:11px; font-weight:800; padding:6px;" onchange="AvigenGenesisAI.onGenesisSelectionChange()">
                 ${females.length
-                  ? females.map(c => `<option value="${c.id}" ${c.id === this.state.selectedDamRef ? 'selected' : ''}>♀ ${escapeHtml(c.ring)} (${escapeHtml(c.name)})</option>`).join('')
+                  ? females.map(c => {
+                      const nLbl = activeNestByRing.get(c.ring.toUpperCase());
+                      return `<option value="${c.id}" ${c.id === this.state.selectedDamRef ? 'selected' : ''}>♀ ${escapeHtml(c.ring)} (${escapeHtml(c.name)})${nLbl ? ` • 🪺 ${escapeHtml(nLbl)}` : ''}</option>`;
+                    }).join('')
                   : `<option value="">⚠️ Kümesinizde kayıtlı ♀ Dişi kuş yok</option>`}
               </select>
             </div>
@@ -5794,6 +5810,36 @@ const AvigenGenesisAI = {
               <option value="linebreeding_stock" ${curGoal === 'linebreeding_stock' ? 'selected' : ''}>🧬 Damızlık Kan Sabitleme (Şampiyon Ortak Ata / Linebreeding)</option>
             </select>
           </div>
+
+          ${(curRepQuick.altFemalesForSire.length > 0 || curRepQuick.altMalesForDam.length > 0) ? `
+            <details style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:5px 8px; font-size:9.5px;">
+              <summary style="cursor:pointer; font-weight:900; color:#0052cc; outline:none;">
+                🔍 Seçili Kuş İçin En Uygun 5 Eş Adayını Gör (♂ ${escapeHtml(curRepQuick.sireInfo.ring)} veya ♀ ${escapeHtml(curRepQuick.damInfo.ring)})
+              </summary>
+              <div style="margin-top:6px; display:flex; flex-direction:column; gap:5px;">
+                <div style="font-weight:900; color:#0284c7; font-size:9.2px;">♂ ${escapeHtml(curRepQuick.sireInfo.ring)} (${escapeHtml(curRepQuick.sireInfo.name)}) İçin En Uygun 5 Dişi:</div>
+                ${curRepQuick.altFemalesForSire.slice(0, 5).map((item, idx) => `
+                  <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:3px solid #0284c7; border-radius:6px; padding:4px 7px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                    <div style="min-width:0;">
+                      <div style="font-weight:800; color:#0f172a;">${idx + 1}. ♀ ${escapeHtml(item.candidate.ring)} (${escapeHtml(item.candidate.name)}) • <strong>${item.score}/100</strong> (%${item.coi.toFixed(2)} COI)</div>
+                      <div style="font-size:8.6px; color:#475569;">${escapeHtml(item.why)}</div>
+                    </div>
+                    <button type="button" class="ios-btn ios-btn-primary" style="padding:3px 7px; font-size:8.8px; flex-shrink:0;" onclick="AvigenGenesisAI.selectAlternativePairAndRun('${this.state.selectedSireRef}', '${item.candidate.id}')">Seç</button>
+                  </div>
+                `).join('')}
+                <div style="font-weight:900; color:#db2777; font-size:9.2px; margin-top:3px;">♀ ${escapeHtml(curRepQuick.damInfo.ring)} (${escapeHtml(curRepQuick.damInfo.name)}) İçin En Uygun 5 Erkek:</div>
+                ${curRepQuick.altMalesForDam.slice(0, 5).map((item, idx) => `
+                  <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:3px solid #db2777; border-radius:6px; padding:4px 7px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                    <div style="min-width:0;">
+                      <div style="font-weight:800; color:#0f172a;">${idx + 1}. ♂ ${escapeHtml(item.candidate.ring)} (${escapeHtml(item.candidate.name)}) • <strong>${item.score}/100</strong> (%${item.coi.toFixed(2)} COI)</div>
+                      <div style="font-size:8.6px; color:#475569;">${escapeHtml(item.why)}</div>
+                    </div>
+                    <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:8.8px; flex-shrink:0;" onclick="AvigenGenesisAI.selectAlternativePairAndRun('${item.candidate.id}', '${this.state.selectedDamRef}')">Seç</button>
+                  </div>
+                `).join('')}
+              </div>
+            </details>
+          ` : ''}
 
           ${topLoftPairs.length > 0 ? `
             <details style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:8px; padding:5px 8px; font-size:9.5px;">
@@ -5929,9 +5975,9 @@ const AvigenGenesisAI = {
               <label style="font-size:9px; font-weight:800;">🕊️ Beslenecek Kuş Grubu</label>
               <select id="genesisNutGroup" class="ios-select" style="width:100%; padding:5px 6px; font-size:10.5px; font-weight:800;" onchange="AvigenGenesisAI.onGenesisSelectionChange()">
                 <option value="ALL" ${curGroup === 'ALL' ? 'selected' : ''}>🏠 Tüm Aktif Kümes (${totalActiveCount} Kuş)</option>
-                <option value="RACER" ${curGroup === 'RACER' ? 'selected' : ''}>🏆 Yarış Kadrosu (${racersCount || totalActiveCount} Kuş)</option>
-                <option value="BREEDER" ${curGroup === 'BREEDER' ? 'selected' : ''}>🥚 Damızlık Kadro (${breedersCount || totalActiveCount} Kuş)</option>
-                <option value="YOUNG" ${curGroup === 'YOUNG' ? 'selected' : ''}>🐥 Yavru Kümesi (${youngCount || 12} Kuş)</option>
+                <option value="RACER" ${curGroup === 'RACER' ? 'selected' : ''}>🏆 Yarış Kadrosu (${racersCount} Kuş)</option>
+                <option value="BREEDER" ${curGroup === 'BREEDER' ? 'selected' : ''}>🥚 Damızlık Kadro (${breedersCount} Kuş)</option>
+                <option value="YOUNG" ${curGroup === 'YOUNG' ? 'selected' : ''}>🐥 Yavru Kümesi (${youngCount} Kuş)</option>
                 <option value="CUSTOM" ${curGroup === 'CUSTOM' ? 'selected' : ''}>✏️ Özel Kuş Sayısı Gir</option>
               </select>
             </div>
@@ -6103,6 +6149,18 @@ const AvigenGenesisAI = {
             <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-radius:8px; padding:6px 8px; margin-bottom:7px;">
               <strong>🎯 Genel Eşleşme Kararı Gerekçesi:</strong> ${escapeHtml(rep.decisionReasonSummary)}
             </div>
+            ${(() => {
+              if (typeof activePairsList === 'undefined' || !Array.isArray(activePairsList)) return '';
+              const sUp = (rep.sireInfo.ring || '').toUpperCase();
+              const dUp = (rep.damInfo.ring || '').toUpperCase();
+              const sNests = activePairsList.filter(ap => (typeof extractCleanRingFromText === 'function' ? extractCleanRingFromText(ap.sire) : '') === sUp).map(ap => ap.nest);
+              const dNests = activePairsList.filter(ap => (typeof extractCleanRingFromText === 'function' ? extractCleanRingFromText(ap.dam) : '') === dUp).map(ap => ap.nest);
+              if (!sNests.length && !dNests.length) return '';
+              const msgs = [];
+              if (sNests.length) msgs.push(`♂ <strong>${escapeHtml(rep.sireInfo.ring)}</strong> şu anda <strong>${escapeHtml(sNests.join(', '))}</strong> içinde`);
+              if (dNests.length) msgs.push(`♀ <strong>${escapeHtml(rep.damInfo.ring)}</strong> şu anda <strong>${escapeHtml(dNests.join(', '))}</strong> içinde`);
+              return `<div style="background:#fffbeb; border:1.5px solid #f59e0b; color:#92400e; border-radius:8px; padding:6px 8px; margin-bottom:7px; font-size:9.5px;">🪺 <strong>Aktif Yuva Durumu:</strong> ${msgs.join(' ve ')} aktif eşleşmede kayıtlıdır.</div>`;
+            })()}
 
             <!-- KUŞÇU İÇİN GÖRSEL YAVRU POTANSİYEL ÇUBUKLARI (5 TEMEL ÖZELLİK TEK BAKIŞTA) -->
             <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-radius:8px; padding:7px 9px; margin-bottom:7px;">

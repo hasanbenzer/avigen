@@ -1,12 +1,13 @@
 {
-  "version": "5.7.9",
-  "build": 579,
+  "version": "5.8.0",
+  "build": 580,
   "releaseDate": "2026-11-27",
-  "title": "AVIGEN v5.7.9 — Damızlık Seçimi & Eşleştirme Analizi Hassasiyet Paketi: Tam Kümes (966 Çift) Taraması, 3 Damızlık Hedef Stratejisi, Ebeveyn Profili Halka Çözümleyici ve Çift Taraflı Performans Kanıt Dengesi",
+  "title": "AVIGEN v5.8.0 — Yetiştirici Verimlilik & Doğruluk Paketi: Otomatik Damızlık/Yarışçı/Yavru Kadro Tespiti, Tek Kuş İçin En İyi 5 Eş Seçici, Aktif Yuva Çakışma Rozeti, Pedigri Ata/Kardeş/Yavru Geçişi",
   "notes": [
-    "🧬 Damızlık Seçimi & Eşleştirme Hassasiyet Motoru: Tam kümes aday taraması (42 Erkek × 23 Dişi = 966 olası eşleşme), 3 Damızlık Hedef Stratejisi (Dengeli / Yarışçı Yavru Outcross / Şampiyon Kan Sabitleme Linebreeding) ve iki ebeveynin dengeli performans puanlaması",
-    "🔗 Yuva & Üreme Ebeveyn Profili Halka Çözümleyici: Başında ülke bayrağı (🇹🇷) bulunan tüm uluslararası halka formatlarında (TUGF26-A-16-03033, TR-20-067372-D vb.) Baba ve Anne Profili kartlarının hatasız açılması",
-    "💉 Toplu Kümes Aşı/Kür Sicili, Yuva Ağız & Bakıcı Takibi, Damızlık Yavru Rozeti ve PDF Pedigri Fotoğraf Basımı aktif",
+    "🥚 Otomatik Damızlık / Yarışçı / Yavru Kadro Sınıflandırması & Yem Motoru Senkronu: Kümeste yavrusu olan, aktif yuvada yatan veya 2022 öncesi doğumlu kuşlar Damızlık; henüz yarışmamış 2026 genç kuşlar Yavru; diğer aktif kuşlar Yarışçı olarak tüm ekranlarda (Ana Sayfa, Kuşlarım, Akıllı Yem) birebir aynı sayıyla gösterilir",
+    "🔍 Seçili Tek Kuş İçin 'En Uygun 5 Eş Adayı' & 🪺 Aktif Yuva Rozeti: GENESIS AI Eşleştirme ekranında seçili erkek için en iyi 5 dişi ve seçili dişi için en iyi 5 erkek tek dokunuşla listelenir; aktif yuvada olan kuşlar 🪺 rozetiyle işaretlenir",
+    "💑 Yuva & Üreme Otomatik Eşleşme Önerileri 966 Çiftlik Tam Taramayla Eşitlendi: Her öneride tek tuşla '🪺 Yuvaya Kaydet' ve '🧬 Analiz' butonları aktif",
+    "📜 Pedigri Ata Kutusundan Soyağacına/Profile Geçiş & Kardeşler/Yavrular Kartı: Pedigride bir ataya dokunulduğunda o atanın kendi pedigri kağıdına veya profiline geçilebilir; profil kartında kümesteki Yavruları ve Öz/Üvey Kardeşleri tıklanabilir olarak listelenir",
     "🧪 27 / 27 Otomatik Sistem, Yol Haritası & Bilimsel Doğruluk Testi aktif"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",

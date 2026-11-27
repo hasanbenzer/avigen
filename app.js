@@ -3326,6 +3326,7 @@ function collectUniqueLoftBirds() {
         photo: b.photo || '',
         sex,
         roleCategory,
+        userSetRole: Boolean(b.userSetRole),
         eyeSign,
         birdStatus,
         bodyBuild: b.bodyBuild || '',
@@ -3372,8 +3373,54 @@ function collectUniqueLoftBirds() {
     if (sKey && sKey !== '-') offspringCountMap.set(sKey, (offspringCountMap.get(sKey) || 0) + 1);
     if (dKey && dKey !== '-' && dKey !== sKey) offspringCountMap.set(dKey, (offspringCountMap.get(dKey) || 0) + 1);
   });
+
+  const activeNestRingsSet = new Set();
+  if (Array.isArray(activePairsList)) {
+    activePairsList.forEach(ap => {
+      const sr = extractCleanRingFromText(ap.sire);
+      const dr = extractCleanRingFromText(ap.dam);
+      if (sr) activeNestRingsSet.add(sr);
+      if (dr) activeNestRingsSet.add(dr);
+    });
+  }
+
+  const extractBirthYearFromRing = (rStr) => {
+    const clean = String(rStr || '').toUpperCase();
+    const m4 = clean.match(/\b(201\d|202[0-6])\b/);
+    if (m4) return parseInt(m4[1], 10);
+    const mPrefix = clean.match(/^(?:TUGF|TGYB|TR|DV|NL|BE|BELG|PL|RO|GB|FR|SK|BG|IT)[-\s]*(?:\d{3,5}[-\s]+)?(1[5-9]|2[0-6])\b/);
+    if (mPrefix) return 2000 + parseInt(mPrefix[1], 10);
+    const mAny2 = clean.match(/-(1[5-9]|2[0-6])-/);
+    if (mAny2) return 2000 + parseInt(mAny2[1], 10);
+    return null;
+  };
+
   allList.forEach(item => {
-    item.offspringCount = offspringCountMap.get(item.ring.toUpperCase()) || 0;
+    const rUp = item.ring.toUpperCase();
+    item.offspringCount = offspringCountMap.get(rUp) || 0;
+
+    // Kullanıcı elle özel bir rol seçmemişse: yavrusu olan, aktif yuvada eşleşen veya 2022 ve öncesi doğumlu anaçları Damızlık (BREEDER),
+    // henüz yarışı olmayan 2026 doğumlu genç kuşları Yavru (YOUNG), diğerlerini Yarışçı (RACER) olarak otomatik sınıflandır!
+    if (!item.userSetRole && item.isActiveLoftBird) {
+      const birthYear = extractBirthYearFromRing(item.ring);
+      const notesLower = `${item.name || ''} ${item.color || ''} ${item.notes || ''}`.toLowerCase();
+      const hasExplicitRaceWin = /\b(\d{1,3}\.\s|\d{1,3}e\.|\d{2,3}\s*km|final|klasman|ace|as\s*güvercin)\b/i.test(notesLower);
+      if (
+        item.offspringCount > 0 ||
+        activeNestRingsSet.has(rUp) ||
+        /\b(damızlık|anaç|breeder|topbreeder|superbreeder|temel\s*damızlık)\b/i.test(notesLower) ||
+        (birthYear !== null && birthYear <= 2022)
+      ) {
+        item.roleCategory = 'BREEDER';
+      } else if (
+        /\byavru\b/i.test(`${item.ring} ${item.color}`) ||
+        (birthYear === 2026 && !hasExplicitRaceWin)
+      ) {
+        item.roleCategory = 'YOUNG';
+      } else {
+        item.roleCategory = 'RACER';
+      }
+    }
   });
 
   _cachedUniqueLoftBirds = allList;
@@ -6239,6 +6286,32 @@ function openBoxEditModal(slotKey) {
     }
   }
 
+  // Eğer bu kutuda kayıtlı bir halka numarası varsa: Kuşun Performans/Kardeş/Yavru Profiline veya Kendi Pedigri Kağıdına 1-Dokunuş Geçiş Çubuğu Göster!
+  if (parentBanner && box.ring && box.ring.trim()) {
+    const cleanBoxRing = box.ring.trim().toUpperCase();
+    const ownPedForAncestor = slotKey !== 'main'
+      ? pedigrees.find(p => (p.boxes?.main?.ring || '').trim().toUpperCase() === cleanBoxRing)
+      : null;
+    parentBanner.style.display = 'block';
+    parentBanner.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+        <span style="font-size:10.2px; font-weight:900; color:#15803d;">
+          🕊️ ${escapeHtml(box.ring)} Hızlı Soy &amp; Profil Geçişi:
+        </span>
+        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+          <button type="button" class="ios-btn ios-btn-primary" style="padding:4px 8px; font-size:9.8px; font-weight:900;" onclick="closeBoxEditModal(); openQuickBirdProfileByRing('${escapeHtml(box.ring)}', event)">
+            📊 Profil, Kardeş &amp; Yavrularını Gör
+          </button>
+          ${ownPedForAncestor ? `
+            <button type="button" class="ios-btn ios-btn-gold" style="padding:4px 8px; font-size:9.8px; font-weight:900;" onclick="closeBoxEditModal(); selectActivePedigree('${ownPedForAncestor.id}'); renderPedigreeDropdown(); switchBirdsViewMode('pedigree');">
+              📜 Bu Atanın Pedigri Kağıdına Geç →
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
   populateKnownRingsDatalist();
 
   document.getElementById('boxEditTitle').textContent = `🕊️ ${slotMeta.label}`;
@@ -6586,6 +6659,7 @@ function saveBoxEditModal() {
     photo: editingPhotoData,
     sex: editingModalSex,
     roleCategory: editingModalRole,
+    userSetRole: true,
     birdStatus: chosenStatus,
     bodyBuild: document.getElementById('editBoxBodyBuild')?.value || '',
     muscleType: document.getElementById('editBoxMuscleType')?.value || '',
@@ -11969,29 +12043,24 @@ function renderAutoBestPairs() {
   const listEl = document.getElementById('autoBestPairsList');
   if (!listEl) return;
 
-  const { males, females, all } = getAllBreedingCandidates();
-  const mPool = (males.length ? males : all).slice(0, 8);
-  const fPool = (females.length ? females : all).slice(0, 8);
-
-  const pairs = [];
-  mPool.forEach(m => {
-    fPool.forEach(f => {
-      if (m.ring.toUpperCase() === f.ring.toUpperCase()) return;
-      if (typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.analyzeBreedingIntelligence === 'function') {
-        const br = AvigenGenesisAI.analyzeBreedingIntelligence(m.id, f.id, true);
-        pairs.push({
-          sire: `${m.flag} ${m.ring} (${m.name})`,
-          dam: `${f.flag} ${f.ring} (${f.name})`,
-          score: br.totalScore,
-          type: br.coi === 0 ? 'Tam Yabancı Kan (Outcross • %0 COI)' : `Soy İçi Eşleşme (COI %${br.coi.toFixed(2)})`,
-          reason: `${br.relationSummary}. Heterosis: %${br.heterosis} • Veri Güvenilirliği: %${br.dataReliabilityPct}.`
-        });
-      }
-    });
-  });
-
-  pairs.sort((a, b) => b.score - a.score);
-  const recommendations = pairs.slice(0, 3);
+  let recommendations = [];
+  if (typeof AvigenGenesisAI !== 'undefined' && typeof AvigenGenesisAI.getTopLoftBreedingPairs === 'function') {
+    const topPairs = AvigenGenesisAI.getTopLoftBreedingPairs(3);
+    recommendations = topPairs.map(tp => ({
+      sireId: tp.sire.id,
+      damId: tp.dam.id,
+      sireRing: tp.sire.ring,
+      sireName: tp.sire.name,
+      damRing: tp.dam.ring,
+      damName: tp.dam.name,
+      sire: `${tp.sire.flag} ${tp.sire.ring} (${tp.sire.name})`,
+      dam: `${tp.dam.flag} ${tp.dam.ring} (${tp.dam.name})`,
+      score: tp.score,
+      coi: tp.coi,
+      type: tp.summary,
+      reason: `Mesafe & Tip Uyumu: ${tp.compLabel} • Veri Güvenilirliği: %${tp.reliability}.`
+    }));
+  }
 
   if (!recommendations.length) {
     listEl.innerHTML = `<div style="text-align:center; padding:12px; font-size:10.5px; color:var(--ios-subtext);">Otomatik çift önerisi için kümesinizde (` + `🏠 Kümesim` + `) en az 1 erkek ve 1 dişi güvercin kayıtlı olmalıdır.</div>`;
@@ -12013,6 +12082,8 @@ function renderAutoBestPairs() {
       <div style="display:flex; justify-content:flex-end; gap:5px; flex-wrap:wrap;">
         <button type="button" class="nest-mini-action-btn" onclick="openQuickBirdProfileByRing('${escapeHtml(r.sire)}', event)">♂ Baba Profili</button>
         <button type="button" class="nest-mini-action-btn" onclick="openQuickBirdProfileByRing('${escapeHtml(r.dam)}', event)">♀ Anne Profili</button>
+        <button type="button" class="nest-mini-action-btn" style="color:#6d28d9; border-color:#c4b5fd; background:#f5f3ff;" onclick="openIosTab('breeding', document.querySelectorAll('.ios-tab-btn')[2]); AvigenGenesisAI.selectAlternativePairAndRun('${r.sireId}', '${r.damId}');">🧬 Analiz</button>
+        <button type="button" class="nest-mini-action-btn gold" onclick="if(typeof AvigenGenesisAI!=='undefined') AvigenGenesisAI.saveCurrentGenesisPairToActiveNests('${escapeHtml(r.sireRing)}', '${escapeHtml(r.sireName)}', '${escapeHtml(r.damRing)}', '${escapeHtml(r.damName)}', ${r.score}, ${r.coi || 0});">🪺 Yuvaya Kaydet</button>
       </div>
     </div>
   `).join('');
@@ -13959,11 +14030,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.7.9',
-    localBuild: 579,
-    remoteVersion: '5.7.9',
-    remoteBuild: 579,
-    remoteTitle: "AVIGEN v5.7.9 — Damızlık Seçimi & Eşleştirme Analizi Hassasiyet Paketi: Tam Kümes (966 Çift) Taraması, 3 Damızlık Hedef Stratejisi, Ebeveyn Profili Halka Çözümleyici ve Çift Taraflı Performans Kanıt Dengesi",
+    localVersion: '5.8.0',
+    localBuild: 580,
+    remoteVersion: '5.8.0',
+    remoteBuild: 580,
+    remoteTitle: "AVIGEN v5.8.0 — Yetiştirici Verimlilik & Doğruluk Paketi: Otomatik Damızlık/Yarışçı/Yavru Kadro Tespiti, Tek Kuş İçin En İyi 5 Eş Seçici, Aktif Yuva Çakışma Rozeti, Pedigri Ata/Kardeş/Yavru Geçişi",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
