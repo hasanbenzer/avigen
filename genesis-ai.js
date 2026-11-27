@@ -1430,8 +1430,16 @@ const AvigenGenesisAI = {
         };
       };
 
+      const nestedNormSet = typeof getActiveNestRingNormSet === 'function' ? getActiveNestRingNormSet() : new Set();
+      const normKey = (r) => String(r || '').trim().toUpperCase().replace(/[-\s./_]+/g, '');
+      const seenF = new Set();
       altFemalesForSire = females
-        .filter(f => f.id !== dRef && f.ring !== sireInfo.ring)
+        .filter(f => {
+          const fk = normKey(f.ring);
+          if (!fk || fk === normKey(sireInfo.ring) || seenF.has(fk) || nestedNormSet.has(fk)) return false;
+          seenF.add(fk);
+          return true;
+        })
         .map(f => {
           const r = this.analyzeBreedingIntelligence(sRef, f.id, true);
           const meta = buildAltReason(r);
@@ -1441,8 +1449,14 @@ const AvigenGenesisAI = {
         .sort((a, b) => b.score - a.score)
         .slice(0, 5);
 
+      const seenM = new Set();
       altMalesForDam = males
-        .filter(m => m.id !== sRef && m.ring !== damInfo.ring)
+        .filter(m => {
+          const mk = normKey(m.ring);
+          if (!mk || mk === normKey(damInfo.ring) || seenM.has(mk) || nestedNormSet.has(mk)) return false;
+          seenM.add(mk);
+          return true;
+        })
         .map(m => {
           const r = this.analyzeBreedingIntelligence(m.id, dRef, true);
           const meta = buildAltReason(r);
@@ -5839,31 +5853,43 @@ const AvigenGenesisAI = {
           </div>
 
           ${(curRepQuick.altFemalesForSire.length > 0 || curRepQuick.altMalesForDam.length > 0) ? `
-            <details style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:5px 8px; font-size:9.5px;">
-              <summary style="cursor:pointer; font-weight:900; color:#0052cc; outline:none;">
-                🔍 Seçili Kuş İçin En Uygun 5 Eş Adayını Gör (♂ ${escapeHtml(curRepQuick.sireInfo.ring)} veya ♀ ${escapeHtml(curRepQuick.damInfo.ring)})
+            <details ${this.state.autoExpandBestMates ? 'open' : ''} style="background:#eff6ff; border:1.5px solid #93c5fd; border-radius:9px; padding:6px 8px; font-size:9.5px;">
+              <summary style="cursor:pointer; font-weight:900; color:#0052cc; outline:none; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                <span>🔍 Seçili Kuş İçin En Uygun 5 Eş Adayı (${this.state.focusMateSearchSex === 'F' ? `♀ ${escapeHtml(curRepQuick.damInfo.ring)} İçin 5 ♂ Erkek` : `♂ ${escapeHtml(curRepQuick.sireInfo.ring)} İçin 5 ♀ Dişi`})</span>
+                <span class="gene-badge gene-blue" style="font-size:8px;">Mükerrer Yok</span>
               </summary>
               <div style="margin-top:6px; display:flex; flex-direction:column; gap:5px;">
-                <div style="font-weight:900; color:#0284c7; font-size:9.2px;">♂ ${escapeHtml(curRepQuick.sireInfo.ring)} (${escapeHtml(curRepQuick.sireInfo.name)}) İçin En Uygun 5 Dişi:</div>
-                ${curRepQuick.altFemalesForSire.slice(0, 5).map((item, idx) => `
-                  <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:3px solid #0284c7; border-radius:6px; padding:4px 7px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                    <div style="min-width:0;">
-                      <div style="font-weight:800; color:#0f172a;">${idx + 1}. ♀ ${escapeHtml(item.candidate.ring)} (${escapeHtml(item.candidate.name)}) • <strong>${item.score}/100</strong> (%${item.coi.toFixed(2)} COI)</div>
-                      <div style="font-size:8.6px; color:#475569;">${escapeHtml(item.why)}</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+                  <button type="button" class="ios-btn ${this.state.focusMateSearchSex !== 'F' ? 'ios-btn-primary' : 'ios-btn-outline'}" style="padding:5px 6px; font-size:9px; font-weight:900;" onclick="AvigenGenesisAI.setFocusMateSearchSex('M')">
+                    ♂ ${escapeHtml(curRepQuick.sireInfo.ring)} İçin En İyi 5 ♀ Dişi
+                  </button>
+                  <button type="button" class="ios-btn ${this.state.focusMateSearchSex === 'F' ? 'ios-btn-purple' : 'ios-btn-outline'}" style="padding:5px 6px; font-size:9px; font-weight:900;" onclick="AvigenGenesisAI.setFocusMateSearchSex('F')">
+                    ♀ ${escapeHtml(curRepQuick.damInfo.ring)} İçin En İyi 5 ♂ Erkek
+                  </button>
+                </div>
+                ${this.state.focusMateSearchSex !== 'F' ? `
+                  <div style="font-weight:900; color:#0284c7; font-size:9.2px;">♂ ${escapeHtml(curRepQuick.sireInfo.ring)} (${escapeHtml(curRepQuick.sireInfo.name)}) İçin En Uygun 5 ♀ Dişi Adayı (Boşta &amp; Benzersiz):</div>
+                  ${curRepQuick.altFemalesForSire.slice(0, 5).map((item, idx) => `
+                    <div style="background:#ffffff; border:1px solid ${item.candidate.id === this.state.selectedDamRef ? '#059669' : '#e2e8f0'}; border-left:3.5px solid ${idx === 0 ? '#059669' : '#0284c7'}; border-radius:6px; padding:5px 7px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                      <div style="min-width:0;">
+                        <div style="font-weight:800; color:#0f172a;">${idx + 1}. ♀ ${escapeHtml(item.candidate.ring)} (${escapeHtml(item.candidate.name)}) • <strong style="color:#059669;">${item.score}/100</strong> (%${item.coi.toFixed(2)} COI)</div>
+                        <div style="font-size:8.6px; color:#475569;">${escapeHtml(item.why)}</div>
+                      </div>
+                      <button type="button" class="ios-btn ${item.candidate.id === this.state.selectedDamRef ? 'ios-btn-green' : 'ios-btn-primary'}" style="padding:4px 8px; font-size:8.8px; flex-shrink:0;" onclick="AvigenGenesisAI.selectAlternativePairAndRun('${this.state.selectedSireRef}', '${item.candidate.id}')">${item.candidate.id === this.state.selectedDamRef ? '✓ Seçili' : '✓ Eş Seç'}</button>
                     </div>
-                    <button type="button" class="ios-btn ios-btn-primary" style="padding:3px 7px; font-size:8.8px; flex-shrink:0;" onclick="AvigenGenesisAI.selectAlternativePairAndRun('${this.state.selectedSireRef}', '${item.candidate.id}')">Seç</button>
-                  </div>
-                `).join('')}
-                <div style="font-weight:900; color:#db2777; font-size:9.2px; margin-top:3px;">♀ ${escapeHtml(curRepQuick.damInfo.ring)} (${escapeHtml(curRepQuick.damInfo.name)}) İçin En Uygun 5 Erkek:</div>
-                ${curRepQuick.altMalesForDam.slice(0, 5).map((item, idx) => `
-                  <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:3px solid #db2777; border-radius:6px; padding:4px 7px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                    <div style="min-width:0;">
-                      <div style="font-weight:800; color:#0f172a;">${idx + 1}. ♂ ${escapeHtml(item.candidate.ring)} (${escapeHtml(item.candidate.name)}) • <strong>${item.score}/100</strong> (%${item.coi.toFixed(2)} COI)</div>
-                      <div style="font-size:8.6px; color:#475569;">${escapeHtml(item.why)}</div>
+                  `).join('')}
+                ` : `
+                  <div style="font-weight:900; color:#db2777; font-size:9.2px;">♀ ${escapeHtml(curRepQuick.damInfo.ring)} (${escapeHtml(curRepQuick.damInfo.name)}) İçin En Uygun 5 ♂ Erkek Adayı (Boşta &amp; Benzersiz):</div>
+                  ${curRepQuick.altMalesForDam.slice(0, 5).map((item, idx) => `
+                    <div style="background:#ffffff; border:1px solid ${item.candidate.id === this.state.selectedSireRef ? '#059669' : '#e2e8f0'}; border-left:3.5px solid ${idx === 0 ? '#059669' : '#db2777'}; border-radius:6px; padding:5px 7px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                      <div style="min-width:0;">
+                        <div style="font-weight:800; color:#0f172a;">${idx + 1}. ♂ ${escapeHtml(item.candidate.ring)} (${escapeHtml(item.candidate.name)}) • <strong style="color:#059669;">${item.score}/100</strong> (%${item.coi.toFixed(2)} COI)</div>
+                        <div style="font-size:8.6px; color:#475569;">${escapeHtml(item.why)}</div>
+                      </div>
+                      <button type="button" class="ios-btn ${item.candidate.id === this.state.selectedSireRef ? 'ios-btn-green' : 'ios-btn-purple'}" style="padding:4px 8px; font-size:8.8px; flex-shrink:0;" onclick="AvigenGenesisAI.selectAlternativePairAndRun('${item.candidate.id}', '${this.state.selectedDamRef}')">${item.candidate.id === this.state.selectedSireRef ? '✓ Seçili' : '✓ Eş Seç'}</button>
                     </div>
-                    <button type="button" class="ios-btn ios-btn-outline" style="padding:3px 7px; font-size:8.8px; flex-shrink:0;" onclick="AvigenGenesisAI.selectAlternativePairAndRun('${item.candidate.id}', '${this.state.selectedDamRef}')">Seç</button>
-                  </div>
-                `).join('')}
+                  `).join('')}
+                `}
               </div>
             </details>
           ` : ''}
@@ -8707,6 +8733,80 @@ const AvigenGenesisAI = {
     this.state.activeMode = 'breeding';
     this.state.viewStage = 'tool';
     this.saveState();
+    this.renderGenesisModuleUI();
+  },
+
+  setFocusMateSearchSex(sexCode) {
+    this.state.focusMateSearchSex = sexCode === 'F' ? 'F' : 'M';
+    this.state.autoExpandBestMates = true;
+    this.saveState();
+    this.renderGenesisModuleUI();
+  },
+
+  // Kuşlarım Listesinden veya Performans Profilinden Seçili Tek Kuş (Erkek veya Dişi) İçin En Uygun Eş Adaylarını Tek Tuşla Açar
+  openBestMatesForBird(ringVal, sexHint) {
+    const cleanTarget = String(ringVal || '').trim().toUpperCase().replace(/[-\s./_]+/g, '');
+    if (!cleanTarget) return;
+    const { males, females, all } = getAllBreedingCandidates();
+    const normR = (r) => String(r || '').trim().toUpperCase().replace(/[-\s./_]+/g, '');
+
+    let foundMale = males.find(m => normR(m.ring) === cleanTarget);
+    let foundFemale = females.find(f => normR(f.ring) === cleanTarget);
+    const anyBird = all.find(c => normR(c.ring) === cleanTarget);
+
+    let targetSex = (sexHint === 'F' || sexHint === 'M') ? sexHint : (foundFemale && !foundMale ? 'F' : 'M');
+    if (foundFemale && !foundMale) targetSex = 'F';
+    if (foundMale && !foundFemale) targetSex = 'M';
+
+    this.state.activeMode = 'breeding';
+    this.state.viewStage = 'tool';
+    this.state.autoExpandBestMates = true;
+    this.state.focusMateSearchSex = targetSex;
+
+    if (targetSex === 'F') {
+      const damCand = foundFemale || anyBird || females[0];
+      if (damCand) this.state.selectedDamRef = damCand.id;
+      // Bu dişiye en yüksek puanlı boşta erkeği otomatik 1. aday olarak eşleştir
+      const nestedSet = typeof getActiveNestRingNormSet === 'function' ? getActiveNestRingNormSet() : new Set();
+      const freeMales = males.filter(m => !nestedSet.has(normR(m.ring)) && normR(m.ring) !== cleanTarget);
+      const poolM = freeMales.length ? freeMales : males;
+      let bestM = poolM[0];
+      let bestScore = -1;
+      if (damCand) {
+        poolM.forEach(m => {
+          const r = this.analyzeBreedingIntelligence(m.id, damCand.id, true);
+          if (r.totalScore > bestScore && r.userFeedbackStatus !== 'REJECTED') {
+            bestScore = r.totalScore;
+            bestM = m;
+          }
+        });
+      }
+      if (bestM) this.state.selectedSireRef = bestM.id;
+    } else {
+      const sireCand = foundMale || anyBird || males[0];
+      if (sireCand) this.state.selectedSireRef = sireCand.id;
+      // Bu erkeğe en yüksek puanlı boşta dişiyi otomatik 1. aday olarak eşleştir
+      const nestedSet = typeof getActiveNestRingNormSet === 'function' ? getActiveNestRingNormSet() : new Set();
+      const freeFemales = females.filter(f => !nestedSet.has(normR(f.ring)) && normR(f.ring) !== cleanTarget);
+      const poolF = freeFemales.length ? freeFemales : females;
+      let bestF = poolF[0];
+      let bestScore = -1;
+      if (sireCand) {
+        poolF.forEach(f => {
+          const r = this.analyzeBreedingIntelligence(sireCand.id, f.id, true);
+          if (r.totalScore > bestScore && r.userFeedbackStatus !== 'REJECTED') {
+            bestScore = r.totalScore;
+            bestF = f;
+          }
+        });
+      }
+      if (bestF) this.state.selectedDamRef = bestF.id;
+    }
+
+    this.saveState();
+    if (typeof openIosTab === 'function') {
+      openIosTab('breeding', document.querySelectorAll('.ios-tab-btn')[2]);
+    }
     this.renderGenesisModuleUI();
   },
 

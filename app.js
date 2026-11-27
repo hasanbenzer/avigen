@@ -3846,6 +3846,9 @@ function renderLoftBirdsDirectory() {
           </button>
 
           <div class="bird-action-popup-menu" data-ring="${escapeHtml(b.ring)}" onclick="event.stopPropagation()" style="display:none; position:absolute; right:0; top:34px; z-index:80; width:215px; background:var(--ios-card, #ffffff); border:1.5px solid var(--ios-border, #cbd5e1); border-radius:12px; box-shadow:0 10px 26px rgba(15,23,42,0.22); padding:6px; flex-direction:column; gap:4px;">
+            <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); if(typeof AvigenGenesisAI!=='undefined' && typeof AvigenGenesisAI.openBestMatesForBird==='function') AvigenGenesisAI.openBestMatesForBird('${escapeHtml(b.ring)}', '${b.sex}');" style="color:#6d28d9; font-weight:800;">
+              <span>💞</span> <span>En İyi Eş Adaylarını Bul (${b.sex === 'F' ? '♀→♂' : '♂→♀'})</span>
+            </button>
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); openBirdPedigreeFromDirectory('${b.pedId}');">
               <span>📜</span> <span>Pedigre Kağıdını Aç</span>
             </button>
@@ -14254,10 +14257,10 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.8.1',
-    localBuild: 581,
-    remoteVersion: '5.8.1',
-    remoteBuild: 581,
+    localVersion: '5.8.2',
+    localBuild: 582,
+    remoteVersion: '5.8.2',
+    remoteBuild: 582,
     remoteTitle: "AVIGEN v5.8.0 — Yetiştirici Verimlilik & Doğruluk Paketi: Otomatik Damızlık/Yarışçı/Yavru Kadro Tespiti, Tek Kuş İçin En İyi 5 Eş Seçici, Aktif Yuva Çakışma Rozeti, Pedigri Ata/Kardeş/Yavru Geçişi",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",

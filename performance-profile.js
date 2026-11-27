@@ -1136,6 +1136,9 @@ const AvigenPerformanceEngine = {
           </div>
         </div>
         <div style="display:flex; gap:5px; flex-shrink:0;">
+          <button class="ios-btn ios-btn-purple" style="padding:5px 8px; font-size:9.2px; font-weight:900;" onclick="AvigenPerformanceEngine.closeProfileModal(); if(typeof AvigenGenesisAI!=='undefined' && typeof AvigenGenesisAI.openBestMatesForBird==='function') AvigenGenesisAI.openBestMatesForBird('${escapeHtml(bird.ring)}', '${bird.sex}');" title="Bu kuş için en uygun 5 eş adayını bul">
+            💞 En İyi Eş Bul
+          </button>
           <button class="ios-btn ios-btn-primary" style="padding:5px 9px; font-size:9.5px;" onclick="AvigenPerformanceEngine.closeProfileModal(); if(typeof openBirdPedigreeStudioByRing==='function') openBirdPedigreeStudioByRing('${escapeHtml(bird.ring)}');">
             📜 Soy Ağacı
           </button>
