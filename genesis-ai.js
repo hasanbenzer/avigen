@@ -1916,7 +1916,7 @@ const AvigenGenesisAI = {
   getTopLoftBreedingPairs(limit = 5) {
     this.ensureEngineCacheFresh();
     const curGoal = this.state.breedingTargetGoal || 'balanced';
-    if (this._engineCache.topLoftPairs && this._engineCache.topLoftPairsGoal === curGoal && this._engineCache.topLoftPairs.length > 0) {
+    if (Array.isArray(this._engineCache.topLoftPairs) && this._engineCache.topLoftPairsGoal === curGoal) {
       return this._engineCache.topLoftPairs.slice(0, limit);
     }
     const { males, females } = getAllBreedingCandidates();
@@ -1944,7 +1944,34 @@ const AvigenGenesisAI = {
         }
       });
     });
-    this._engineCache.topLoftPairs = pairs.sort((a, b) => (b.score - a.score) || (b.reliability - a.reliability));
+    pairs.sort((a, b) => (b.score - a.score) || (b.reliability - a.reliability));
+
+    // MÜKERRER ÖNLEME KURALI: Bir dişi (ve bir erkek) öneri listesinde yalnızca BİR KEZ yer alır;
+    // ayrıca şu anda aktif bir yuvada eşleşmiş olan kuşlar yeni eşleşme önerilerine tekrar getirilmez.
+    const normR = (r) => String(r || '').trim().toUpperCase().replace(/[-\s./_]+/g, '');
+    const nestedSet = new Set();
+    if (typeof activePairsList !== 'undefined' && Array.isArray(activePairsList)) {
+      activePairsList.forEach(ap => {
+        const sr = typeof extractCleanRingFromText === 'function' ? extractCleanRingFromText(ap.sire) : '';
+        const dr = typeof extractCleanRingFromText === 'function' ? extractCleanRingFromText(ap.dam) : '';
+        if (sr) nestedSet.add(normR(sr));
+        if (dr) nestedSet.add(normR(dr));
+      });
+    }
+    const usedSires = new Set();
+    const usedDams = new Set();
+    const uniquePairs = [];
+    pairs.forEach(p => {
+      const sK = normR(p.sire.ring);
+      const dK = normR(p.dam.ring);
+      if (nestedSet.has(sK) || nestedSet.has(dK)) return;
+      if (usedSires.has(sK) || usedDams.has(dK)) return;
+      usedSires.add(sK);
+      usedDams.add(dK);
+      uniquePairs.push(p);
+    });
+
+    this._engineCache.topLoftPairs = uniquePairs;
     this._engineCache.topLoftPairsGoal = curGoal;
     return this._engineCache.topLoftPairs.slice(0, limit);
   },

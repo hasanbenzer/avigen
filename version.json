@@ -1,14 +1,12 @@
 {
-  "version": "5.8.0",
-  "build": 580,
+  "version": "5.8.1",
+  "build": 581,
   "releaseDate": "2026-11-27",
-  "title": "AVIGEN v5.8.0 — Yetiştirici Verimlilik & Doğruluk Paketi: Otomatik Damızlık/Yarışçı/Yavru Kadro Tespiti, Tek Kuş İçin En İyi 5 Eş Seçici, Aktif Yuva Çakışma Rozeti, Pedigri Ata/Kardeş/Yavru Geçişi",
+  "title": "AVIGEN v5.8.1 — Ana Ekrandan Hızlı Kuş Eşleştirme, Mükerrer Önleme & 1-Dokunuş Kümes Pratiklikleri",
   "notes": [
-    "🥚 Otomatik Damızlık / Yarışçı / Yavru Kadro Sınıflandırması & Yem Motoru Senkronu: Kümeste yavrusu olan, aktif yuvada yatan veya 2022 öncesi doğumlu kuşlar Damızlık; henüz yarışmamış 2026 genç kuşlar Yavru; diğer aktif kuşlar Yarışçı olarak tüm ekranlarda (Ana Sayfa, Kuşlarım, Akıllı Yem) birebir aynı sayıyla gösterilir",
-    "🔍 Seçili Tek Kuş İçin 'En Uygun 5 Eş Adayı' & 🪺 Aktif Yuva Rozeti: GENESIS AI Eşleştirme ekranında seçili erkek için en iyi 5 dişi ve seçili dişi için en iyi 5 erkek tek dokunuşla listelenir; aktif yuvada olan kuşlar 🪺 rozetiyle işaretlenir",
-    "💑 Yuva & Üreme Otomatik Eşleşme Önerileri 966 Çiftlik Tam Taramayla Eşitlendi: Her öneride tek tuşla '🪺 Yuvaya Kaydet' ve '🧬 Analiz' butonları aktif",
-    "📜 Pedigri Ata Kutusundan Soyağacına/Profile Geçiş & Kardeşler/Yavrular Kartı: Pedigride bir ataya dokunulduğunda o atanın kendi pedigri kağıdına veya profiline geçilebilir; profil kartında kümesteki Yavruları ve Öz/Üvey Kardeşleri tıklanabilir olarak listelenir",
-    "🧪 27 / 27 Otomatik Sistem, Yol Haritası & Bilimsel Doğruluk Testi aktif"
+    "💞 Ana Ekran → 🪺 Yuva sekmesinde Hızlı Kuş Eşleştir kutusu: Erkek ve dişi seçin, uyum puanı ve COI anında görünsün, tek tuşla yuvaya kaydedin",
+    "🚫 Mükerrer Önleme: Eşleşme önerilerinde her dişi ve her erkek yalnızca bir kez yer alır; aktif yuvada olan kuşlar yeni önerilere ve hızlı eşleştirme listesine getirilmez",
+    "🔄 1-Dokunuş Görsel Durum/Devir Kartı (#avigenQuickStatusModal), Yuva Düzenlemede '🔄 Yeni Ağız Başlat' sıfırlama butonu ve yarışa giren 2026 gençlerinin otomatik Yarışçı terfisi"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"
