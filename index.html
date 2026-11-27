@@ -14,15 +14,16 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
   <link rel="icon" type="image/svg+xml" href="avigen-logo.svg" />
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
-  <link rel="manifest" href="manifest.json?v=5.7.6" />
+  <link rel="manifest" href="manifest.json?v=5.7.7" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@500;700;800&family=Playfair+Display:wght@600;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5.7.6" />
+  <link rel="stylesheet" href="styles.css?v=5.7.7" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" defer></script>
 </head>
 <body class="cyber-ai-skin cyber-light-skin">
 
@@ -902,14 +903,18 @@
             <div class="scanner-laser-line"></div>
           </div>
 
-          <!-- Kamera Başlat / Resimden Barkod Oku -->
-          <div class="btn-row" style="margin-bottom:8px;">
-            <button class="ios-btn ios-btn-primary" style="flex:1;" onclick="startLiveCameraBarcodeScan()">
-              📷 Kamerayı Aç
+          <!-- Kamera Başlat / Kamerayla Fotoğraf Çek / Galeriden Barkod Resmi Seç -->
+          <div class="btn-row" style="margin-bottom:8px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+            <button type="button" class="ios-btn ios-btn-primary" style="padding:8px 6px; font-size:10.5px; font-weight:900;" onclick="startLiveCameraBarcodeScan()">
+              📷 Canlı Kamera
             </button>
-            <label class="ios-btn ios-btn-outline" style="flex:1; cursor:pointer;">
-              🖼️ Barkod Resmi Seç
-              <input type="file" accept="image/*" style="display:none;" onchange="scanBarcodeFromImageFile(event)" />
+            <label class="ios-btn ios-btn-purple" style="padding:8px 6px; font-size:10.5px; font-weight:900; cursor:pointer; text-align:center;">
+              📸 Fotoğraf Çek
+              <input type="file" id="barcodeCameraCaptureFileInput" accept="image/*" capture="environment" style="display:none;" onchange="scanBarcodeFromImageFile(event)" />
+            </label>
+            <label class="ios-btn ios-btn-outline" style="padding:8px 6px; font-size:10.5px; font-weight:900; cursor:pointer; text-align:center;">
+              🖼️ Resmi Seç
+              <input type="file" id="barcodeGalleryFileInput" accept="image/*" style="display:none;" onchange="scanBarcodeFromImageFile(event)" />
             </label>
           </div>
 
@@ -1083,15 +1088,15 @@
     </div>
   </div>
 
-  <script src="real-pedigrees-64.js?v=5.7.6"></script>
-  <script src="app.js?v=5.7.6"></script>
-  <script src="scientific-library.js?v=5.7.6"></script>
-  <script src="genesis-ai.js?v=5.7.6"></script>
-  <script src="performance-profile.js?v=5.7.6"></script>
+  <script src="real-pedigrees-64.js?v=5.7.7"></script>
+  <script src="app.js?v=5.7.7"></script>
+  <script src="scientific-library.js?v=5.7.7"></script>
+  <script src="genesis-ai.js?v=5.7.7"></script>
+  <script src="performance-profile.js?v=5.7.7"></script>
   <script>
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=5.7.6').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=5.7.7').then((reg) => {
           if (reg && typeof reg.update === 'function') {
             reg.update().catch(() => {});
           }

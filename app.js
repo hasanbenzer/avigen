@@ -3912,23 +3912,34 @@ function updateCustomDesign() {
 // ============================================================================
 function generateIsoQrMatrix(text) {
   const utf8 = Array.from(new TextEncoder().encode(String(text || 'https://hasanbenzer.github.io/avigen/')));
-  // EC Level L Tablosu: [totalCw, ecCwPerBlock, numBlk1, dataCw1, numBlk2, dataCw2, alignCoords]
+  // EC Level L Tablosu (Version 1..20 -> 858 byte kapasite): [totalCw, ecCwPerBlock, numBlk1, dataCw1, numBlk2, dataCw2, alignCoords]
   const V_TABLE = [
     null,
-    [26,  7,  1, 19, 0, 0, []],
-    [44,  10, 1, 34, 0, 0, [6, 18]],
-    [70,  15, 1, 55, 0, 0, [6, 22]],
-    [100, 20, 1, 80, 0, 0, [6, 26]],
-    [134, 26, 1, 108,0, 0, [6, 30]],
-    [172, 18, 2, 68, 0, 0, [6, 34]],
-    [196, 20, 2, 78, 0, 0, [6, 22, 38]],
-    [242, 24, 2, 97, 0, 0, [6, 24, 42]],
-    [292, 30, 2, 116,0, 0, [6, 26, 46]],
-    [346, 18, 2, 68, 2, 69,[6, 28, 50]]
+    [26,   7,  1, 19,  0, 0,   []],
+    [44,   10, 1, 34,  0, 0,   [6, 18]],
+    [70,   15, 1, 55,  0, 0,   [6, 22]],
+    [100,  20, 1, 80,  0, 0,   [6, 26]],
+    [134,  26, 1, 108, 0, 0,   [6, 30]],
+    [172,  18, 2, 68,  0, 0,   [6, 34]],
+    [196,  20, 2, 78,  0, 0,   [6, 22, 38]],
+    [242,  24, 2, 97,  0, 0,   [6, 24, 42]],
+    [292,  30, 2, 116, 0, 0,   [6, 26, 46]],
+    [346,  18, 2, 68,  2, 69,  [6, 28, 50]],
+    [404,  20, 4, 81,  0, 0,   [6, 30, 54]],
+    [466,  24, 2, 92,  2, 93,  [6, 32, 58]],
+    [532,  26, 4, 107, 0, 0,   [6, 34, 62]],
+    [581,  30, 3, 115, 1, 116, [6, 26, 46, 66]],
+    [655,  22, 5, 87,  1, 88,  [6, 26, 48, 70]],
+    [733,  24, 5, 98,  1, 99,  [6, 26, 50, 74]],
+    [815,  28, 1, 107, 5, 108, [6, 30, 54, 78]],
+    [901,  30, 5, 120, 1, 121, [6, 30, 56, 82]],
+    [991,  28, 3, 113, 4, 114, [6, 30, 58, 86]],
+    [1085, 28, 3, 107, 5, 108, [6, 34, 62, 90]]
   ];
 
   let ver = 1;
-  for (let v = 1; v <= 10; v++) {
+  const maxSupportedVer = V_TABLE.length - 1;
+  for (let v = 1; v <= maxSupportedVer; v++) {
     const info = V_TABLE[v];
     const totalDataCw = info[2] * info[3] + info[4] * info[5];
     const maxBytes = totalDataCw - (v <= 9 ? 2 : 3);
@@ -3936,7 +3947,7 @@ function generateIsoQrMatrix(text) {
       ver = v;
       break;
     }
-    if (v === 10) ver = 10;
+    if (v === maxSupportedVer) ver = maxSupportedVer;
   }
 
   const vInfo = V_TABLE[ver];
@@ -5055,17 +5066,435 @@ function renderActivePedigree() {
   setTimeout(fitPaperToIphoneScreen, 10);
 }
 
-// Bir Pedigrenin Ana Kuşunu + Baba + Anne Halka Numarasını Telefon Kameralarının 0.1 Saniyede Okuyabileceği
-// Ultra Kompakt (QR Version 3/4 - Büyük Kareli) Evrensel Doğrulama URL'si Olarak Üretir
+// ============================================================================
+// 4 KUŞAK (31 KUTU) TAM SOYAĞACI HİDRASYON & DIŞ TELEFON QR DOĞRULAMA MOTORU
+// (Dışarıdan başka bir telefonla QR/Barkod okutulduğunda, o telefonda localStorage boş olsa bile
+// hem 68 yerleşik master şecereden hem de URL içindeki sıkıştırılmış 31 kutu soy paketinden
+// 1., 2., 3. ve 4. kuşak tüm soyağacını eksiksiz doldurur!)
+// ============================================================================
+const QR_31_SLOT_KEYS = [
+  'main', 'sire', 'dam',
+  'g2_1', 'g2_2', 'g2_3', 'g2_4',
+  'g3_1', 'g3_2', 'g3_3', 'g3_4', 'g3_5', 'g3_6', 'g3_7', 'g3_8',
+  'g4_1', 'g4_2', 'g4_3', 'g4_4', 'g4_5', 'g4_6', 'g4_7', 'g4_8',
+  'g4_9', 'g4_10', 'g4_11', 'g4_12', 'g4_13', 'g4_14', 'g4_15', 'g4_16'
+];
+
+const QR_TREE_PARENT_LINKS = [
+  ['main', 'sire', 'dam'],
+  ['sire', 'g2_1', 'g2_2'],
+  ['dam', 'g2_3', 'g2_4'],
+  ['g2_1', 'g3_1', 'g3_2'],
+  ['g2_2', 'g3_3', 'g3_4'],
+  ['g2_3', 'g3_5', 'g3_6'],
+  ['g2_4', 'g3_7', 'g3_8'],
+  ['g3_1', 'g4_1', 'g4_2'],
+  ['g3_2', 'g4_3', 'g4_4'],
+  ['g3_3', 'g4_5', 'g4_6'],
+  ['g3_4', 'g4_7', 'g4_8'],
+  ['g3_5', 'g4_9', 'g4_10'],
+  ['g3_6', 'g4_11', 'g4_12'],
+  ['g3_7', 'g4_13', 'g4_14'],
+  ['g3_8', 'g4_15', 'g4_16']
+];
+
+function normalizeRingForLookup(ringStr) {
+  return String(ringStr || '').trim().toUpperCase().replace(/[-\s./_]+/g, '');
+}
+
+function encodeUtf8ToBase64UrlSafe(str) {
+  try {
+    return encodeUtf8ToBase64Safe(str)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+  } catch (e) {
+    return '';
+  }
+}
+
+function decodeBase64UrlToUtf8Safe(b64Url) {
+  try {
+    let std = String(b64Url || '').trim().replace(/-/g, '+').replace(/_/g, '/');
+    while (std.length % 4 !== 0) std += '=';
+    return decodeBase64ToUtf8Safe(std);
+  } catch (e) {
+    return '';
+  }
+}
+
+function getAllReferencePedigreesCatalog(onlyBuiltInCatalog = false) {
+  const list = [];
+  if (!onlyBuiltInCatalog && Array.isArray(pedigrees)) {
+    pedigrees.forEach(p => { if (p && p.boxes) list.push(p); });
+  }
+  if (typeof REAL_64_PEDIGREES !== 'undefined' && Array.isArray(REAL_64_PEDIGREES)) {
+    REAL_64_PEDIGREES.forEach(p => { if (p && p.boxes) list.push(p); });
+  }
+  try { if (typeof getPalaIbo31BoxPedigree === 'function') list.push(getPalaIbo31BoxPedigree()); } catch (e) {}
+  try { if (typeof getRomarioMessi31BoxPedigree === 'function') list.push(getRomarioMessi31BoxPedigree()); } catch (e) {}
+  try { if (typeof getTugf25A0441Pedigree === 'function') list.push(getTugf25A0441Pedigree()); } catch (e) {}
+  try { if (typeof getTr162222929Pedigree === 'function') list.push(getTr162222929Pedigree()); } catch (e) {}
+  return list;
+}
+
+function hydratePedigreeBoxesFromKnownLoft(rawBoxes, onlyBuiltInCatalog = false) {
+  const boxes = {};
+  QR_31_SLOT_KEYS.forEach((k, idx) => {
+    const defaultSex = idx === 0 ? 'M' : (idx % 2 === 1 ? 'M' : 'F');
+    const src = rawBoxes && rawBoxes[k] ? rawBoxes[k] : {};
+    const ringVal = String(src.ring || '').trim();
+    boxes[k] = {
+      flag: src.flag || (ringVal && typeof detectFlagFromRing === 'function' ? detectFlagFromRing(ringVal) : '🇹🇷'),
+      ring: ringVal === '-' ? '' : ringVal,
+      name: String(src.name || '').trim(),
+      color: String(src.color || '').trim(),
+      sex: src.sex || defaultSex,
+      notes: String(src.notes || '').trim(),
+      photo: src.photo || ''
+    };
+  });
+
+  const catalog = getAllReferencePedigreesCatalog(onlyBuiltInCatalog);
+  const fullPedByRing = new Map();
+  const fullPedList = [];
+  const boxMetaByRing = new Map();
+  const boxMetaList = [];
+  const parentPairByRing = new Map();
+  const parentPairList = [];
+
+  const isGenericName = (n) => {
+    const low = String(n || '').trim().toLowerCase();
+    return !low ||
+      low === 'resmi pedigri kayıtlı güvercin' ||
+      low === '1. kuşak baba (sire)' ||
+      low === '1. kuşak anne (dam)' ||
+      low === 'baba hattı' ||
+      low === 'anne hattı' ||
+      low === 'pedigre kaydı' ||
+      low === 'barkod kayıtlı güvercin' ||
+      low === 'yeni güvercin';
+  };
+
+  catalog.forEach(p => {
+    const pb = p.boxes || {};
+    const mRingClean = normalizeRingForLookup(pb.main?.ring);
+    if (mRingClean && mRingClean.length >= 4 && !fullPedByRing.has(mRingClean)) {
+      fullPedByRing.set(mRingClean, pb);
+      fullPedList.push({ clean: mRingClean, boxes: pb });
+    }
+
+    QR_31_SLOT_KEYS.forEach(slotKey => {
+      const node = pb[slotKey];
+      const rClean = normalizeRingForLookup(node?.ring);
+      if (!rClean || rClean.length < 3) return;
+      const existing = boxMetaByRing.get(rClean);
+      if (!existing || (isGenericName(existing.name) && !isGenericName(node.name)) || (!existing.notes && node.notes)) {
+        const meta = {
+          flag: node.flag || (typeof detectFlagFromRing === 'function' ? detectFlagFromRing(node.ring) : '🇹🇷'),
+          ring: String(node.ring || '').trim(),
+          name: String(node.name || '').trim(),
+          color: String(node.color || '').trim(),
+          sex: node.sex || 'M',
+          notes: String(node.notes || '').trim()
+        };
+        boxMetaByRing.set(rClean, meta);
+        boxMetaList.push({ clean: rClean, meta });
+      }
+    });
+
+    QR_TREE_PARENT_LINKS.forEach(([childKey, fatherKey, motherKey]) => {
+      const childNode = pb[childKey];
+      const fNode = pb[fatherKey];
+      const mNode = pb[motherKey];
+      const cClean = normalizeRingForLookup(childNode?.ring);
+      if (!cClean || cClean.length < 3) return;
+      if ((fNode && fNode.ring) || (mNode && mNode.ring)) {
+        const existingPair = parentPairByRing.get(cClean);
+        if (!existingPair || (!existingPair.sire?.ring && fNode?.ring) || (!existingPair.dam?.ring && mNode?.ring)) {
+          const pairObj = {
+            sire: fNode && fNode.ring ? { ...fNode } : (existingPair?.sire || null),
+            dam: mNode && mNode.ring ? { ...mNode } : (existingPair?.dam || null)
+          };
+          parentPairByRing.set(cClean, pairObj);
+          parentPairList.push({ clean: cClean, pair: pairObj });
+        }
+      }
+    });
+  });
+
+  const findFullPedBoxes = (ringStr) => {
+    const qClean = normalizeRingForLookup(ringStr);
+    if (!qClean || qClean.length < 4) return null;
+    if (fullPedByRing.has(qClean)) return fullPedByRing.get(qClean);
+    const match = fullPedList.find(item =>
+      (qClean.length >= 10 && item.clean.startsWith(qClean)) ||
+      (qClean.length >= 5 && item.clean.endsWith(qClean.slice(-6)))
+    );
+    return match ? match.boxes : null;
+  };
+
+  const findBoxMeta = (ringStr) => {
+    const qClean = normalizeRingForLookup(ringStr);
+    if (!qClean || qClean.length < 3) return null;
+    if (boxMetaByRing.has(qClean)) return boxMetaByRing.get(qClean);
+    const match = boxMetaList.find(item =>
+      (qClean.length >= 10 && item.clean.startsWith(qClean)) ||
+      (qClean.length >= 5 && item.clean.endsWith(qClean.slice(-6)))
+    );
+    return match ? match.meta : null;
+  };
+
+  const findParentPair = (ringStr) => {
+    const qClean = normalizeRingForLookup(ringStr);
+    if (!qClean || qClean.length < 3) return null;
+    if (parentPairByRing.has(qClean)) return parentPairByRing.get(qClean);
+    const match = parentPairList.find(item =>
+      (qClean.length >= 10 && item.clean.startsWith(qClean)) ||
+      (qClean.length >= 5 && item.clean.endsWith(qClean.slice(-6)))
+    );
+    return match ? match.pair : null;
+  };
+
+  const mergeSlotFromSource = (dstKey, srcNode) => {
+    if (!srcNode || !srcNode.ring) return;
+    const dst = boxes[dstKey];
+    if (!dst.ring) {
+      dst.ring = String(srcNode.ring).trim();
+      dst.flag = srcNode.flag || (typeof detectFlagFromRing === 'function' ? detectFlagFromRing(dst.ring) : '🇹🇷');
+    } else if (dst.ring.length < String(srcNode.ring).trim().length && normalizeRingForLookup(srcNode.ring).startsWith(normalizeRingForLookup(dst.ring))) {
+      // Eski 14 karakter kısaltmalı QR koddan gelen halkayı tam halkaya tamamla
+      dst.ring = String(srcNode.ring).trim();
+    }
+    if (isGenericName(dst.name) && srcNode.name && !isGenericName(srcNode.name)) {
+      dst.name = String(srcNode.name).trim();
+    }
+    if ((!dst.color || dst.color === 'Mavi Çakmaklı') && srcNode.color) {
+      dst.color = String(srcNode.color).trim();
+    }
+    if ((!dst.notes || dst.notes === 'AVIGEN Dijital Doğrulamalı Pedigri Kaydı') && srcNode.notes) {
+      dst.notes = String(srcNode.notes).trim();
+    }
+  };
+
+  // 1. Adım: Ana kuş tam bir pedigri kaydıysa tüm 31 kutuyu doldur
+  const mainFull = findFullPedBoxes(boxes.main.ring);
+  if (mainFull) {
+    QR_31_SLOT_KEYS.forEach(k => mergeSlotFromSource(k, mainFull[k]));
+  }
+
+  // 2. Adım: Baba (sire) tam bir pedigri kaydıysa baba tarafı alt ağacını (g2_1, g2_2, g3_1..4, g4_1..8) doldur
+  const sireFull = findFullPedBoxes(boxes.sire.ring);
+  if (sireFull) {
+    mergeSlotFromSource('sire', sireFull.main);
+    mergeSlotFromSource('g2_1', sireFull.sire);
+    mergeSlotFromSource('g2_2', sireFull.dam);
+    ['g2_1', 'g2_2', 'g2_3', 'g2_4'].forEach((gk, idx) => mergeSlotFromSource(`g3_${idx + 1}`, sireFull[gk]));
+    ['g3_1', 'g3_2', 'g3_3', 'g3_4', 'g3_5', 'g3_6', 'g3_7', 'g3_8'].forEach((gk, idx) => mergeSlotFromSource(`g4_${idx + 1}`, sireFull[gk]));
+  }
+
+  // 3. Adım: Anne (dam) tam bir pedigri kaydıysa anne tarafı alt ağacını (g2_3, g2_4, g3_5..8, g4_9..16) doldur
+  const damFull = findFullPedBoxes(boxes.dam.ring);
+  if (damFull) {
+    mergeSlotFromSource('dam', damFull.main);
+    mergeSlotFromSource('g2_3', damFull.sire);
+    mergeSlotFromSource('g2_4', damFull.dam);
+    ['g2_1', 'g2_2', 'g2_3', 'g2_4'].forEach((gk, idx) => mergeSlotFromSource(`g3_${idx + 5}`, damFull[gk]));
+    ['g3_1', 'g3_2', 'g3_3', 'g3_4', 'g3_5', 'g3_6', 'g3_7', 'g3_8'].forEach((gk, idx) => mergeSlotFromSource(`g4_${idx + 9}`, damFull[gk]));
+  }
+
+  // 4. Adım: Yukarıdan aşağıya tüm ikili ağaç bağlantılarını (main -> sire/dam -> g2 -> g3 -> g4) çöz
+  for (let pass = 0; pass < 4; pass++) {
+    QR_TREE_PARENT_LINKS.forEach(([childKey, fatherKey, motherKey]) => {
+      const childRing = boxes[childKey]?.ring;
+      if (!childRing) return;
+      const pair = findParentPair(childRing);
+      if (pair) {
+        if (pair.sire) mergeSlotFromSource(fatherKey, pair.sire);
+        if (pair.dam) mergeSlotFromSource(motherKey, pair.dam);
+      }
+    });
+  }
+
+  // 5. Adım: Tüm 31 kutunun eksik isim, renk, bayrak ve derece notlarını katalogdan zenginleştir
+  QR_31_SLOT_KEYS.forEach(k => {
+    const node = boxes[k];
+    if (!node.ring) return;
+    const meta = findBoxMeta(node.ring);
+    if (meta) {
+      mergeSlotFromSource(k, meta);
+    }
+    node.flag = typeof detectFlagFromRing === 'function' ? detectFlagFromRing(node.ring) : (node.flag || '🇹🇷');
+  });
+
+  return boxes;
+}
+
+// Pedigri QR Kodunu Üretir:
+// - Hem hızlı okunan ?v=RING~SIRE~DAM parametresini içerir (kısaltmasız!)
+// - Hem de yerleşik 68 katalogda bulunmayan özel (kullanıcının yeni eklediği) ata kutuları varsa &p= parametresinde taşır!
 function encodeFullPedigreeQrPayload(ped) {
-  const b = ped?.boxes || {};
-  const m = b.main || {};
-  const ring = String(m.ring || 'TR-2026-0001').trim().slice(0, 18);
-  const sire = String(b.sire?.ring || '').trim().slice(0, 14);
-  const dam = String(b.dam?.ring || '').trim().slice(0, 14);
-  // Kısa URL (~52-68 karakter -> QR Version 3/4, büyük ve yüksek kontrastlı modüller!)
+  const fullBoxes = hydratePedigreeBoxesFromKnownLoft(ped?.boxes || {}, false);
+  const m = fullBoxes.main || {};
+  const ring = String(m.ring || 'TR-2026-0001').trim();
+  const sire = String(fullBoxes.sire?.ring || '').trim();
+  const dam = String(fullBoxes.dam?.ring || '').trim();
+
   const compact = [ring, sire, dam].filter(Boolean).join('~');
-  return `https://hasanbenzer.github.io/avigen/?v=${encodeURIComponent(compact)}`;
+  let baseUrl = `https://hasanbenzer.github.io/avigen/?v=${encodeURIComponent(compact)}`;
+
+  // Dışarıdaki bir telefonun yalnızca yerleşik 68 katalogla hangi kutuları otomatik bulabileceğini simüle et
+  const autoExternal = hydratePedigreeBoxesFromKnownLoft({
+    main: { ring },
+    sire: { ring: sire },
+    dam: { ring: dam }
+  }, true);
+
+  // Katalogda olmayan (kullanıcının kendi girdiği) özel kutuları &p= paketine ekle
+  const customEntries = [];
+  const loftTitle = (typeof loftConfig !== 'undefined' && loftConfig.title && loftConfig.title !== 'AVIGEN ŞAMPİYON KÜMESİ')
+    ? String(loftConfig.title).trim().slice(0, 28)
+    : '';
+
+  QR_31_SLOT_KEYS.forEach((slotKey, idx) => {
+    const fb = fullBoxes[slotKey];
+    const eb = autoExternal[slotKey];
+    if (!fb || !fb.ring) return;
+
+    const fbClean = normalizeRingForLookup(fb.ring);
+    const ebClean = normalizeRingForLookup(eb?.ring);
+
+    if (idx === 0) {
+      const needMainMeta = fbClean !== ebClean ||
+        (fb.name && fb.name !== eb?.name) ||
+        loftTitle;
+      if (needMainMeta) {
+        const cleanName = String(fb.name || '').replace(/[~|]/g, ' ').trim().slice(0, 24);
+        const cleanColor = String(fb.color || '').replace(/[~|]/g, ' ').trim().slice(0, 18);
+        const cleanSex = fb.sex === 'F' ? 'F' : 'M';
+        const cleanLoft = loftTitle.replace(/[~|]/g, ' ');
+        customEntries.push(`0:${fb.ring}~${cleanName}~${cleanColor}~${cleanSex}~${cleanLoft}`);
+      }
+    } else if (fbClean !== ebClean || (fb.name && !eb?.name)) {
+      const maxNameLen = idx <= 6 ? 18 : (idx <= 14 ? 14 : 10);
+      const cleanName = String(fb.name || '').replace(/[~|]/g, ' ').trim().slice(0, maxNameLen);
+      customEntries.push(`${idx}:${fb.ring}${cleanName ? '~' + cleanName : ''}`);
+    }
+  });
+
+  if (customEntries.length > 0) {
+    const packedStr = customEntries.join('|');
+    const b64Url = encodeUtf8ToBase64UrlSafe(packedStr);
+    if (b64Url && (baseUrl.length + b64Url.length + 3) <= 820) {
+      baseUrl += `&p=${b64Url}`;
+    }
+  }
+
+  return baseUrl;
+}
+
+function decodePedigreeBoxesFromQrUrl(urlOrSearchStr) {
+  const raw = String(urlOrSearchStr || '').trim();
+  const qIdx = raw.indexOf('?');
+  const queryPart = qIdx >= 0 ? raw.slice(qIdx + 1).split('#')[0] : raw.split('#')[0];
+  const params = new URLSearchParams(queryPart);
+
+  const vCompact = (params.get('v') || '').trim();
+  const pPacked = (params.get('p') || '').trim();
+
+  let ring = (params.get('r') || '').trim();
+  let name = (params.get('n') || '').trim();
+  let sex = params.get('sx') === 'F' ? 'F' : 'M';
+  let sire = (params.get('s') || '').trim();
+  let dam = (params.get('d') || '').trim();
+  let loft = (params.get('l') || '').trim();
+  let color = 'Mavi Çakmaklı';
+
+  if (vCompact) {
+    const parts = vCompact.split('~').map(s => s.trim());
+    if (parts[0]) ring = parts[0];
+    if (parts[1] && !sire) sire = parts[1];
+    if (parts[2] && !dam) dam = parts[2];
+  }
+
+  const seedBoxes = {};
+  QR_31_SLOT_KEYS.forEach((k, idx) => {
+    seedBoxes[k] = {
+      flag: '🇹🇷',
+      ring: '',
+      name: '',
+      color: '',
+      sex: idx === 0 ? sex : (idx % 2 === 1 ? 'M' : 'F'),
+      notes: '',
+      photo: ''
+    };
+  });
+
+  if (ring) {
+    seedBoxes.main.ring = ring;
+    seedBoxes.main.flag = typeof detectFlagFromRing === 'function' ? detectFlagFromRing(ring) : '🇹🇷';
+    if (name) seedBoxes.main.name = name;
+  }
+  if (sire && sire !== '-') {
+    seedBoxes.sire.ring = sire;
+    seedBoxes.sire.flag = typeof detectFlagFromRing === 'function' ? detectFlagFromRing(sire) : '🇹🇷';
+  }
+  if (dam && dam !== '-') {
+    seedBoxes.dam.ring = dam;
+    seedBoxes.dam.flag = typeof detectFlagFromRing === 'function' ? detectFlagFromRing(dam) : '🇹🇷';
+  }
+
+  // &p= içinde gelen özel (custom) 31 kutu verilerini çöz
+  if (pPacked) {
+    const decodedPacked = decodeBase64UrlToUtf8Safe(pPacked);
+    if (decodedPacked) {
+      decodedPacked.split('|').filter(Boolean).forEach(entry => {
+        const cIdx = entry.indexOf(':');
+        if (cIdx === -1) return;
+        const slotIdx = parseInt(entry.slice(0, cIdx), 10);
+        const slotKey = QR_31_SLOT_KEYS[slotIdx];
+        if (!slotKey) return;
+        const fields = entry.slice(cIdx + 1).split('~').map(x => (x || '').trim());
+        if (slotIdx === 0) {
+          const [r0, n0, col0, sx0, lft0] = fields;
+          if (r0) seedBoxes.main.ring = r0;
+          if (n0) { seedBoxes.main.name = n0; name = n0; }
+          if (col0) { seedBoxes.main.color = col0; color = col0; }
+          if (sx0) { seedBoxes.main.sex = sx0 === 'F' ? 'F' : 'M'; sex = seedBoxes.main.sex; }
+          if (lft0 && !loft) loft = lft0;
+        } else {
+          const [rX, nX, colX] = fields;
+          if (rX) {
+            seedBoxes[slotKey].ring = rX;
+            seedBoxes[slotKey].flag = typeof detectFlagFromRing === 'function' ? detectFlagFromRing(rX) : '🇹🇷';
+          }
+          if (nX) seedBoxes[slotKey].name = nX;
+          if (colX) seedBoxes[slotKey].color = colX;
+        }
+      });
+    }
+  }
+
+  // Tüm 4 kuşağı (31 kutuyu) hem kullanıcı kümesinden hem de 68 yerleşik master şecereden tamamla!
+  const hydratedBoxes = hydratePedigreeBoxesFromKnownLoft(seedBoxes, false);
+
+  const finalMain = hydratedBoxes.main || {};
+  const finalSire = hydratedBoxes.sire || {};
+  const finalDam = hydratedBoxes.dam || {};
+
+  return {
+    ring: finalMain.ring || ring || 'TR-2026-0001',
+    name: finalMain.name || name || 'Resmi Pedigri Kayıtlı Güvercin',
+    color: finalMain.color || color || 'Mavi Çakmaklı',
+    sex: finalMain.sex || sex || 'M',
+    flag: finalMain.flag || (typeof detectFlagFromRing === 'function' ? detectFlagFromRing(finalMain.ring || ring) : '🇹🇷'),
+    sire: finalSire.ring || sire || '-',
+    sireName: finalSire.name || '',
+    dam: finalDam.ring || dam || '-',
+    damName: finalDam.name || '',
+    loft: loft || ((typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN Üye Kümesi'),
+    boxes: hydratedBoxes
+  };
 }
 
 // Barkod / QR kod okutulduğunda programın kendisini AÇMADAN, yalnızca okutulan kuşa ait
@@ -5116,64 +5545,21 @@ function checkAndShowPedigreeQrVerifyModal() {
     const isVerify1 = params.get('verify') === '1';
     if (!isVerify1 && (!vCompact || isCacheBustOrVer)) return;
 
-    let ring = (params.get('r') || 'TR-2026-0001').trim();
-    let name = (params.get('n') || '').trim();
-    let sex = params.get('sx') === 'F' ? 'F' : 'M';
-    let sire = (params.get('s') || '').trim();
-    let dam = (params.get('d') || '').trim();
-    let loft = (params.get('l') || '').trim();
+    const decoded = decodePedigreeBoxesFromQrUrl(searchStr);
+    const { flag, ring, name, sex, sire, dam, loft, boxes } = decoded;
 
-    if (vCompact) {
-      const parts = vCompact.split('~').map(s => s.trim());
-      if (parts[0]) ring = parts[0];
-      if (parts[1] && !sire) sire = parts[1];
-      if (parts[2] && !dam) dam = parts[2];
-    }
-
-    // 1. Eğer bu halka numarası sistemde kayıtlıysa tam 31 kutulu soyağacını al; değilse QR parametrelerinden tam pedigri nesnesini oluştur
-    const cleanUp = ring.toUpperCase();
-    let foundPed = null;
-    if (Array.isArray(pedigrees)) {
-      foundPed = pedigrees.find(p => (p?.boxes?.main?.ring || '').trim().toUpperCase() === cleanUp);
-    }
-
-    const flag = typeof detectFlagFromRing === 'function' ? detectFlagFromRing(ring) : '🇹🇷';
-    if (foundPed && foundPed.boxes) {
-      const fm = foundPed.boxes.main || {};
-      if (!name && fm.name) name = fm.name;
-      if (fm.sex) sex = fm.sex === 'F' ? 'F' : 'M';
-      if (!sire && foundPed.boxes.sire?.ring) sire = foundPed.boxes.sire.ring;
-      if (!dam && foundPed.boxes.dam?.ring) dam = foundPed.boxes.dam.ring;
-      _verifiedStandAlonePedObj = foundPed;
-    } else {
-      if (!name) name = 'Resmi Pedigri Kayıtlı Güvercin';
-      const customBoxes = {};
-      if (typeof BOX_SLOTS !== 'undefined' && Array.isArray(BOX_SLOTS)) {
-        BOX_SLOTS.forEach(s => {
-          customBoxes[s.key] = { flag: '🇹🇷', ring: '', name: '', color: '', notes: '', photo: '' };
-        });
-      }
-      customBoxes.main = { flag, ring, name, color: 'Mavi Çakmaklı', sex, notes: 'AVIGEN Dijital Doğrulamalı Pedigri Kaydı' };
-      if (sire && sire !== '-') {
-        customBoxes.sire = { flag: typeof detectFlagFromRing === 'function' ? detectFlagFromRing(sire) : '🇹🇷', ring: sire, name: '1. Kuşak Baba (Sire)', color: '', sex: 'M', notes: '' };
-      }
-      if (dam && dam !== '-') {
-        customBoxes.dam = { flag: typeof detectFlagFromRing === 'function' ? detectFlagFromRing(dam) : '🇹🇷', ring: dam, name: '1. Kuşak Anne (Dam)', color: '', sex: 'F', notes: '' };
-      }
-      _verifiedStandAlonePedObj = {
-        id: 'qr_verified_ped',
-        boxes: customBoxes
-      };
-    }
-
-    if (!name) name = 'Resmi Pedigri Kayıtlı Güvercin';
-    if (!sire) sire = '-';
-    if (!dam) dam = '-';
-    if (!loft) loft = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN Üye Kümesi';
+    _verifiedStandAlonePedObj = {
+      id: 'qr_verified_ped',
+      themeId: 'blue',
+      accentColor: '#1d4ed8',
+      bgColor: '#f8fafc',
+      fontFamily: "'Inter', sans-serif",
+      boxes
+    };
 
     const certCode = `#AVG-${ring.replace(/[^A-Z0-9]/gi, '').slice(-6).toUpperCase()}`;
     const todayStr = new Date().toLocaleDateString('tr-TR');
-    _pendingVerifiedQrBird = { flag, ring, name, sex, sire, dam, loft };
+    _pendingVerifiedQrBird = { flag, ring, name, sex, sire, dam, loft, boxes };
 
     // 2. Pedigrinin Tam Görselini (Sayfa 1: 4 Kuşak Soyağacı + Sayfa 2: Performans & Sicil) Yüksek Çözünürlüklü Üret
     let page1ImgUrl = '';
@@ -5301,15 +5687,26 @@ function importVerifiedQrBirdToMyLoft() {
   enterAvigenAppFromVerifyPage();
   if (!_pendingVerifiedQrBird) return;
   const v = _pendingVerifiedQrBird;
-  const packed = [
-    `main:${v.ring}~${v.name}~Mavi Çakmaklı~${v.loft} QR Doğrulamalı Kayıt`,
-    v.sire && v.sire !== '-' ? `sire:${v.sire}~Baba Hattı~Mavi~` : '',
-    v.dam && v.dam !== '-' ? `dam:${v.dam}~Anne Hattı~Mavi~` : ''
-  ].filter(Boolean).join('||');
+  const vBoxes = v.boxes || (_verifiedStandAlonePedObj && _verifiedStandAlonePedObj.boxes) || null;
+  let packed = '';
+  if (vBoxes) {
+    packed = QR_31_SLOT_KEYS.map(slotKey => {
+      const nb = vBoxes[slotKey];
+      if (!nb || !nb.ring) return '';
+      const cleanNotes = String(nb.notes || '').replace(/\r?\n/g, ' • ').replace(/[~|]/g, ' ').slice(0, 120);
+      return `${slotKey}:${nb.ring}~${(nb.name || '').replace(/[~|]/g, ' ')}~${(nb.color || 'Mavi Çakmaklı').replace(/[~|]/g, ' ')}~${cleanNotes}`;
+    }).filter(Boolean).join('||');
+  } else {
+    packed = [
+      `main:${v.ring}~${v.name}~Mavi Çakmaklı~${v.loft} QR Doğrulamalı Kayıt`,
+      v.sire && v.sire !== '-' ? `sire:${v.sire}~Baba Hattı~Mavi~` : '',
+      v.dam && v.dam !== '-' ? `dam:${v.dam}~Anne Hattı~Mavi~` : ''
+    ].filter(Boolean).join('||');
+  }
 
+  barcodeFillExistingModal = false;
   onBarcodeValueDecoded(`AVIGEN_FULL||${packed}`);
   confirmAddBirdFromBarcode();
-  alert(`✅ ${v.flag} ${v.ring} (${v.name}) ve ebeveyn kaydı kümesinize başarıyla eklendi!`);
 }
 
 // iPhone Ekranına %100 Kaydırmasız Otomatik Sığdırma veya Yakınlaştırma (Pinch-to-Zoom & +/- Büyütme) Motoru
@@ -7234,8 +7631,8 @@ function syncLoftIdentityAcrossUI() {
 }
 
 // ============================================================================
-// BARKOD / QR KOD TARAYARAK HIZLI GÜVERCİN EKLEME SİSTEMİ
-// (Canlı Kamera + Resimden Barkod + USB Barkod Okuyucu + Akıllı Çözümleyici)
+// BARKOD / QR KOD TARAYARAK HIZLI GÜVERCİN & 4 KUŞAK SOYAĞACI EKLEME SİSTEMİ
+// (jsQR + Yerleşik Code-128B 1D Barkod Çözücü + BarcodeDetector + OCR + Canlı Kamera)
 // ============================================================================
 let barcodeCameraStream = null;
 let barcodeScanTimer = null;
@@ -7244,11 +7641,16 @@ let lastDecodedBarcodeBird = null;
 
 function openBarcodeScannerModal(fillExistingModal = false) {
   barcodeFillExistingModal = fillExistingModal;
+  lastDecodedBarcodeBird = null;
   document.getElementById('barcodeScannerModal').classList.add('open');
   const inp = document.getElementById('scannedBarcodeInput');
   if (inp) {
     inp.value = '';
     setTimeout(() => inp.focus(), 120);
+  }
+  const preview = document.getElementById('barcodeDecodedPreview');
+  if (preview) {
+    preview.innerHTML = '📷 <strong>Canlı Kamera</strong>, <strong>📸 Fotoğraf Çek</strong> veya <strong>🖼️ Resmi Seç</strong> ile barkod/QR kodu okutun ya da halka numarasını kutuya yazın.';
   }
 }
 
@@ -7272,96 +7674,375 @@ function stopLiveCameraBarcodeScan() {
   if (ph) ph.style.display = 'block';
 }
 
+// Yerleşik Saf JavaScript Code-128B 1D Barkod Okuyucu (Harici Kütüphane Olmadan Çalışır)
+function decodeCode128FromImageData(imgData) {
+  if (!imgData || !imgData.data || !imgData.width || !imgData.height) return '';
+  const { data, width, height } = imgData;
+  if (width < 40 || height < 8) return '';
+
+  const patToIdx = new Map();
+  if (typeof CODE128_PATTERNS !== 'undefined' && Array.isArray(CODE128_PATTERNS)) {
+    CODE128_PATTERNS.forEach((p, idx) => patToIdx.set(p, idx));
+  }
+  if (patToIdx.size === 0) return '';
+
+  const sampleRatios = [0.5, 0.38, 0.62, 0.28, 0.72, 0.2, 0.8];
+
+  for (let s = 0; s < sampleRatios.length; s++) {
+    const y = Math.max(0, Math.min(height - 1, Math.floor(height * sampleRatios[s])));
+    const rowGray = new Uint8Array(width);
+    let minG = 255;
+    let maxG = 0;
+    const rowOffset = y * width * 4;
+    for (let x = 0; x < width; x++) {
+      const p = rowOffset + x * 4;
+      const a = data[p + 3];
+      const g = a < 40 ? 255 : Math.round(data[p] * 0.299 + data[p + 1] * 0.587 + data[p + 2] * 0.114);
+      rowGray[x] = g;
+      if (g < minG) minG = g;
+      if (g > maxG) maxG = g;
+    }
+    if (maxG - minG < 35) continue;
+    const thresh = Math.round((minG + maxG) / 2);
+
+    // Siyah (1) ve Beyaz (0) koşu uzunluklarını (run-lengths) çıkar
+    const runs = [];
+    let curBit = rowGray[0] < thresh ? 1 : 0;
+    let curLen = 1;
+    for (let x = 1; x < width; x++) {
+      const bit = rowGray[x] < thresh ? 1 : 0;
+      if (bit === curBit) {
+        curLen++;
+      } else {
+        runs.push({ bit: curBit, len: curLen });
+        curBit = bit;
+        curLen = 1;
+      }
+    }
+    runs.push({ bit: curBit, len: curLen });
+
+    // En az 3 sembol (Başlangıç + 1 Karakter +校验 + Bitiş = ~25 run) olmalı
+    if (runs.length < 24) continue;
+
+    for (let i = 0; i <= runs.length - 25; i++) {
+      if (runs[i].bit !== 1) continue; // Bar (siyah) ile başlamalı
+
+      const normalize6 = (idx0) => {
+        if (idx0 + 5 >= runs.length) return '';
+        let sum = 0;
+        for (let k = 0; k < 6; k++) sum += runs[idx0 + k].len;
+        if (sum < 6) return '';
+        const unit = sum / 11;
+        const vals = [];
+        let tot = 0;
+        for (let k = 0; k < 6; k++) {
+          const v = Math.max(1, Math.min(4, Math.round(runs[idx0 + k].len / unit)));
+          vals.push(v);
+          tot += v;
+        }
+        // Toplam 11 modül değilse en yakın farkı düzelt
+        if (tot !== 11 && Math.abs(tot - 11) === 1) {
+          let bestK = 0;
+          let maxDiff = -1;
+          for (let k = 0; k < 6; k++) {
+            const exact = runs[idx0 + k].len / unit;
+            const d = Math.abs(exact - vals[k]);
+            if (d > maxDiff) {
+              maxDiff = d;
+              bestK = k;
+            }
+          }
+          const adj = vals[bestK] + (11 - tot);
+          if (adj >= 1 && adj <= 4) vals[bestK] = adj;
+        }
+        return vals.join('');
+      };
+
+      const startPat = normalize6(i);
+      if (startPat !== '211214') continue; // Code-128B Start Code (104)
+
+      const codes = [104];
+      let pos = i + 6;
+      let validSeq = true;
+
+      while (pos + 5 < runs.length && codes.length < 40) {
+        // Stop pattern (106 -> '2331112', 7 elemanlı) kontrolü
+        if (pos + 6 < runs.length) {
+          let sum7 = 0;
+          for (let k = 0; k < 7; k++) sum7 += runs[pos + k].len;
+          const u7 = sum7 / 13;
+          const v7 = [];
+          for (let k = 0; k < 7; k++) v7.push(Math.max(1, Math.min(4, Math.round(runs[pos + k].len / u7))));
+          if (v7.join('') === '2331112') {
+            codes.push(106);
+            break;
+          }
+        }
+        const pat = normalize6(pos);
+        if (!patToIdx.has(pat)) {
+          validSeq = false;
+          break;
+        }
+        codes.push(patToIdx.get(pat));
+        pos += 6;
+      }
+
+      if (validSeq && codes.length >= 4 && codes[codes.length - 1] === 106) {
+        const givenCheck = codes[codes.length - 2];
+        let calcCheck = 104;
+        let outStr = '';
+        for (let cIdx = 1; cIdx < codes.length - 2; cIdx++) {
+          const codeVal = codes[cIdx];
+          calcCheck += codeVal * cIdx;
+          if (codeVal >= 0 && codeVal <= 95) {
+            outStr += String.fromCharCode(codeVal + 32);
+          }
+        }
+        if ((calcCheck % 103) === givenCheck && outStr.trim().length >= 3) {
+          return outStr.trim();
+        }
+      }
+    }
+  }
+  return '';
+}
+
+// Tek bir Canvas üzerinde sırasıyla jsQR -> BarcodeDetector -> Yerleşik Code-128B okuyucuyu çalıştırır
+async function tryDecodeCanvasQrOrBarcode(cnv) {
+  if (!cnv || !cnv.width || !cnv.height) return '';
+  const ctx = cnv.getContext('2d', { willReadFrequently: true });
+  let imgData = null;
+  try {
+    imgData = ctx.getImageData(0, 0, cnv.width, cnv.height);
+  } catch (e) {}
+
+  // 1. Saf JS QR Kod Okuyucu (jsQR - Tüm Tarayıcı ve WebView'larda %100 Çalışır)
+  if (imgData && typeof window.jsQR === 'function') {
+    try {
+      const qr = window.jsQR(imgData.data, cnv.width, cnv.height, { inversionAttempts: 'attemptBoth' });
+      if (qr && qr.data && String(qr.data).trim()) {
+        return String(qr.data).trim();
+      }
+    } catch (e) {}
+  }
+
+  // 2. Tarayıcı Yerleşik BarcodeDetector API (Varsa)
+  if ('BarcodeDetector' in window) {
+    try {
+      const detector = new window.BarcodeDetector({
+        formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'data_matrix']
+      });
+      const codes = await detector.detect(cnv);
+      if (codes && codes.length > 0 && codes[0].rawValue) {
+        return String(codes[0].rawValue).trim();
+      }
+    } catch (e) {}
+  }
+
+  // 3. Saf JS Code-128B 1D Halka Barkodu Okuyucu
+  if (imgData) {
+    try {
+      const c128 = decodeCode128FromImageData(imgData);
+      if (c128) return c128;
+    } catch (e) {}
+  }
+
+  return '';
+}
+
+// Bir görselin hem tamamını, hem de (tam sayfa pedigri sertifikası fotoğrafları için) sağ üst QR/Barkod köşesini ve yüksek kontrastlı kopyasını tarar
+async function detectQrOrBarcodeFromImageElement(imgEl) {
+  const natW = imgEl.naturalWidth || imgEl.width || 0;
+  const natH = imgEl.naturalHeight || imgEl.height || 0;
+  if (!natW || !natH) return '';
+
+  const makeCropCanvas = (sxRatio, syRatio, swRatio, shRatio, targetMaxSide = 1000, applyHighContrast = false) => {
+    const sx = Math.floor(natW * sxRatio);
+    const sy = Math.floor(natH * syRatio);
+    const sw = Math.max(16, Math.floor(natW * swRatio));
+    const sh = Math.max(16, Math.floor(natH * shRatio));
+    const scale = Math.min(2.2, targetMaxSide / Math.max(sw, sh));
+    const cw = Math.max(40, Math.round(sw * scale));
+    const ch = Math.max(40, Math.round(sh * scale));
+    const c = document.createElement('canvas');
+    c.width = cw;
+    c.height = ch;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.drawImage(imgEl, sx, sy, sw, sh, 0, 0, cw, ch);
+
+    if (applyHighContrast) {
+      try {
+        const id = ctx.getImageData(0, 0, cw, ch);
+        const d = id.data;
+        let sum = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          sum += (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114);
+        }
+        const avg = (sum / (d.length / 4)) * 0.92;
+        for (let i = 0; i < d.length; i += 4) {
+          const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+          const v = lum < avg ? 0 : 255;
+          d[i] = v;
+          d[i + 1] = v;
+          d[i + 2] = v;
+          d[i + 3] = 255;
+        }
+        ctx.putImageData(id, 0, 0);
+      } catch (e) {}
+    }
+    return c;
+  };
+
+  // Tarama Bölgeleri:
+  // 1) Tam görsel (1000px)
+  // 2) Sağ üst QR+Barkod başlık bölgesi (Tam sayfa AVIGEN pedigri sertifikası fotoğrafları için!)
+  // 3) Sağ üst dar QR kutusu bölgesi
+  // 4) Sağ üst 1D Barkod bölgesi
+  // 5) Merkez bölge & Yüksek kontrastlı tam görsel
+  const passes = [
+    [0, 0, 1, 1, 1000, false],
+    [0.62, 0, 0.38, 0.28, 900, false],
+    [0.80, 0, 0.20, 0.22, 600, false],
+    [0.60, 0, 0.28, 0.22, 800, false],
+    [0, 0, 1, 1, 1400, true],
+    [0.62, 0, 0.38, 0.28, 900, true],
+    [0.12, 0.12, 0.76, 0.76, 900, false]
+  ];
+
+  for (let i = 0; i < passes.length; i++) {
+    const [sx, sy, sw, sh, maxS, hiC] = passes[i];
+    const cnv = makeCropCanvas(sx, sy, sw, sh, maxS, hiC);
+    const val = await tryDecodeCanvasQrOrBarcode(cnv);
+    if (val) return val;
+  }
+
+  return '';
+}
+
+function loadImageElementFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = (err) => reject(err);
+      img.src = ev.target.result;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
 async function startLiveCameraBarcodeScan() {
   const video = document.getElementById('barcodeVideo');
   const ph = document.getElementById('barcodePlaceholder');
+  const preview = document.getElementById('barcodeDecodedPreview');
+
+  stopLiveCameraBarcodeScan();
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    const preview = document.getElementById('barcodeDecodedPreview');
     if (preview) {
-      preview.innerHTML = '⚠️ <strong>Cihazda aktif kamera erişimi bulunamadı.</strong> Lütfen barkod/pedigri fotoğrafı yükleyin ya da aşağıdaki kutuya halka numarasını elle girin.';
+      preview.innerHTML = '📸 <strong>Canlı video yerine telefon kamerasıyla fotoğraf çekerek okutma başlatılıyor...</strong>';
     }
+    document.getElementById('barcodeCameraCaptureFileInput')?.click();
     return;
   }
 
   try {
     barcodeCameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
     video.srcObject = barcodeCameraStream;
     video.style.display = 'block';
     if (ph) ph.style.display = 'none';
-
-    // Tarayıcıda yerleşik BarcodeDetector API varsa gerçek zamanlı okur
-    if ('BarcodeDetector' in window) {
-      const detector = new window.BarcodeDetector({
-        formats: ['code_128', 'code_39', 'ean_13', 'qr_code', 'data_matrix']
-      });
-      barcodeScanTimer = setInterval(async () => {
-        try {
-          const codes = await detector.detect(video);
-          if (codes && codes.length > 0 && codes[0].rawValue) {
-            const val = codes[0].rawValue;
-            document.getElementById('scannedBarcodeInput').value = val;
-            onBarcodeValueDecoded(val);
-            stopLiveCameraBarcodeScan();
-          }
-        } catch (err) {}
-      }, 450);
-    }
-  } catch (err) {
-    const preview = document.getElementById('barcodeDecodedPreview');
     if (preview) {
-      preview.innerHTML = '⚠️ <strong>Kamera izni verilmedi veya kamera başlatılamadı.</strong> Lütfen fotoğraf yükleyin ya da halka numarasını elle girin.';
+      preview.innerHTML = '🔍 <strong>Kamera aktif:</strong> Barkodu veya QR kodu çerçeveye tutun...';
     }
+
+    const frameCanvas = document.createElement('canvas');
+    let isBusyScanningFrame = false;
+
+    barcodeScanTimer = setInterval(async () => {
+      if (isBusyScanningFrame || !video || video.readyState < 2) return;
+      isBusyScanningFrame = true;
+      try {
+        const vw = video.videoWidth || 640;
+        const vh = video.videoHeight || 480;
+        frameCanvas.width = vw;
+        frameCanvas.height = vh;
+        const fctx = frameCanvas.getContext('2d', { willReadFrequently: true });
+        fctx.drawImage(video, 0, 0, vw, vh);
+
+        const val = await tryDecodeCanvasQrOrBarcode(frameCanvas);
+        if (val) {
+          const inp = document.getElementById('scannedBarcodeInput');
+          if (inp) inp.value = val;
+          onBarcodeValueDecoded(val);
+          stopLiveCameraBarcodeScan();
+        }
+      } catch (err) {
+      } finally {
+        isBusyScanningFrame = false;
+      }
+    }, 320);
+  } catch (err) {
+    if (preview) {
+      preview.innerHTML = '📸 <strong>Canlı kamera izni kapalı olduğu için fotoğraf çekerek okutma ekranı açılıyor...</strong> (Dilerseniz <strong>📸 Fotoğraf Çek</strong> veya <strong>🖼️ Resmi Seç</strong> butonuna da basabilirsiniz).';
+    }
+    document.getElementById('barcodeCameraCaptureFileInput')?.click();
   }
 }
 
 async function scanBarcodeFromImageFile(event) {
-  const file = event.target.files?.[0];
+  const file = event?.target?.files?.[0];
   if (!file) return;
+
+  const preview = document.getElementById('barcodeDecodedPreview');
+  if (preview) {
+    preview.innerHTML = '🔍 <strong>Görseldeki QR Kod, Barkod ve Soyağacı kutuları çözümleniyor...</strong>';
+  }
 
   let detectedBarcodeVal = '';
 
-  // 1. Önce görüntüdeki Barkod veya QR Kodu donanımsal olarak oku
-  if ('BarcodeDetector' in window) {
-    try {
-      const bmp = await createImageBitmap(file);
-      const detector = new window.BarcodeDetector({
-        formats: ['code_128', 'code_39', 'ean_13', 'qr_code', 'data_matrix']
-      });
-      const codes = await detector.detect(bmp);
-      if (codes && codes.length > 0 && codes[0].rawValue) {
-        detectedBarcodeVal = codes[0].rawValue;
-      }
-    } catch (e) {}
-  }
+  // 1. Önce jsQR + BarcodeDetector + Yerleşik Code-128B ile çok bölgeli optik tarama yap
+  try {
+    const imgEl = await loadImageElementFromFile(file);
+    detectedBarcodeVal = await detectQrOrBarcodeFromImageElement(imgEl);
+  } catch (e) {}
 
-  // Eğer okunan QR kod içinde zaten tam AVIGEN_FULL soyağacı paketi veya AVIGEN ?verify=1 / ?v= doğrulama bağlantısı varsa hemen çöz
-  if (detectedBarcodeVal && (detectedBarcodeVal.startsWith('AVIGEN_FULL||') || detectedBarcodeVal.includes('verify=1') || detectedBarcodeVal.includes('?v='))) {
-    document.getElementById('scannedBarcodeInput').value = detectedBarcodeVal;
+  try {
+    if (event && event.target) event.target.value = '';
+  } catch (e) {}
+
+  // Eğer okunan QR kod veya barkod bulunduysa hemen çözümle
+  if (detectedBarcodeVal) {
+    const inp = document.getElementById('scannedBarcodeInput');
+    if (inp) inp.value = detectedBarcodeVal;
     onBarcodeValueDecoded(detectedBarcodeVal);
     return;
   }
 
-  // 2. Yabancı bir pedigre kağıdı fotoğrafıysa: OCR ile kağıt üzerindeki tüm halka numaralarını (Ana Kuş + Baba + Anne + Büyük Ebeveynler) birlikte çek!
+  // 2. Yabancı bir pedigre kağıdı fotoğrafıysa (QR/Barkod yoksa): OCR ile kağıt üzerindeki tüm halka numaralarını çek!
   if (typeof Tesseract !== 'undefined') {
-    const preview = document.getElementById('barcodeDecodedPreview');
-    if (preview) preview.innerHTML = '🤖 <strong>Pedigre kağıdındaki barkod ve soyağacı kutuları (Baba, Anne, Büyük Ebeveynler) okunuyor...</strong>';
+    if (preview) preview.innerHTML = '🤖 <strong>Pedigre kağıdındaki yazılı halka numaraları (Baba, Anne, Büyük Ebeveynler) OCR ile okunuyor...</strong>';
     try {
       const res = await Tesseract.recognize(file, 'eng');
       const txt = (res?.data?.text || '').trim();
-      const ringRegex = /\b(?:TR|BELG|BE|NL|DV|PL|RO|GB|FR|AU)[-\s]?\d{2,4}[-\s]?[A-Z0-9-]{3,9}\b/gi;
+      const ringRegex = /\b(?:TUGF|TGYB|TR|BELG|BE|NL|DV|PL|RO|GB|FR|AU)[-\s0-9A-Z]{4,16}\b/gi;
       const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
       const foundNodes = [];
 
       lines.forEach(line => {
         const m = line.match(ringRegex);
         if (m) {
-          const r = m[0].toUpperCase().replace(/\s+/g, '-');
-          const q = line.match(/"([^"]+)"/);
-          foundNodes.push({ ring: r, name: q ? q[1] : 'Pedigre Aktarım' });
+          const r = m[0].trim().toUpperCase().replace(/\s+/g, '-');
+          if (/\d{3,}/.test(r)) {
+            const q = line.match(/"([^"]+)"/);
+            foundNodes.push({ ring: r, name: q ? q[1] : 'Pedigre Aktarım' });
+          }
         }
       });
 
@@ -7371,26 +8052,20 @@ async function scanBarcodeFromImageFile(event) {
           `${slotOrder[idx]}:${n.ring}~${n.name}~Mavi Çakmaklı~Barkod/Pedigre Tarama`
         ).join('||');
         const fullStr = `AVIGEN_FULL||${packed}`;
-        document.getElementById('scannedBarcodeInput').value = fullStr;
+        const inp = document.getElementById('scannedBarcodeInput');
+        if (inp) inp.value = fullStr;
         onBarcodeValueDecoded(fullStr);
         return;
       }
     } catch (e) {}
   }
 
-  if (detectedBarcodeVal) {
-    document.getElementById('scannedBarcodeInput').value = detectedBarcodeVal;
-    onBarcodeValueDecoded(detectedBarcodeVal);
-    return;
-  }
-
-  const preview = document.getElementById('barcodeDecodedPreview');
   if (preview) {
-    preview.innerHTML = '⚠️ <strong>Yüklenen görselde okunabilir bir barkod, QR kod veya standart halka numarası tespit edilemedi.</strong> Lütfen daha net bir fotoğraf yükleyin veya halka numarasını aşağıdaki kutuya elle yazın.';
+    preview.innerHTML = '⚠️ <strong>Yüklenen görselde okunabilir bir barkod, QR kod veya standart halka numarası tespit edilemedi.</strong> Lütfen daha net bir fotoğraf çekin veya halka numarasını aşağıdaki kutuya elle yazın.';
   }
 }
 
-// Okunan Barkod veya QR kod dizgesini (Tek Kuş veya Tam Soyağacı Paketi olarak) çözümler
+// Okunan Barkod veya QR kod dizgesini (Tek Kuş veya 31 Kutulu Tam Soyağacı Paketi olarak) çözümler
 function onBarcodeValueDecoded(rawStr) {
   const preview = document.getElementById('barcodeDecodedPreview');
   let clean = (rawStr || '').trim();
@@ -7401,38 +8076,28 @@ function onBarcodeValueDecoded(rawStr) {
   }
 
   // 0. EĞER AVIGEN RESMİ DİJİTAL PEDİGRİ QR BAĞLANTISI (https://.../avigen/?v=... veya ?verify=1&r=...) İSE:
-  if ((clean.includes('verify=1') && clean.includes('r=')) || clean.includes('?v=')) {
+  // decodePedigreeBoxesFromQrUrl ile tüm 31 kutuluk (4 kuşak) soyağacını eksiksiz çöz!
+  if ((clean.includes('verify=1') && clean.includes('r=')) || clean.includes('?v=') || clean.startsWith('v=')) {
     try {
-      const qIdx = clean.indexOf('?');
-      const params = new URLSearchParams(qIdx >= 0 ? clean.slice(qIdx + 1) : clean);
-      const vCompact = (params.get('v') || '').trim();
-      let r = (params.get('r') || '').trim();
-      let n = (params.get('n') || 'Pedigri Kaydı').trim();
-      let s = (params.get('s') || '').trim();
-      let d = (params.get('d') || '').trim();
-      const l = (params.get('l') || 'AVIGEN').trim();
-      if (vCompact) {
-        const sp = vCompact.split('~').map(x => x.trim());
-        if (sp[0]) r = sp[0];
-        if (sp[1] && !s) s = sp[1];
-        if (sp[2] && !d) d = sp[2];
-      }
-      if (r) {
-        const parts = [
-          `main:${r}~${n}~Mavi Çakmaklı~${l} QR Sertifikalı`,
-          s ? `sire:${s}~Baba Hattı~Mavi~` : '',
-          d ? `dam:${d}~Anne Hattı~Mavi~` : ''
-        ].filter(Boolean);
-        clean = `AVIGEN_FULL||${parts.join('||')}`;
+      const decoded = decodePedigreeBoxesFromQrUrl(clean);
+      if (decoded && decoded.ring) {
+        const packedParts = QR_31_SLOT_KEYS.map(slotKey => {
+          const nb = decoded.boxes?.[slotKey];
+          if (!nb || !nb.ring) return '';
+          const cleanNotes = String(nb.notes || '').replace(/\r?\n/g, ' • ').replace(/[~|]/g, ' ').slice(0, 140);
+          return `${slotKey}:${nb.ring}~${(nb.name || '').replace(/[~|]/g, ' ')}~${(nb.color || 'Mavi Çakmaklı').replace(/[~|]/g, ' ')}~${cleanNotes}`;
+        }).filter(Boolean);
+        if (packedParts.length > 0) {
+          clean = `AVIGEN_FULL||${packedParts.join('||')}`;
+        }
       }
     } catch (e) {}
   }
 
-  // 1. EĞER TAM SOYAĞACI PAKETİ (AVIGEN_FULL||...) İSE: Tüm kuşağı çöz!
+  // 1. EĞER TAM SOYAĞACI PAKETİ (AVIGEN_FULL||...) İSE: Tüm 31 kutuyu çöz ve bilinen ataları tamamla!
   if (clean.startsWith('AVIGEN_FULL||')) {
     const segments = clean.replace('AVIGEN_FULL||', '').split('||').filter(Boolean);
-    const parsedBoxes = {};
-    let ancestorCount = 0;
+    const seedBoxes = {};
 
     segments.forEach(seg => {
       const colonIdx = seg.indexOf(':');
@@ -7441,29 +8106,37 @@ function onBarcodeValueDecoded(rawStr) {
       const rest = seg.slice(colonIdx + 1);
       const [ring, name, color, notes] = rest.split('~').map(x => (x || '').trim());
       if (ring) {
-        parsedBoxes[slotKey] = {
+        seedBoxes[slotKey] = {
           flag: detectFlagFromRing(ring),
           ring,
-          name: name || 'Pedigre Kaydı',
+          name: name || '',
           color: color || 'Mavi Çakmaklı',
           notes: notes || '',
           photo: ''
         };
-        if (slotKey !== 'main') ancestorCount++;
       }
     });
 
-    const m = parsedBoxes.main || { flag: '🇹🇷', ring: 'TR-2026-100001', name: 'Yeni Güvercin', color: 'Mavi', notes: '' };
-    const s = parsedBoxes.sire;
-    const d = parsedBoxes.dam;
+    // Bilinen kümes ve 68 katalogdan tüm 4 kuşağı (31 kutuyu) otomatik tamamla!
+    const parsedBoxes = hydratePedigreeBoxesFromKnownLoft(seedBoxes, false);
+    let ancestorCount = 0;
+    QR_31_SLOT_KEYS.forEach(k => {
+      if (k !== 'main' && parsedBoxes[k] && parsedBoxes[k].ring) {
+        ancestorCount++;
+      }
+    });
+
+    const m = parsedBoxes.main || { flag: '🇹🇷', ring: 'TR-2026-100001', name: 'Pedigri Kaydı', color: 'Mavi Çakmaklı', notes: '' };
+    const s = parsedBoxes.sire && parsedBoxes.sire.ring ? parsedBoxes.sire : null;
+    const d = parsedBoxes.dam && parsedBoxes.dam.ring ? parsedBoxes.dam : null;
 
     lastDecodedBarcodeBird = {
       isFullPedigree: true,
       flag: m.flag,
       ring: m.ring,
-      name: m.name,
-      color: m.color,
-      notes: m.notes,
+      name: m.name || 'Pedigri Kaydı',
+      color: m.color || 'Mavi Çakmaklı',
+      notes: m.notes || '',
       ancestorCount,
       parsedBoxes
     };
@@ -7474,10 +8147,10 @@ function onBarcodeValueDecoded(rawStr) {
           <span style="font-weight:900; color:#15803d;">✅ Tam Pedigre Barkodu Çözüldü: ${m.flag} ${escapeHtml(m.ring)}</span>
           <span class="gene-badge gene-purple">+${ancestorCount} Ata Bağlı</span>
         </div>
-        <div><strong>Ana Kuş:</strong> ${escapeHtml(m.name)} (${escapeHtml(m.color)})</div>
+        <div><strong>Ana Kuş:</strong> ${escapeHtml(m.name || 'Pedigri Kaydı')} (${escapeHtml(m.color || 'Mavi Çakmaklı')})</div>
         <div style="font-size:10.5px; color:#1e40af; margin-top:2px;">
-          • <strong>♂ Baba:</strong> ${s ? `${s.flag} ${escapeHtml(s.ring)} (${escapeHtml(s.name)})` : 'Kayıtsız'}<br/>
-          • <strong>♀ Anne:</strong> ${d ? `${d.flag} ${escapeHtml(d.ring)} (${escapeHtml(d.name)})` : 'Kayıtsız'}
+          • <strong>♂ Baba:</strong> ${s ? `${s.flag} ${escapeHtml(s.ring)} (${escapeHtml(s.name || 'Baba Hattı')})` : 'Kayıtsız'}<br/>
+          • <strong>♀ Anne:</strong> ${d ? `${d.flag} ${escapeHtml(d.ring)} (${escapeHtml(d.name || 'Anne Hattı')})` : 'Kayıtsız'}
         </div>
         <div style="font-size:10px; color:#15803d; margin-top:3px; font-weight:700;">
           🌳 Baba, Anne ve Büyük Ebeveynler dahil toplam ${ancestorCount + 1} soyağacı kutusu tek seferde kümesinize aktarılacak!
@@ -7487,9 +8160,9 @@ function onBarcodeValueDecoded(rawStr) {
     return;
   }
 
-  // 2. TEKİL HALKA BARKODU İSE (Ve eğer okunan halka numarası veya ebeveynleri kümeste zaten varsa alt soyunu otomatik bağla!)
+  // 2. TEKİL HALKA BARKODU İSE (Ve eğer okunan halka numarası katalogda veya kümeste varsa 30 atasını otomatik bağla!)
   let ring = clean;
-  let name = 'Barkod Kayıtlı Güvercin';
+  let name = '';
   let color = 'Mavi Çakmaklı';
   let notes = 'Barkod Tarayıcı ile eklendi';
 
@@ -7497,12 +8170,12 @@ function onBarcodeValueDecoded(rawStr) {
     const parts = clean.split('|').map(x => x.trim());
     if (parts[0].toUpperCase() === 'AVIGEN' || parts[0].toUpperCase() === 'MYPEDIGRE') {
       ring = parts[1] || 'TR-2026-100001';
-      name = parts[2] || 'Şampiyon Güvercin';
+      name = parts[2] || '';
       color = parts[3] || 'Mavi Çakmaklı';
       notes = parts[4] || 'Dijital Barkod / QR Sertifikalı';
     } else {
       ring = parts[0];
-      name = parts[1] || name;
+      name = parts[1] || '';
     }
   } else {
     if (/^\d{8,14}$/.test(clean)) {
@@ -7512,20 +8185,46 @@ function onBarcodeValueDecoded(rawStr) {
     }
   }
 
-  const flag = detectFlagFromRing(ring);
-  const yearMatch = ring.match(/20\d{2}/);
-  const year = yearMatch ? yearMatch[0] : '2026';
+  const hydratedSingle = hydratePedigreeBoxesFromKnownLoft({
+    main: { ring, name, color, notes }
+  }, false);
 
-  lastDecodedBarcodeBird = { isFullPedigree: false, flag, ring, name, color, notes, year };
+  let hydratedAncCount = 0;
+  QR_31_SLOT_KEYS.forEach(k => {
+    if (k !== 'main' && hydratedSingle[k] && hydratedSingle[k].ring) {
+      hydratedAncCount++;
+    }
+  });
+
+  const hm = hydratedSingle.main;
+  const finalRing = hm.ring || ring;
+  const finalName = hm.name || name || 'Barkod Kayıtlı Güvercin';
+  const finalColor = hm.color || color || 'Mavi Çakmaklı';
+  const finalNotes = hm.notes || notes;
+  const flag = hm.flag || detectFlagFromRing(finalRing);
+  const yearMatch = finalRing.match(/20\d{2}/) || finalRing.match(/\b(18|19|20|21|22|23|24|25|26)\b/);
+  const year = yearMatch ? (yearMatch[0].length === 2 ? '20' + yearMatch[0] : yearMatch[0]) : '2026';
+
+  lastDecodedBarcodeBird = {
+    isFullPedigree: hydratedAncCount > 0,
+    flag,
+    ring: finalRing,
+    name: finalName,
+    color: finalColor,
+    notes: finalNotes,
+    year,
+    ancestorCount: hydratedAncCount,
+    parsedBoxes: hydratedSingle
+  };
 
   if (preview) {
     preview.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-        <span style="font-weight:900; color:#15803d;">✅ Barkod Çözümlendi: ${flag} ${escapeHtml(ring)}</span>
-        <span class="gene-badge gene-gold">Doğum: ${year}</span>
+        <span style="font-weight:900; color:#15803d;">✅ Barkod Çözümlendi: ${flag} ${escapeHtml(finalRing)}</span>
+        <span class="gene-badge ${hydratedAncCount > 0 ? 'gene-purple' : 'gene-gold'}">${hydratedAncCount > 0 ? `+${hydratedAncCount} Ata Bulundu` : `Doğum: ${year}`}</span>
       </div>
-      <div><strong>İsim:</strong> ${escapeHtml(name)} • <strong>Renk:</strong> ${escapeHtml(color)}</div>
-      <div style="font-size:10.5px; color:var(--ios-subtext);">${escapeHtml(notes)}</div>
+      <div><strong>İsim:</strong> ${escapeHtml(finalName)} • <strong>Renk:</strong> ${escapeHtml(finalColor)}</div>
+      <div style="font-size:10.5px; color:var(--ios-subtext);">${escapeHtml(finalNotes.slice(0, 110))}</div>
     `;
   }
 }
@@ -7538,17 +8237,22 @@ function confirmAddBirdFromBarcode() {
     }
   }
   const b = lastDecodedBarcodeBird;
-  if (!b) {
+  if (!b || !b.ring) {
     alert('⚠️ Lütfen önce bir barkod/QR kod okutun veya halka numarasını kutuya yazın.');
     return;
   }
 
-  if (barcodeFillExistingModal && document.getElementById('boxEditModal')?.classList.contains('open')) {
+  // Eğer kullanıcı mevcut bir pedigride sadece belirli bir ALT ATA kutusunu (Örn: sire, dam, g2_1...) düzenlerken barkod okuttuysa o kutuyu doldur
+  const boxModalOpen = Boolean(document.getElementById('boxEditModal')?.classList.contains('open'));
+  if (barcodeFillExistingModal && boxModalOpen && editingSlotKey !== 'main' && !isCreatingNewPedigreeDraft) {
     editingFlag = b.flag;
     document.getElementById('editBoxRing').value = b.ring;
     document.getElementById('editBoxName').value = b.name;
     document.getElementById('editBoxColor').value = b.color;
     document.getElementById('editBoxNotes').value = b.notes;
+    if (typeof onSmartRingInput === 'function') {
+      onSmartRingInput(b.ring);
+    }
     renderFlagChips();
     closeBarcodeScannerModal();
     return;
@@ -7556,22 +8260,20 @@ function confirmAddBirdFromBarcode() {
 
   if (!checkPedigreeTierLimitAllowed()) return;
 
-  const cleanRing = (b.ring || '').trim().toUpperCase();
-  if (cleanRing && pedigrees.some(p => (p.boxes?.main?.ring || '').trim().toUpperCase() === cleanRing)) {
-    alert(`⚠️ Bilezik Numarası Benzersizlik Uyarısı:\n\n"${b.ring}" halka numarasına sahip bir ana güvercin zaten kümesinizde mevcut!`);
-    return;
-  }
-
-  const newId = 'ped_bar_' + Date.now();
   const fullBoxes = {};
   BOX_SLOTS.forEach(s => {
-    fullBoxes[s.key] = { flag: '🇹🇷', ring: '', name: '', color: '', notes: '', photo: '' };
+    fullBoxes[s.key] = { flag: '🇹🇷', ring: '', name: '', color: '', notes: '', photo: '', sex: s.sex || 'M' };
   });
 
-  if (b.isFullPedigree && b.parsedBoxes) {
-    // Başkasının pedigresinden okunan tüm Baba, Anne, Büyükbaba ve Büyükanne kutularını birebir yerleştir!
+  if (b.parsedBoxes) {
     Object.entries(b.parsedBoxes).forEach(([slotKey, boxVal]) => {
-      fullBoxes[slotKey] = { ...boxVal };
+      if (boxVal && boxVal.ring) {
+        fullBoxes[slotKey] = {
+          ...fullBoxes[slotKey],
+          ...boxVal,
+          flag: boxVal.flag || detectFlagFromRing(boxVal.ring)
+        };
+      }
     });
   } else {
     fullBoxes.main = {
@@ -7580,28 +8282,51 @@ function confirmAddBirdFromBarcode() {
       name: b.name,
       color: b.color,
       notes: b.notes,
-      photo: ''
+      photo: '',
+      sex: 'M'
     };
   }
+  fullBoxes.main.inMyLoft = true;
 
-  pedigrees.unshift({
-    id: newId,
-    themeId: 'blue',
-    accentColor: '#1d4ed8',
-    bgColor: '#f8fafc',
-    fontFamily: "'Inter', sans-serif",
-    boxes: fullBoxes
-  });
+  const cleanNorm = normalizeRingForLookup(b.ring);
+  const existingPed = pedigrees.find(p => normalizeRingForLookup(p.boxes?.main?.ring) === cleanNorm);
+  let targetPedId = '';
 
-  activePedigreeId = newId;
+  if (existingPed) {
+    // Kuş zaten kümeste varsa hata verip işlemi iptal etmek yerine eksik ata kutularını güncelle ve kuşun pedigrisini aç!
+    QR_31_SLOT_KEYS.forEach(k => {
+      if (fullBoxes[k]?.ring && (!existingPed.boxes[k]?.ring || k === 'main')) {
+        existingPed.boxes[k] = { ...existingPed.boxes[k], ...fullBoxes[k] };
+      }
+    });
+    targetPedId = existingPed.id;
+  } else {
+    targetPedId = 'ped_bar_' + Date.now();
+    pedigrees.unshift({
+      id: targetPedId,
+      themeId: 'blue',
+      accentColor: '#1d4ed8',
+      bgColor: '#f8fafc',
+      fontFamily: "'Inter', sans-serif",
+      boxes: fullBoxes
+    });
+  }
+
+  isCreatingNewPedigreeDraft = false;
+  activePedigreeId = targetPedId;
   saveMypedigreData();
+  if (typeof invalidateUniqueLoftBirdsCache === 'function') invalidateUniqueLoftBirdsCache();
   renderPedigreeDropdown();
-  selectActivePedigree(newId);
+  selectActivePedigree(targetPedId);
   renderHomeDashboard();
   renderLoftBirdsDirectory();
   closeBarcodeScannerModal();
+  if (boxModalOpen && typeof closeBoxEditModal === 'function') {
+    closeBoxEditModal();
+  }
   openIosTab('pedigrees', document.querySelectorAll('.ios-tab-btn')[1]);
   switchBirdsViewMode('pedigree');
+  alert(`✅ ${b.flag} ${b.ring} (${b.name}) ve ${b.ancestorCount ? `${b.ancestorCount} atalık 4 kuşak soyağacı` : 'künye kaydı'} kümesinize başarıyla eklendi!`);
 }
 
 // ============================================================================
@@ -12947,11 +13672,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.7.6',
-    localBuild: 576,
-    remoteVersion: '5.7.6',
-    remoteBuild: 576,
-    remoteTitle: "AVIGEN v5.7.6 — GENESIS AI 🎙️ Konuşarak Sesli Soru (STT) & 🔊 Türkçe Diksiyonlu Sesli Cevap (TTS) + T26 Ses Denetim Testi",
+    localVersion: '5.7.7',
+    localBuild: 577,
+    remoteVersion: '5.7.7',
+    remoteBuild: 577,
+    remoteTitle: "AVIGEN v5.7.7 — Dış Telefon QR Okutmada 4 Kuşak (31 Kutu) Tam Soyağacı Hidrasyonu & Çok Bölgeli QR/Code-128 Barkod Tarayarak Kuş Ekleme",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
@@ -13852,23 +14577,30 @@ const AvigenSystemAuditQA = {
       'Sıfır eğitimli kuşçular için Üst Bar 📖 Rehber, 🔤 Kuşçu Sözlüğü (COI, EBV, Kp, m/dk, Genler) ve Geri Tuşu aktif.'
     );
 
-    // T23: 3. Fonksiyonel Test (QR Doğrulama Sayfası, 2 Sayfa PDF, JSON Yedek & Cihazlar Arası Aktarım)
+    // T23: 3. Fonksiyonel Test (QR Doğrulama Sayfası 31 Kutu Soyağacı Hidrasyonu, Barkod Okuyucu, 2 Sayfa PDF & JSON Yedek)
     let funcAuditOk = false;
     let funcDetail = '';
     try {
-      const samplePed = pedigrees[0] || { id: 'fn_test', boxes: { main: { ring: 'TR-2026-0001' }, sire: { ring: 'TR-24-101' }, dam: { ring: 'TR-24-102' } } };
+      const samplePed = (typeof getPalaIbo31BoxPedigree === 'function' ? getPalaIbo31BoxPedigree() : pedigrees[0]) || { id: 'fn_test', boxes: { main: { ring: 'TR-2026-0001' }, sire: { ring: 'TR-24-101' }, dam: { ring: 'TR-24-102' } } };
       const qrUrl = typeof encodeFullPedigreeQrPayload === 'function' ? encodeFullPedigreeQrPayload(samplePed) : '';
+      const decodedQr = typeof decodePedigreeBoxesFromQrUrl === 'function' ? decodePedigreeBoxesFromQrUrl(qrUrl) : null;
+      const filledQrBoxesCnt = decodedQr && decodedQr.boxes
+        ? Object.values(decodedQr.boxes).filter(b => b && b.ring).length
+        : 0;
       const snap = typeof buildFullAvigenSnapshotPayload === 'function' ? buildFullAvigenSnapshotPayload() : null;
       funcAuditOk = qrUrl.includes('?v=') &&
-        qrUrl.length <= 95 &&
+        qrUrl.length <= 850 &&
+        filledQrBoxesCnt >= 15 &&
+        typeof decodeCode128FromImageData === 'function' &&
+        typeof detectQrOrBarcodeFromImageElement === 'function' &&
         typeof checkAndShowPedigreeQrVerifyModal === 'function' &&
         typeof enterAvigenAppFromVerifyPage === 'function' &&
         Boolean(snap && Array.isArray(snap.pedigrees) && snap._originSig);
-      funcDetail = `Kompakt QR URL (${qrUrl.length} krk) • Bağımsız Doğrulama Sayfası • 2 Sayfa PDF & İmzalı JSON Yedek (${snap?.pedigrees?.length || 0} kayıt) doğrulandı.`;
+      funcDetail = `Dış Telefon QR Soyağacı (${filledQrBoxesCnt}/31 Kutu Dolu • ${qrUrl.length} krk) • Çok Bölgeli QR/Code-128 Barkod Okuyucu • 2 Sayfa PDF & Yedek doğrulandı.`;
     } catch (e) {
       funcDetail = 'Fonksiyonel test hatası: ' + (e.message || e);
     }
-    assert('T23', '3. Fonksiyonel Test', 'QR Bağımsız Doğrulama, 2 Sayfa PDF, JSON Yedek & Cihazlar Arası Aktarım', funcAuditOk, funcDetail);
+    assert('T23', '3. Fonksiyonel Test', 'Dış Telefon QR 31 Kutu Tam Soyağacı, Barkod Okuyucu, 2 Sayfa PDF & Cihazlar Arası Aktarım', funcAuditOk, funcDetail);
 
     // T24: 4. Bilimsel Denetim (Wright 5 Nesil COI, Genetik Lokuslar, Atmosferik Uçuş & Akademik Kütüphane)
     const sciSourcesCnt = (typeof AvigenScientificLibrary !== 'undefined' && Array.isArray(AvigenScientificLibrary.sources))

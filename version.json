@@ -1,13 +1,13 @@
 {
-  "version": "5.7.6",
-  "build": 576,
-  "releaseDate": "2026-11-26",
-  "title": "AVIGEN v5.7.6 — GENESIS AI 🎙️ Konuşarak Sesli Soru (STT) & 🔊 Türkçe Diksiyonlu Sesli Cevap (TTS) + T26 Ses Denetim Testi",
+  "version": "5.7.7",
+  "build": 577,
+  "releaseDate": "2026-11-27",
+  "title": "AVIGEN v5.7.7 — Dış Telefon QR Okutmada 4 Kuşak (31 Kutu) Tam Soyağacı Hidrasyonu & Çok Bölgeli QR/Code-128 Barkod Tarayarak Kuş Ekleme",
   "notes": [
-    "🎙️ GENESIS AI Konuşarak Sesli Soru (Türkçe Speech-to-Text): Hem Ana Sayfada hem GENESIS AI ekranında mikrofon (🎙️) tuşuna basıp konuşarak soru sorma ve 4-5 haneli halka numarası sesli eşleştirme",
-    "🔊 GENESIS AI Türkçe Diksiyonlu Sesli Cevap (Text-to-Speech): Halka numaralarındaki tirelerin (-24 -> eksi 24) yanlış okunmasını önleyen diksiyon motoru, '🔊 Sesli Dinle / ⏹️ Sustur' ve '🔊 / 🔇 Otomatik Sesli Yanıt' kontrolü",
-    "🧪 T26 Otomatik Sesli Konuşma & Dinleme Testi eklendi (26 / 26 Otomatik Sistem Testi)",
-    "Bağımsız Tek Ekran PDF Köprüsü (pedigri-pdf.html) & Android Geri Tuşu Koruması aktif"
+    "🛡️ Dışarıdan Telefondan QR/Barkod Okutmada 31 Kutu Tam Soyağacı Görünümü: Başka bir telefondan (uygulama yüklü olmasa ve localStorage boş olsa bile) QR kod okutulduğunda hem 68 yerleşik master şecere ağacından hem de URL içindeki sıkıştırılmış &p= soy paketinden 4 kuşak (31 kutu) soyağacı eksiksiz doldurulur",
+    "▮▯ Barkod / QR Taratarak Kuş Ekleme Motoru: jsQR + Yerleşik Saf JS Code-128B 1D Barkod Okuyucu + Çok Bölgeli Sağ Üst Pedigri Köşe Tarayıcı + '📸 Fotoğraf Çek' / '📷 Canlı Kamera' / '🖼️ Resmi Seç' desteği ve + Kuş Ekle içinden okutulduğunda 31 kutu soyağacıyla doğrudan kümese kaydetme",
+    "🎙️ GENESIS AI Konuşarak Sesli Soru (STT) & 🔊 Türkçe Diksiyonlu Sesli Cevap (TTS) aktif",
+    "🧪 26 / 26 Otomatik Sistem, Yol Haritası & Bilimsel Doğruluk Testi aktif"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"
