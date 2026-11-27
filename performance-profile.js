@@ -611,7 +611,7 @@ const AvigenPerformanceEngine = {
     let homingRel = 0;
     let homingInherited = false;
     let homingEvidence = 'Eve dönüş güvenilirliği için bireysel yarış veya soyağacı kaydı gereklidir.';
-    if (totalRaceCount > 0 || releasePoints.length > 0) {
+    if (totalRaceCount > 0) {
       homingScore = Math.min(98, 74 + totalRaceCount * 7 + releasePoints.length * 4);
       homingRel = calcReliability(totalRaceCount + releasePoints.length, 3);
       homingEvidence = `Doğrudan Bireysel Ölçüm: ${totalRaceCount} etap dönüşü ve ${releasePoints.length} farklı coğrafi noktadan eve dönüş istikrarı ile hesaplandı.`;
@@ -794,6 +794,7 @@ const AvigenPerformanceEngine = {
 
     return {
       bird,
+      parsedRaces,
       statsSummary: {
         totalRaceCount,
         directRaceAvgScore,
@@ -1182,12 +1183,27 @@ const AvigenPerformanceEngine = {
           📊 Performans &amp; Soy Profili
         </button>
         <button type="button" class="sub-pill ${this.state.activeTab === 'race_history' ? 'active' : ''}" onclick="AvigenPerformanceEngine.switchProfileTab('race_history')">
-          🏁 Yarış Geçmişi (${typeof AvigenRaceTracker !== 'undefined' ? AvigenRaceTracker.getBirdRaceHistory(bird.ring).length : statsSummary.totalRaceCount})
+          🏁 Yarış Geçmişi (${statsSummary.totalRaceCount})
         </button>
       </div>
 
       ${this.state.activeTab === 'race_history' ? `
         ${typeof AvigenRaceTracker !== 'undefined' ? AvigenRaceTracker.renderBirdRaceHistorySection(bird.ring, true) : ''}
+        ${Array.isArray(prof.parsedRaces) && prof.parsedRaces.filter(r => !r.structuredEntry).length > 0 ? `
+          <div style="background:var(--ios-card-alt); border:1px solid var(--ios-border); border-left:3.5px solid #059669; border-radius:9px; padding:8px 10px; margin-bottom:8px; font-size:9.6px;">
+            <div style="font-weight:900; color:#047857; margin-bottom:5px;">
+              📜 Pedigri &amp; Sicil Kayıtlarından Doğrulanan Bireysel Yarış Dereceleri (${prof.parsedRaces.filter(r => !r.structuredEntry).length})
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              ${prof.parsedRaces.filter(r => !r.structuredEntry).map((pr, idx) => `
+                <div style="background:var(--ios-card); border:1px solid var(--ios-border); border-radius:6px; padding:5px 7px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                  <span style="font-weight:700; color:var(--ios-text);">${idx + 1}. ${escapeHtml(pr.rawText)}</span>
+                  <span class="gene-badge gene-green" style="font-size:8px; flex-shrink:0;">${pr.rank ? `${pr.rank}. Sıra` : (pr.distanceKm ? `${pr.distanceKm} km` : 'Derece')}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
       ` : `
         ${!hasRealRaces && statsSummary.filledAncCount > 0 ? `
           <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-left:3.5px solid #7c3aed; border-radius:8px; padding:6px 9px; margin-bottom:8px; font-size:9.8px; color:#4c1d95; line-height:1.35;">

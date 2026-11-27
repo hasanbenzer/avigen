@@ -1034,8 +1034,12 @@ function computeDynamicBreedingStage(eventType, eventDateStr) {
 // ============================================================================
 function extractCleanRingFromText(rawText) {
   if (!rawText) return '';
-  const cleaned = String(rawText).replace(/^[^\w🇹🇷🇧🇪🇳🇱🇩🇪🇵🇱🇷🇴🇬🇧🇫🇷🇺🇸]+/u, '').trim();
-  const match = cleaned.match(/([A-Z]{2,4}-\d{4}-[A-Z0-9-]+)/i);
+  // Baştaki ülke bayraklarını (🇹🇷, 🇧🇪 vb.), cinsiyet sembollerini (♂, ♀) ve boşlukları tamamen temizle
+  const cleaned = String(rawText)
+    .replace(/^(?:[\uD83C][\uDDE6-\uDDFF][\uD83C][\uDDE6-\uDDFF]|\s|[♂♀🐣•*#"'()[\]]|[^A-Za-z0-9])+/u, '')
+    .trim();
+  if (!cleaned) return '';
+  const match = cleaned.match(/^([A-Z0-9]{2,8}(?:-[A-Z0-9]+)+)/i);
   if (match) return match[1].toUpperCase();
   return (cleaned.split(/[\s(•]+/)[0] || '').trim().toUpperCase();
 }
@@ -13955,11 +13959,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.7.8',
-    localBuild: 578,
-    remoteVersion: '5.7.8',
-    remoteBuild: 578,
-    remoteTitle: "AVIGEN v5.7.8 — Yetiştirici Saha Pratiği İyileştirmeleri: Toplu Kümes Aşı/Kür Sicili, Yuva Ağız & Bakıcı Takibi, Damızlık Yavru Rozeti, Hızlı Durum/Devir & WhatsApp Satış Künyesi ve PDF Pedigri Fotoğraf Basımı",
+    localVersion: '5.7.9',
+    localBuild: 579,
+    remoteVersion: '5.7.9',
+    remoteBuild: 579,
+    remoteTitle: "AVIGEN v5.7.9 — Damızlık Seçimi & Eşleştirme Analizi Hassasiyet Paketi: Tam Kümes (966 Çift) Taraması, 3 Damızlık Hedef Stratejisi, Ebeveyn Profili Halka Çözümleyici ve Çift Taraflı Performans Kanıt Dengesi",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
@@ -14992,7 +14996,10 @@ const AvigenSystemAuditQA = {
       const allLoftSample = collectUniqueLoftBirds();
       const hasOffspringProp = allLoftSample.length > 0 && typeof allLoftSample[0].offspringCount === 'number';
       const hasParentsWithOffspring = allLoftSample.some(b => b.offspringCount > 0);
+      const ringParseOk = extractCleanRingFromText('🇹🇷 TUGF26-A-16-03033 (PALA İBO)') === 'TUGF26-A-16-03033' &&
+        extractCleanRingFromText('🇹🇷 TR-20-067372-D (RECEP EMİN)') === 'TR-20-067372-D';
       breederAuditOk = Boolean(
+        ringParseOk &&
         testNestHtml.includes('2. Ağız • 2 Dolu Yumurta') &&
         testNestHtml.includes('Bakıcı: Yuva #3') &&
         hasOffspringProp &&

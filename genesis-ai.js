@@ -1212,31 +1212,45 @@ const AvigenGenesisAI = {
       }
     } else {
       // %0 - %1.5 COI (Tam Yabancı Kan / Outcross)
-      diversityScore100 = breedingGoal === 'race_outcross' ? 96 : (breedingGoal === 'linebreeding_stock' ? 76 : 90);
+      // ÖNEMLİ BİLİMSEL KURAL: Ebeveynlerden birinin soyağacı boşsa (sFilled < 2 veya dFilled < 2), %0 COI doğrulanmış yabancı kan değildir!
+      if (sFilled < 2 || dFilled < 2) {
+        diversityScore100 = 64;
+      } else {
+        diversityScore100 = breedingGoal === 'race_outcross' ? 96 : (breedingGoal === 'linebreeding_stock' ? 76 : 90);
+      }
     }
 
     // 2. KRİTER: 5 Nesil Pedigri & Soy Kalitesi (0-100 Ölçeği, Ağırlık: %30)
-    const sPedQuality = sDeep.avgAncestorScore !== null ? sDeep.avgAncestorScore : Math.min(58, sireInfo.rawScore);
-    const dPedQuality = dDeep.avgAncestorScore !== null ? dDeep.avgAncestorScore : Math.min(58, damInfo.rawScore);
+    const sPedQuality = sDeep.avgAncestorScore !== null ? sDeep.avgAncestorScore : Math.min(54, sireInfo.rawScore);
+    const dPedQuality = dDeep.avgAncestorScore !== null ? dDeep.avgAncestorScore : Math.min(54, damInfo.rawScore);
     const pedigreeScore100 = Math.round((sPedQuality + dPedQuality) / 2);
 
     // 3. KRİTER: Gerçekleşmiş Performans, Kardeş & Yavru Kanıtı (0-100 Ölçeği, Ağırlık: %25)
-    const perfSignals = [];
-    if (sireInfo.verifiedWins.length > 0 || sireRealTrend.hasRealData) perfSignals.push(sireInfo.rawScore);
-    if (damInfo.verifiedWins.length > 0 || damRealTrend.hasRealData) perfSignals.push(damInfo.rawScore);
-    if (sireCollateral.siblingScore) perfSignals.push(sireCollateral.siblingScore);
-    if (damCollateral.siblingScore) perfSignals.push(damCollateral.siblingScore);
-    if (sireCollateral.offspringScore) perfSignals.push(sireCollateral.offspringScore);
-    if (damCollateral.offspringScore) perfSignals.push(damCollateral.offspringScore);
-    if (sDeep.ancestorWins.length > 0 && sDeep.avgAncestorScore) perfSignals.push(sDeep.avgAncestorScore);
-    if (dDeep.ancestorWins.length > 0 && dDeep.avgAncestorScore) perfSignals.push(dDeep.avgAncestorScore);
+    // ÖNEMLİ DENGE KURALI: Baba ve Anne performans kanıtları ayrı ayrı hesaplanıp ortalaması alınır;
+    // böylece hiç kaydı/soyu olmayan (0/30 ata) bir kuş, karşı eşin yüksek puanıyla yapay olarak 83+ puana çıkamaz!
+    const sirePerfSignals = [];
+    const damPerfSignals = [];
+    if (sireInfo.verifiedWins.length > 0 || sireRealTrend.hasRealData) sirePerfSignals.push(sireInfo.rawScore);
+    if (sireCollateral.siblingScore) sirePerfSignals.push(sireCollateral.siblingScore);
+    if (sireCollateral.offspringScore) sirePerfSignals.push(sireCollateral.offspringScore);
+    if (sDeep.ancestorWins.length > 0 && sDeep.avgAncestorScore) sirePerfSignals.push(sDeep.avgAncestorScore);
 
+    if (damInfo.verifiedWins.length > 0 || damRealTrend.hasRealData) damPerfSignals.push(damInfo.rawScore);
+    if (damCollateral.siblingScore) damPerfSignals.push(damCollateral.siblingScore);
+    if (damCollateral.offspringScore) damPerfSignals.push(damCollateral.offspringScore);
+    if (dDeep.ancestorWins.length > 0 && dDeep.avgAncestorScore) damPerfSignals.push(dDeep.avgAncestorScore);
+
+    const perfSignals = [...sirePerfSignals, ...damPerfSignals];
     const hasPerformanceCriteria = perfSignals.length > 0;
+    const sirePerfAvg = sirePerfSignals.length > 0
+      ? Math.round(sirePerfSignals.reduce((a, b) => a + b, 0) / sirePerfSignals.length)
+      : 50;
+    const damPerfAvg = damPerfSignals.length > 0
+      ? Math.round(damPerfSignals.reduce((a, b) => a + b, 0) / damPerfSignals.length)
+      : 50;
     const performanceScore100 = hasPerformanceCriteria
-      ? Math.round(perfSignals.reduce((a, b) => a + b, 0) / perfSignals.length)
+      ? Math.round((sirePerfAvg + damPerfAvg) / 2)
       : null;
-    // ÖNEMLİ DÜZELTME: Performans kaydı hiç yoksa bu kriter tamamen silinip %0 COI ile puan şişirilmez;
-    // kanıtlanmamış taban puan (50/100) ile hesaba girer!
     const effectivePerformanceScore = performanceScore100 !== null ? performanceScore100 : 50;
 
     // 4. KRİTER: Tamamlayıcılık (Mesafe, Hız/Dayanıklılık Sinerjisi & Karşılıklı Eksik Kapatma, Ağırlık: %20)
@@ -1888,17 +1902,27 @@ const AvigenGenesisAI = {
     return result;
   },
 
+  setBreedingTargetGoal(goalVal) {
+    this.state.breedingTargetGoal = ['balanced', 'race_outcross', 'linebreeding_stock'].includes(goalVal)
+      ? goalVal
+      : 'balanced';
+    this._engineCache.topLoftPairs = null;
+    this.saveState();
+    this.renderGenesisModuleUI();
+  },
+
   // Kümesteki Tüm Aktif Erkek × Dişi Kombinasyonlarını Tarayıp En Yüksek Uyumlu İlk 5 Çifti Döndürür
   // (Kullanıcının "Öneride Gösterme" olarak işaretlediği çiftler listeden gizlenir, ancak hiçbir çiftin bilimsel puanı değiştirilmez!)
   getTopLoftBreedingPairs(limit = 5) {
     this.ensureEngineCacheFresh();
-    if (this._engineCache.topLoftPairs && this._engineCache.topLoftPairs.length > 0) {
+    const curGoal = this.state.breedingTargetGoal || 'balanced';
+    if (this._engineCache.topLoftPairs && this._engineCache.topLoftPairsGoal === curGoal && this._engineCache.topLoftPairs.length > 0) {
       return this._engineCache.topLoftPairs.slice(0, limit);
     }
     const { males, females } = getAllBreedingCandidates();
     if (!males.length || !females.length) return [];
-    const mPool = males.slice(0, 12);
-    const fPool = females.slice(0, 12);
+    const mPool = males.slice(0, 60);
+    const fPool = females.slice(0, 60);
     const pairs = [];
     mPool.forEach(m => {
       fPool.forEach(f => {
@@ -1920,7 +1944,8 @@ const AvigenGenesisAI = {
         }
       });
     });
-    this._engineCache.topLoftPairs = pairs.sort((a, b) => b.score - a.score);
+    this._engineCache.topLoftPairs = pairs.sort((a, b) => (b.score - a.score) || (b.reliability - a.reliability));
+    this._engineCache.topLoftPairsGoal = curGoal;
     return this._engineCache.topLoftPairs.slice(0, limit);
   },
 
@@ -5736,6 +5761,7 @@ const AvigenGenesisAI = {
     let controlsHtml = '';
     if (this.state.activeMode === 'breeding') {
       const topLoftPairs = this.getTopLoftBreedingPairs(5);
+      const curGoal = this.state.breedingTargetGoal || 'balanced';
       controlsHtml = `
         <div class="genesis-tool-controls" style="display:flex; flex-direction:column; gap:6px;">
           <div style="display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:6px; align-items:end;">
@@ -5758,6 +5784,15 @@ const AvigenGenesisAI = {
             <button class="ai-send-btn" style="padding:7px 11px; font-size:11px; flex-shrink:0;" onclick="AvigenGenesisAI.triggerAnimatedAnalysis()">
               ✨ Analiz Et
             </button>
+          </div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; background:var(--ios-card-alt); border:1px solid var(--ios-border); border-radius:8px; padding:4px 7px;">
+            <span style="font-size:9.2px; font-weight:800; color:#4c1d95; white-space:nowrap;">🎯 Eşleştirme Hedefi:</span>
+            <select id="genesisBreedingGoalSelect" class="ios-select" style="flex:1; padding:3px 6px; font-size:9.8px; font-weight:800;" onchange="AvigenGenesisAI.setBreedingTargetGoal(this.value)">
+              <option value="balanced" ${curGoal === 'balanced' ? 'selected' : ''}>⚖️ Dengeli (Hem Yarış Hem Damızlık Uyumu)</option>
+              <option value="race_outcross" ${curGoal === 'race_outcross' ? 'selected' : ''}>🚀 Yarışçı Yavru Üretimi (Kan Kırma / %0 COI Outcross)</option>
+              <option value="linebreeding_stock" ${curGoal === 'linebreeding_stock' ? 'selected' : ''}>🧬 Damızlık Kan Sabitleme (Şampiyon Ortak Ata / Linebreeding)</option>
+            </select>
           </div>
 
           ${topLoftPairs.length > 0 ? `
@@ -6198,7 +6233,7 @@ const AvigenGenesisAI = {
               <span class="gene-badge gene-purple" style="font-size:8px;">Mendel Ayrışımı &amp; h² Kalıtım Modeli</span>
             </summary>
             <div style="font-size:8.9px; color:var(--ios-subtext); margin-top:6px; margin-bottom:6px;">
-              Her özellik kendi bilimsel kalıtım derecesi ($h^2$), anne-baba katkısı, ortak soy etkisi ve veri güvenilirliği ile ayrı ayrı hesaplanmıştır. Kesin genotip garantisi verilmez; olasılık aralığı veya niteliksel eğilim sunulur.
+              Her özellik kendi bilimsel kalıtım derecesi (h²), anne-baba katkısı, ortak soy etkisi ve veri güvenilirliği ile ayrı ayrı hesaplanmıştır. Kesin genotip garantisi verilmez; olasılık aralığı veya niteliksel eğilim sunulur.
             </div>
 
             <div style="display:flex; flex-direction:column; gap:5px;">
@@ -6257,7 +6292,7 @@ const AvigenGenesisAI = {
                 • <strong>Tahmin Güvenilirliği:</strong> <strong>%${rep.dataReliabilityPct} (${relMeta.label})</strong> — 5 nesilde ${totalAncFilled}/124 ata kaydı ve ${rep.verifiedRecords.length} doğrulanmış performans sinyaline dayanmaktadır.
               </div>
               <div>
-                • <strong>Bilimsel Sınırlamalar (Genetik vs Çevre Ayrımı):</strong> Yarış güvercinlerinde uçuş performansı poligeniktir ve özelliklerin kalıtım derecesi $h^2 \approx 0.18\text{–}0.48$ arasındadır; varyansın kalan $\%52\text{–}\%82$'lik kısmı kümes sağlığı, beslenme, antrenman, rüzgâr ve yarış günü çevre koşullarına bağlıdır.
+                • <strong>Bilimsel Sınırlamalar (Genetik vs Çevre Ayrımı):</strong> Yarış güvercinlerinde uçuş performansı poligeniktir ve özelliklerin kalıtım derecesi h² ≈ 0.18–0.48 arasındadır; varyansın kalan %52–%82'lik kısmı kümes sağlığı, beslenme, antrenman, rüzgâr ve yarış günü çevre koşullarına bağlıdır.
               </div>
             </div>
           </details>

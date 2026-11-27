@@ -1,13 +1,12 @@
 {
-  "version": "5.7.8",
-  "build": 578,
+  "version": "5.7.9",
+  "build": 579,
   "releaseDate": "2026-11-27",
-  "title": "AVIGEN v5.7.8 — Yetiştirici Saha Pratiği İyileştirmeleri: Toplu Kümes Aşı/Kür Sicili, Yuva Ağız & Bakıcı Takibi, Damızlık Yavru Rozeti, Hızlı Durum/Devir & WhatsApp Satış Künyesi ve PDF Pedigri Fotoğraf Basımı",
+  "title": "AVIGEN v5.7.9 — Damızlık Seçimi & Eşleştirme Analizi Hassasiyet Paketi: Tam Kümes (966 Çift) Taraması, 3 Damızlık Hedef Stratejisi, Ebeveyn Profili Halka Çözümleyici ve Çift Taraflı Performans Kanıt Dengesi",
   "notes": [
-    "💉 Toplu Kümes Aşı & Kür Sicili: '+ Sicil' ekranında tek tuşla Tüm Aktif Kümes, Yarışçı, Damızlık veya Yavru kadrosuna PMV-1, Trikomonas veya İç/Dış Parazit sicili işleme desteği",
-    "🪺 Yuva Kartlarında Ağız, Yumurta Doluluğu & Bakıcı Yuva Takibi: '+ Yuva' içinde 1./2./3./4. Ağız, Dolu/Boş Yumurta ve Bakıcı Yuvaya Kaydırma seçimi",
-    "👑 Damızlık Yavru Sayısı Rozeti + İşlemler Menüsünde Hızlı Durum/Devir & WhatsApp Satış Künyesi: Kuş kartlarında kümesteki yavru sayısı (🐣 X Yavru) ve tek tuşla Satıldı/Dinlenmede/Kayıp durumu ile WhatsApp tanıtım künyesi paylaşımı",
-    "📸 Resmi 2 Sayfa PDF Pedigri Sertifikasına Kuş Fotoğrafı Basımı: Kuşa fotoğraf yüklendiğinde Sayfa 1 ve Sayfa 2 PDF sertifikalarında sağ üst QR kodun yanına altın çerçeveli fotoğrafın otomatik basılması",
+    "🧬 Damızlık Seçimi & Eşleştirme Hassasiyet Motoru: Tam kümes aday taraması (42 Erkek × 23 Dişi = 966 olası eşleşme), 3 Damızlık Hedef Stratejisi (Dengeli / Yarışçı Yavru Outcross / Şampiyon Kan Sabitleme Linebreeding) ve iki ebeveynin dengeli performans puanlaması",
+    "🔗 Yuva & Üreme Ebeveyn Profili Halka Çözümleyici: Başında ülke bayrağı (🇹🇷) bulunan tüm uluslararası halka formatlarında (TUGF26-A-16-03033, TR-20-067372-D vb.) Baba ve Anne Profili kartlarının hatasız açılması",
+    "💉 Toplu Kümes Aşı/Kür Sicili, Yuva Ağız & Bakıcı Takibi, Damızlık Yavru Rozeti ve PDF Pedigri Fotoğraf Basımı aktif",
     "🧪 27 / 27 Otomatik Sistem, Yol Haritası & Bilimsel Doğruluk Testi aktif"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
