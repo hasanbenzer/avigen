@@ -1,13 +1,14 @@
 {
-  "version": "5.7.7",
-  "build": 577,
+  "version": "5.7.8",
+  "build": 578,
   "releaseDate": "2026-11-27",
-  "title": "AVIGEN v5.7.7 — Dış Telefon QR Okutmada 4 Kuşak (31 Kutu) Tam Soyağacı Hidrasyonu & Çok Bölgeli QR/Code-128 Barkod Tarayarak Kuş Ekleme",
+  "title": "AVIGEN v5.7.8 — Yetiştirici Saha Pratiği İyileştirmeleri: Toplu Kümes Aşı/Kür Sicili, Yuva Ağız & Bakıcı Takibi, Damızlık Yavru Rozeti, Hızlı Durum/Devir & WhatsApp Satış Künyesi ve PDF Pedigri Fotoğraf Basımı",
   "notes": [
-    "🛡️ Dışarıdan Telefondan QR/Barkod Okutmada 31 Kutu Tam Soyağacı Görünümü: Başka bir telefondan (uygulama yüklü olmasa ve localStorage boş olsa bile) QR kod okutulduğunda hem 68 yerleşik master şecere ağacından hem de URL içindeki sıkıştırılmış &p= soy paketinden 4 kuşak (31 kutu) soyağacı eksiksiz doldurulur",
-    "▮▯ Barkod / QR Taratarak Kuş Ekleme Motoru: jsQR + Yerleşik Saf JS Code-128B 1D Barkod Okuyucu + Çok Bölgeli Sağ Üst Pedigri Köşe Tarayıcı + '📸 Fotoğraf Çek' / '📷 Canlı Kamera' / '🖼️ Resmi Seç' desteği ve + Kuş Ekle içinden okutulduğunda 31 kutu soyağacıyla doğrudan kümese kaydetme",
-    "🎙️ GENESIS AI Konuşarak Sesli Soru (STT) & 🔊 Türkçe Diksiyonlu Sesli Cevap (TTS) aktif",
-    "🧪 26 / 26 Otomatik Sistem, Yol Haritası & Bilimsel Doğruluk Testi aktif"
+    "💉 Toplu Kümes Aşı & Kür Sicili: '+ Sicil' ekranında tek tuşla Tüm Aktif Kümes, Yarışçı, Damızlık veya Yavru kadrosuna PMV-1, Trikomonas veya İç/Dış Parazit sicili işleme desteği",
+    "🪺 Yuva Kartlarında Ağız, Yumurta Doluluğu & Bakıcı Yuva Takibi: '+ Yuva' içinde 1./2./3./4. Ağız, Dolu/Boş Yumurta ve Bakıcı Yuvaya Kaydırma seçimi",
+    "👑 Damızlık Yavru Sayısı Rozeti + İşlemler Menüsünde Hızlı Durum/Devir & WhatsApp Satış Künyesi: Kuş kartlarında kümesteki yavru sayısı (🐣 X Yavru) ve tek tuşla Satıldı/Dinlenmede/Kayıp durumu ile WhatsApp tanıtım künyesi paylaşımı",
+    "📸 Resmi 2 Sayfa PDF Pedigri Sertifikasına Kuş Fotoğrafı Basımı: Kuşa fotoğraf yüklendiğinde Sayfa 1 ve Sayfa 2 PDF sertifikalarında sağ üst QR kodun yanına altın çerçeveli fotoğrafın otomatik basılması",
+    "🧪 27 / 27 Otomatik Sistem, Yol Haritası & Bilimsel Doğruluk Testi aktif"
   ],
   "apkUrl": "https://github.com/hasanbenzer/avigen/releases/download/v1.0.0/AVIGEN.apk",
   "webUrl": "https://hasanbenzer.github.io/avigen/"

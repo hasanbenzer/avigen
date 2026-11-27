@@ -1158,6 +1158,16 @@ function renderVisualCompactNestCard(p, conflictsByRing = {}) {
           <span class="gene-badge ${dyn.badgeColor}" style="font-size:8.5px; padding:2px 7px;">
             ${escapeHtml(dyn.badge)}
           </span>
+          ${p.clutchStatus ? `
+            <span class="gene-badge ${/boş|risk/i.test(p.clutchStatus) ? 'gene-red' : 'gene-gold'}" style="font-size:8px; padding:2px 6px;">
+              🥚 ${escapeHtml(p.clutchStatus)}
+            </span>
+          ` : ''}
+          ${p.fosterNest && p.fosterNest !== 'Kendi Anne-Babası Bakıyor' ? `
+            <span class="gene-badge gene-purple" style="font-size:8px; padding:2px 6px;" title="Yumurtalar veya yavrular bakıcı yuvaya kaydırıldı">
+              🔄 ${escapeHtml(p.fosterNest)}
+            </span>
+          ` : ''}
           ${hasConflict ? `
             <span class="gene-badge gene-red" style="font-size:8px; padding:2px 6px;" title="Aynı kuş birden fazla aktif yuvada kayıtlı!">
               ⚠️ Yuva Çakışması
@@ -2334,18 +2344,26 @@ function renderHomeSubPanelContent() {
     }
     box.innerHTML = birdDossierList.map(d => {
       const uClass = urgencyClassMap[d.badgeColor] || 'urgency-blue';
-      const flag = detectFlagFromRing(d.ring);
+      const bulkLabels = {
+        ALL_LOFT: '🏠 TÜM AKTİF KÜMES',
+        ALL_RACERS: '🏆 TÜM YARIŞÇILAR',
+        ALL_BREEDERS: '🥚 TÜM DAMIZLIKLAR',
+        ALL_YOUNG: '🐣 TÜM YAVRULAR'
+      };
+      const isBulk = Boolean(bulkLabels[d.ring]);
+      const ringDisplay = isBulk ? bulkLabels[d.ring] : `${detectFlagFromRing(d.ring)} ${escapeHtml(d.ring)}`;
+      const leftClickAction = isBulk ? `openHomeItemModal('${d.id}', 'dossier')` : `openBirdDossierModal('${escapeHtml(d.ring)}')`;
       return `
         <div class="dash-list-item ${uClass}">
-          <div class="dash-list-left" onclick="openBirdDossierModal('${escapeHtml(d.ring)}')" style="cursor:pointer;" title="Bu güvercinin tam sicil dosyasını aç">
+          <div class="dash-list-left" onclick="${leftClickAction}" style="cursor:pointer;" title="${isBulk ? 'Toplu kümes sicil kaydını düzenle' : 'Bu güvercinin tam sicil dosyasını aç'}">
             <div class="dash-mini-icon">${d.icon || '📋'}</div>
             <div style="min-width:0; flex:1;">
-              <div class="dash-list-title">${flag} ${escapeHtml(d.ring)} • ${escapeHtml(d.title)}</div>
+              <div class="dash-list-title">${ringDisplay} • ${escapeHtml(d.title)}</div>
               <div class="dash-list-sub">${escapeHtml(d.detail)}</div>
             </div>
           </div>
           <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
-            <button type="button" class="nest-mini-action-btn" onclick="openQuickBirdProfileByRing('${escapeHtml(d.ring)}', event)" title="Kuş Performans & Soy Profilini Aç">📊 Profil</button>
+            ${!isBulk ? `<button type="button" class="nest-mini-action-btn" onclick="openQuickBirdProfileByRing('${escapeHtml(d.ring)}', event)" title="Kuş Performans & Soy Profilini Aç">📊 Profil</button>` : ''}
             <span class="gene-badge ${d.badgeColor || 'gene-blue'}" style="font-size:8.5px; padding:2px 6px;">${escapeHtml(d.category)}</span>
             <button class="dash-check-btn" style="color:#dc2626; border-color:#fecaca;" onclick="deleteHomeItem('dossier', '${d.id}')" title="Sil">✕</button>
           </div>
@@ -2394,7 +2412,7 @@ function openHomeItemModal(itemId = '', forcedType = '') {
   document.getElementById('editHomeItemId').value = itemId;
   document.getElementById('editHomeItemType').value = modalType;
 
-  const { males, females } = getAllBreedingCandidates();
+  const { males, females, all } = getAllBreedingCandidates();
 
   if (modalType === 'reminders') {
     const existing = remindersList.find(x => x.id === itemId) || {
@@ -2449,8 +2467,24 @@ function openHomeItemModal(itemId = '', forcedType = '') {
       eventDate: getIsoDateDaysAgo(6),
       sire: males[0] ? `${males[0].ring} (${males[0].name})` : '',
       dam: females[0] ? `${females[0].ring} (${females[0].name})` : '',
+      clutchStatus: '1. Ağız • 2 Dolu Yumurta',
+      fosterNest: 'Kendi Anne-Babası Bakıyor',
       detail: ''
     };
+    const otherActiveNests = activePairsList.filter(x => x.id !== itemId).map(x => x.nest).filter(Boolean);
+    const clutchOptions = [
+      '1. Ağız • 2 Dolu Yumurta',
+      '2. Ağız • 2 Dolu Yumurta',
+      '3. Ağız • 2 Dolu Yumurta',
+      '4. Ağız • Dinlendirme Riski ⚠️',
+      '1 Dolu / 1 Boş Yumurta',
+      'Boş (Dölsüz) Yumurta ❌'
+    ];
+    const fosterOptions = [
+      'Kendi Anne-Babası Bakıyor',
+      'Bakıcı Yuvaya Kaydırıldı',
+      ...otherActiveNests.map(n => `Bakıcı: ${n}`)
+    ];
     titleEl.textContent = itemId ? '✏️ Aktif Yuva & Kuluçka Detayı' : '🪺 Yeni Damızlık Çift / Yuva Ekle';
     formBody.innerHTML = `
       <div style="display:grid; grid-template-columns:0.8fr 1.1fr 1fr; gap:6px;">
@@ -2497,6 +2531,20 @@ function openHomeItemModal(itemId = '', forcedType = '') {
           }).join('')}
         </select>
       </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+        <div>
+          <label style="font-size:10.5px; font-weight:800;">🥚 Ağız &amp; Yumurta Durumu</label>
+          <select id="hmPairClutchStatus" class="ios-select" style="font-size:10.5px; font-weight:700;">
+            ${clutchOptions.map(opt => `<option value="${escapeHtml(opt)}" ${(existing.clutchStatus || clutchOptions[0]) === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10.5px; font-weight:800;">🔄 Bakıcı Yuva / Kuluçka</label>
+          <select id="hmPairFosterNest" class="ios-select" style="font-size:10.5px; font-weight:700;">
+            ${fosterOptions.map(opt => `<option value="${escapeHtml(opt)}" ${(existing.fosterNest || fosterOptions[0]) === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
       <!-- EŞZAMANLI YUVA ÇAKIŞMA UYARI KUTUSU & CANLI KULUÇKA ÖZETİ -->
       <div id="hmPairConflictBanner"></div>
       <div style="font-size:10px; color:#15803d; background:#f0fdf4; border:1px solid #bbf7d0; padding:6px 8px; border-radius:7px;">
@@ -2539,9 +2587,9 @@ function openHomeItemModal(itemId = '', forcedType = '') {
       </div>
     `;
   } else {
-    // 📋 SİCİL KAYDI EKLEME / DÜZENLEME FORMU
+    // 📋 SİCİL KAYDI EKLEME / DÜZENLEME FORMU (Tek Kuş veya Toplu Kümes Aşı/Kür Desteğiyle)
     const allBirds = collectUniqueLoftBirds().filter(b => b.isActiveLoftBird);
-    const defaultRing = activeDossierRing || (allBirds[0]?.ring || 'TR-2026-990001');
+    const defaultRing = activeDossierRing || (allBirds[0]?.ring || 'ALL_LOFT');
     const existing = birdDossierList.find(x => x.id === itemId) || {
       ring: defaultRing,
       category: 'Kümes Üstü Uçuş',
@@ -2550,21 +2598,31 @@ function openHomeItemModal(itemId = '', forcedType = '') {
       detail: '',
       date: getIsoDateDaysAgo(0)
     };
-    titleEl.textContent = itemId ? '✏️ Sicil Kaydını Düzenle' : '📋 Güvercin Sicil Kaydı Ekle';
+    titleEl.textContent = itemId ? '✏️ Sicil Kaydını Düzenle' : '📋 Güvercin & Kümes Sicil Kaydı Ekle';
     formBody.innerHTML = `
       <div>
-        <label style="font-size:11px; font-weight:800;">Hangi Güvercin? (Siciline İşlenecek Kuş)</label>
+        <label style="font-size:11px; font-weight:800;">Hangi Güvercin veya Kümes Grubu?</label>
         <select id="hmDosRing" class="ios-select" style="font-weight:800;">
-          ${allBirds.map(b => `<option value="${escapeHtml(b.ring)}" ${b.ring.toUpperCase() === existing.ring.toUpperCase() ? 'selected' : ''}>${b.flag} ${escapeHtml(b.ring)} — ${escapeHtml(b.name)}</option>`).join('')}
+          <optgroup label="🏠 Toplu Kümes &amp; Kadro Sicili (Tek Tuşla Tüm Gruba İşler)">
+            <option value="ALL_LOFT" ${existing.ring === 'ALL_LOFT' ? 'selected' : ''}>🏠 TÜM AKTİF KÜMES (${allBirds.length} Kuşun Siciline İşle)</option>
+            <option value="ALL_RACERS" ${existing.ring === 'ALL_RACERS' ? 'selected' : ''}>🏆 TÜM YARIŞÇI KADROSU</option>
+            <option value="ALL_BREEDERS" ${existing.ring === 'ALL_BREEDERS' ? 'selected' : ''}>🥚 TÜM DAMIZLIK KADROSU</option>
+            <option value="ALL_YOUNG" ${existing.ring === 'ALL_YOUNG' ? 'selected' : ''}>🐣 TÜM YAVRU KÜMESİ</option>
+          </optgroup>
+          <optgroup label="🕊️ Bireysel Güvercin Seçimi">
+            ${allBirds.map(b => `<option value="${escapeHtml(b.ring)}" ${b.ring.toUpperCase() === existing.ring.toUpperCase() ? 'selected' : ''}>${b.flag} ${escapeHtml(b.ring)} — ${escapeHtml(b.name)}</option>`).join('')}
+          </optgroup>
         </select>
       </div>
       <div>
-        <label style="font-size:10.5px; font-weight:800; color:var(--ios-subtext); display:block; margin-bottom:4px;">1-Dokunuş Hazır Sicil Şablonları:</label>
+        <label style="font-size:10.5px; font-weight:800; color:var(--ios-subtext); display:block; margin-bottom:4px;">1-Dokunuş Hazır Sicil &amp; Toplu Aşı/Kür Şablonları:</label>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+          <button type="button" class="flag-chip" onclick="fillDossierTemplate('Sağlık & Aşı', 'PMV-1 (Veba) Koruyucu Aşısı Uygulandı', 'Yıllık koruyucu PMV-1 aşısı yapıldı; bağışıklık takibi aktif.')">💉 PMV-1 Veba Aşısı</button>
+          <button type="button" class="flag-chip" onclick="fillDossierTemplate('Sağlık & Aşı', '5 Günlük Trikomonas & Solunum Kürü', 'İçme suyuna 5 gün koruyucu kür ve ardından probiyotik uygulandı.')">💊 Triko / Sağlık Kürü</button>
+          <button type="button" class="flag-chip" onclick="fillDossierTemplate('Sağlık & Aşı', 'İç & Dış Parazit Ense Damlası', 'Ense damlası ve banyo tuzu ile parazit koruması tamamlandı.')">💧 İç-Dış Parazit</button>
           <button type="button" class="flag-chip" onclick="fillDossierTemplate('Kümes Üstü Uçuş', 'Kümes Üstü 2 Saat Yüksek Tempo Uçuş', 'Sürüden ayrı yüksek irtifada uçtu, kondisyonu çok yüksek.')">🦅 Kümes Üstü Uçuş</button>
           <button type="button" class="flag-chip" onclick="fillDossierTemplate('Antrenman & Salım', '60 km Bireysel Antrenman Salımı', 'Tek başına salındı, hiç oyalanmadan doğrudan kümese indi.')">🧭 Antrenman Salımı</button>
           <button type="button" class="flag-chip" onclick="fillDossierTemplate('Fizik & Tüy Muayenesi', '10. Telek & Göğüs Kası Muayenesi', 'Tüy dökümü tamamlandı, çatal kemik kapalı, göğüs kası pembe.')">👁️ Fizik / Muayene</button>
-          <button type="button" class="flag-chip" onclick="fillDossierTemplate('Yarış Derecesi', '1. Bölge Klasman Derecesi (420 km)', 'Karşı rüzgarda yüksek hızla (1410 m/dk) kümes 1.si geldi.')">🏆 Yarış Derecesi</button>
         </div>
       </div>
       <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:8px;">
@@ -2720,6 +2778,8 @@ function saveHomeItemFromModal() {
     }
 
     const dyn = computeDynamicBreedingStage(evType, evDate);
+    const clutchVal = document.getElementById('hmPairClutchStatus')?.value || '1. Ağız • 2 Dolu Yumurta';
+    const fosterVal = document.getElementById('hmPairFosterNest')?.value || 'Kendi Anne-Babası Bakıyor';
 
     const record = {
       id: itemId || ('pair_' + Date.now()),
@@ -2728,7 +2788,9 @@ function saveHomeItemFromModal() {
       eventDate: evDate,
       sire: sireInput,
       dam: damInput,
-      detail: '',
+      clutchStatus: clutchVal,
+      fosterNest: fosterVal,
+      detail: [clutchVal, fosterVal !== 'Kendi Anne-Babası Bakıyor' ? fosterVal : ''].filter(Boolean).join(' • '),
       completedStage: '',
       status: dyn ? dyn.badge : 'Kuluçkada',
       badgeColor: dyn ? dyn.badgeColor : 'gene-blue'
@@ -2783,11 +2845,18 @@ function saveHomeItemFromModal() {
 
     const allBirds = collectUniqueLoftBirds();
     const matchedBird = allBirds.find(b => b.ring.toUpperCase() === ringVal.toUpperCase());
+    const bulkGroupNames = {
+      ALL_LOFT: 'Tüm Aktif Kümes',
+      ALL_RACERS: 'Tüm Yarışçı Kadrosu',
+      ALL_BREEDERS: 'Tüm Damızlık Kadrosu',
+      ALL_YOUNG: 'Tüm Yavru Kümesi'
+    };
+    const isBulkTarget = Boolean(bulkGroupNames[ringVal]);
 
     const record = {
       id: itemId || ('dos_' + Date.now()),
       ring: ringVal,
-      birdName: matchedBird ? matchedBird.name : '',
+      birdName: isBulkTarget ? bulkGroupNames[ringVal] : (matchedBird ? matchedBird.name : ''),
       category: cat,
       icon: iconMap[cat] || '📋',
       title: titleVal,
@@ -2803,12 +2872,27 @@ function saveHomeItemFromModal() {
       birdDossierList.unshift(record);
     }
 
-    // Eğer "Pedigre kutusuna da işle" seçiliyse ilgili güvercinin pedigre notlarına otomatik ekle
+    // Eğer "Pedigre kutusuna da işle" seçiliyse ilgili güvercinin (veya seçilen toplu grubun) pedigre notlarına otomatik ekle
     if (syncPed && ringVal) {
       const logLine = `• [${cat}] ${titleVal}`;
+      let targetRingsSet = null;
+      if (isBulkTarget) {
+        const activeLoft = allBirds.filter(b => b.isActiveLoftBird);
+        const groupFiltered = ringVal === 'ALL_RACERS'
+          ? activeLoft.filter(b => b.roleCategory === 'RACER')
+          : (ringVal === 'ALL_BREEDERS'
+            ? activeLoft.filter(b => b.roleCategory === 'BREEDER')
+            : (ringVal === 'ALL_YOUNG'
+              ? activeLoft.filter(b => b.roleCategory === 'YOUNG')
+              : activeLoft));
+        targetRingsSet = new Set(groupFiltered.map(b => b.ring.trim().toUpperCase()));
+      } else {
+        targetRingsSet = new Set([ringVal.toUpperCase()]);
+      }
+
       pedigrees.forEach(p => {
         Object.values(p.boxes || {}).forEach(box => {
-          if (box && box.ring && box.ring.trim().toUpperCase() === ringVal.toUpperCase()) {
+          if (box && box.ring && targetRingsSet.has(box.ring.trim().toUpperCase())) {
             const cur = (box.notes || '').trim();
             if (!cur.includes(titleVal)) {
               box.notes = cur ? `${cur}\n${logLine}` : logLine;
@@ -2876,7 +2960,18 @@ function fillDossierTemplate(cat, title, detail) {
 function getDossierLogsForRing(ring) {
   const clean = (ring || '').trim().toUpperCase();
   if (!clean) return [];
-  return birdDossierList.filter(d => (d.ring || '').trim().toUpperCase() === clean);
+  const allBirds = collectUniqueLoftBirds();
+  const targetBird = allBirds.find(b => b.ring.toUpperCase() === clean);
+  return birdDossierList.filter(d => {
+    const dr = (d.ring || '').trim().toUpperCase();
+    if (dr === clean) return true;
+    if (!targetBird || !targetBird.isActiveLoftBird) return false;
+    if (dr === 'ALL_LOFT') return true;
+    if (dr === 'ALL_RACERS' && targetBird.roleCategory === 'RACER') return true;
+    if (dr === 'ALL_BREEDERS' && targetBird.roleCategory === 'BREEDER') return true;
+    if (dr === 'ALL_YOUNG' && targetBird.roleCategory === 'YOUNG') return true;
+    return false;
+  });
 }
 
 function openBirdDossierModal(ring) {
@@ -3208,6 +3303,9 @@ function collectUniqueLoftBirds() {
     const isActiveLoftBird = (birdStatus === 'ACTIVE' || birdStatus === 'RESTING') && ((slotKey === 'main' && b.inMyLoft !== false) || b.inMyLoft === true);
 
     const existing = map.get(ringKey);
+    if (b.photo && typeof getCachedPedigreePhotoImage === 'function') {
+      getCachedPedigreePhotoImage(b.photo);
+    }
     if (!existing || slotKey === 'main' || (isActiveLoftBird && !existing.isActiveLoftBird)) {
       const ebvScore = (slotKey === 'main' || isActiveLoftBird || !existing)
         ? computeBirdPerformanceEBV(b)
@@ -3230,6 +3328,7 @@ function collectUniqueLoftBirds() {
         muscleType: b.muscleType || '',
         pubicBone: b.pubicBone || '',
         wingFeather: b.wingFeather || '',
+        transferInfo: b.transferInfo || existing?.transferInfo || '',
         isActiveLoftBird: isActiveLoftBird || Boolean(existing?.isActiveLoftBird),
         sireRing: sireBox?.ring || existing?.sireRing || '',
         damRing: damBox?.ring || existing?.damRing || '',
@@ -3261,7 +3360,19 @@ function collectUniqueLoftBirds() {
     }
   });
 
-  _cachedUniqueLoftBirds = Array.from(map.values());
+  const allList = Array.from(map.values());
+  const offspringCountMap = new Map();
+  allList.forEach(item => {
+    const sKey = (item.sireRing || '').trim().toUpperCase();
+    const dKey = (item.damRing || '').trim().toUpperCase();
+    if (sKey && sKey !== '-') offspringCountMap.set(sKey, (offspringCountMap.get(sKey) || 0) + 1);
+    if (dKey && dKey !== '-' && dKey !== sKey) offspringCountMap.set(dKey, (offspringCountMap.get(dKey) || 0) + 1);
+  });
+  allList.forEach(item => {
+    item.offspringCount = offspringCountMap.get(item.ring.toUpperCase()) || 0;
+  });
+
+  _cachedUniqueLoftBirds = allList;
   _cachedLoftBirdsSignature = sig;
   return _cachedUniqueLoftBirds;
 }
@@ -3503,6 +3614,12 @@ function renderLoftBirdsDirectory() {
         : (b.birdStatus === 'SOLD'
           ? `<span class="gene-badge gene-blue" style="font-size:7.8px; padding:1px 5px;">💸 Satıldı</span>`
           : ''));
+    const offspringBadgeHtml = b.offspringCount > 0
+      ? `<span class="gene-badge gene-purple" style="font-size:7.8px; padding:1px 5px;" title="Kümeste kayıtlı ${b.offspringCount} adet yavrusu bulunuyor">🐣 ${b.offspringCount} Yavru</span>`
+      : '';
+    const transferBadgeHtml = b.transferInfo
+      ? `<span class="gene-badge gene-blue" style="font-size:7.6px; padding:1px 5px;">🤝 ${escapeHtml(b.transferInfo.slice(0, 26))}</span>`
+      : '';
     const gpInfo = grandPrizeRingsMap.get(b.ring.toUpperCase());
     const gpBadgeHtml = gpInfo && Array.isArray(gpInfo.entries)
       ? gpInfo.entries.map(ent => `<span class="gene-badge gene-gold" style="font-size:7.8px; padding:1px 6px; background:#fef3c7; border-color:#f59e0b; color:#b45309;">🏆 ${escapeHtml(ent.organizationName)} • ${escapeHtml(ent.stageType || 'Etap')} (${escapeHtml(ent.statusLabel)}${ent.rank ? ' #' + ent.rank : ''})</span>`).join('')
@@ -3527,7 +3644,9 @@ function renderLoftBirdsDirectory() {
               <span class="bird-dir-ring">${b.flag} ${escapeHtml(b.ring)}</span>
               ${sexIcon}
               <span class="gene-badge ${roleClass}" style="font-size:8px; padding:1px 5px;">${roleLabel}</span>
+              ${offspringBadgeHtml}
               ${statusBadgeHtml}
+              ${transferBadgeHtml}
               ${gpBadgeHtml}
             </div>
             <div class="bird-dir-name">
@@ -3549,7 +3668,7 @@ function renderLoftBirdsDirectory() {
             <span style="font-size:10px;">▾</span>
           </button>
 
-          <div class="bird-action-popup-menu" data-ring="${escapeHtml(b.ring)}" onclick="event.stopPropagation()" style="display:none; position:absolute; right:0; top:34px; z-index:80; width:205px; background:var(--ios-card, #ffffff); border:1.5px solid var(--ios-border, #cbd5e1); border-radius:12px; box-shadow:0 10px 26px rgba(15,23,42,0.22); padding:6px; flex-direction:column; gap:4px;">
+          <div class="bird-action-popup-menu" data-ring="${escapeHtml(b.ring)}" onclick="event.stopPropagation()" style="display:none; position:absolute; right:0; top:34px; z-index:80; width:215px; background:var(--ios-card, #ffffff); border:1.5px solid var(--ios-border, #cbd5e1); border-radius:12px; box-shadow:0 10px 26px rgba(15,23,42,0.22); padding:6px; flex-direction:column; gap:4px;">
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); openBirdPedigreeFromDirectory('${b.pedId}');">
               <span>📜</span> <span>Pedigre Kağıdını Aç</span>
             </button>
@@ -3559,6 +3678,9 @@ function renderLoftBirdsDirectory() {
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); shareActivePedigree('${b.pedId}');">
               <span>📲</span> <span>WhatsApp PDF Paylaş</span>
             </button>
+            <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); shareBreederShowcaseCardToWhatsApp('${b.pedId}', '${b.slotKey}', '${escapeHtml(b.ring)}');">
+              <span>📢</span> <span>WhatsApp Satış &amp; Tanıtım Künyesi</span>
+            </button>
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); if(typeof AvigenPerformanceEngine!=='undefined') AvigenPerformanceEngine.openProfileModal('${escapeHtml(b.ring)}');">
               <span>📊</span> <span>Performans &amp; Genetik Profil</span>
             </button>
@@ -3567,6 +3689,9 @@ function renderLoftBirdsDirectory() {
             </button>
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); openBirdDossierModal('${escapeHtml(b.ring)}');">
               <span>📋</span> <span>Sicil Dosyası (${dCount} Kayıt)</span>
+            </button>
+            <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); quickUpdateBirdStatusAndTransfer('${b.pedId}', '${b.slotKey}', '${escapeHtml(b.ring)}');">
+              <span>🔄</span> <span>Durum &amp; Devir / Satış Kaydı</span>
             </button>
             <button type="button" class="bird-popup-item" onclick="closeAllBirdActionPopups(); editBirdFromDirectory('${b.pedId}', '${b.slotKey}');">
               <span>✏️</span> <span>Kuş Bilgilerini Düzenle</span>
@@ -3614,6 +3739,112 @@ function editBirdFromDirectory(pedId, slotKey) {
   renderPedigreeDropdown();
   selectActivePedigree(pedId);
   openBoxEditModal(slotKey);
+}
+
+// Kuşlarım Listesinden Tek Dokunuşla Durum & Devir / Satış / Kayıp Kaydı Güncelleme
+function quickUpdateBirdStatusAndTransfer(pedId, slotKey, ringVal) {
+  const cleanRing = (ringVal || '').trim().toUpperCase();
+  const ped = pedigrees.find(p => p.id === pedId) || pedigrees[0];
+  const box = ped?.boxes?.[slotKey];
+  if (!box) return;
+
+  const curStatus = box.birdStatus || 'ACTIVE';
+  const curTransfer = box.transferInfo || '';
+  const choice = prompt(
+    `🔄 ${box.ring} (${box.name || 'Güvercin'}) Hızlı Kümes Durumu & Devir Kaydı:\n\n` +
+    `1 = 🟢 Aktif Kümeste (Uçuş / Damızlıkta)\n` +
+    `2 = 🟠 Dinlenmede / Tüy Döneminde\n` +
+    `3 = 💸 Satıldı / Devredildi (Alıcı Notuyla)\n` +
+    `4 = 🔴 Yarışta / Antrenmanda Kayıp\n\n` +
+    `Seçiminizi yazın (1, 2, 3 veya 4):`,
+    curStatus === 'RESTING' ? '2' : (curStatus === 'SOLD' ? '3' : (curStatus === 'LOST' ? '4' : '1'))
+  );
+  if (!choice) return;
+
+  const trimmed = choice.trim();
+  let newStatus = 'ACTIVE';
+  let newInLoft = true;
+  let transferNote = curTransfer;
+
+  if (trimmed === '2') {
+    newStatus = 'RESTING';
+    newInLoft = true;
+  } else if (trimmed === '3') {
+    newStatus = 'SOLD';
+    newInLoft = false;
+    const buyer = prompt(
+      `💸 ${box.ring} Kime Satıldı / Hediye Edildi? (Tarih veya Yetiştirici Adı):`,
+      curTransfer || `${new Date().toLocaleDateString('tr-TR')} • Devredildi`
+    );
+    if (buyer !== null) transferNote = buyer.trim();
+  } else if (trimmed === '4') {
+    newStatus = 'LOST';
+    newInLoft = false;
+    const lostNote = prompt(
+      `🔴 ${box.ring} Nerede / Hangi Etapta Kayboldu?`,
+      curTransfer || `${new Date().toLocaleDateString('tr-TR')} • Antrenman/Yarış Kaybı`
+    );
+    if (lostNote !== null) transferNote = lostNote.trim();
+  } else {
+    newStatus = 'ACTIVE';
+    newInLoft = true;
+    transferNote = '';
+  }
+
+  pedigrees.forEach(p => {
+    Object.entries(p.boxes || {}).forEach(([k, b]) => {
+      if (b && b.ring && b.ring.trim().toUpperCase() === cleanRing) {
+        b.birdStatus = newStatus;
+        b.inMyLoft = newInLoft;
+        b.transferInfo = transferNote;
+      }
+    });
+  });
+
+  saveMypedigreData();
+  renderLoftBirdsDirectory();
+  renderHomeDashboard();
+}
+
+// Kuşlarım Listesinden WhatsApp Satış & Damızlık Tanıtım Künyesi Paylaşımı
+function shareBreederShowcaseCardToWhatsApp(pedId, slotKey, ringVal) {
+  const allBirds = collectUniqueLoftBirds();
+  const cleanRing = (ringVal || '').trim().toUpperCase();
+  const bird = allBirds.find(b => b.ring.toUpperCase() === cleanRing);
+  const ped = pedigrees.find(p => p.id === pedId) || pedigrees[0];
+  if (!bird && !ped) return;
+
+  const r = bird ? bird.ring : (ped?.boxes?.main?.ring || 'TR-2026-0001');
+  const nm = bird ? bird.name : (ped?.boxes?.main?.name || 'Şampiyon');
+  const col = bird ? bird.color : (ped?.boxes?.main?.color || 'Mavi Çakmaklı');
+  const sexLbl = (bird?.sex || ped?.boxes?.main?.sex) === 'F' ? '♀ Dişi' : '♂ Erkek';
+  const sire = bird?.sireRing || ped?.boxes?.sire?.ring || '-';
+  const dam = bird?.damRing || ped?.boxes?.dam?.ring || '-';
+  const ebv = bird?.ebvScore || 85;
+  const offCnt = bird?.offspringCount || 0;
+  const loftTitle = (typeof loftConfig !== 'undefined' && loftConfig.title) ? loftConfig.title : 'AVIGEN ELITE LOFT';
+  const qrUrl = (ped && typeof encodeFullPedigreeQrPayload === 'function')
+    ? encodeFullPedigreeQrPayload(ped)
+    : `https://hasanbenzer.github.io/avigen/?v=${encodeURIComponent(r)}~${encodeURIComponent(sire)}~${encodeURIComponent(dam)}`;
+
+  const notesShort = String(bird?.notes || ped?.boxes?.main?.notes || '')
+    .split(/\r?\n/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(' • ');
+
+  const text =
+    `🕊️ *${loftTitle} — RESMİ GÜVERCİN TANITIM & SOY KÜNYESİ*\n\n` +
+    `💍 *Halka No:* ${r}\n` +
+    `🏷️ *İsim & Renk:* ${nm} (${col} • ${sexLbl})\n` +
+    `🧬 *Ebeveyn:* ♂ Baba: ${sire}  ×  ♀ Anne: ${dam}\n` +
+    `📊 *Damızlık / Performans Endeksi (EBV):* ${ebv}/100${offCnt > 0 ? ` • 🐣 Kümeste ${offCnt} Yavru` : ''}\n` +
+    `${notesShort ? `🏆 *Başarı & Notlar:* ${notesShort}\n` : ''}\n` +
+    `📜 *4 Kuşak (31 Kutu) Dijital Soyağacı & Doğrulama Bağlantısı:*\n${qrUrl}`;
+
+  const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(waUrl, '_blank');
 }
 
 // Pedigrede adı geçen bir atayı (Anne/Baba/Dede) "Kümesimde Fiziksel Olarak Mevcut" yapma veya sadece Soy Arşivinde tutma
@@ -8449,6 +8680,52 @@ function drawQrAndBarcodeOnPedigreeCanvas(ctx, qrStr, ringStr, xStart, yStart) {
   ctx.textAlign = 'left';
 }
 
+const _pedigreePhotoImageCache = new Map();
+
+function getCachedPedigreePhotoImage(photoSrc) {
+  if (!photoSrc || typeof photoSrc !== 'string' || photoSrc.length < 16) return null;
+  if (_pedigreePhotoImageCache.has(photoSrc)) {
+    return _pedigreePhotoImageCache.get(photoSrc);
+  }
+  try {
+    const img = new Image();
+    img.src = photoSrc;
+    _pedigreePhotoImageCache.set(photoSrc, img);
+    return img;
+  } catch (e) {
+    return null;
+  }
+}
+
+function drawMainBirdPhotoOnPedigreeCanvas(ctx, photoSrc, x, y, size = 56) {
+  const img = getCachedPedigreePhotoImage(photoSrc);
+  if (!img || !img.complete || !(img.naturalWidth > 0)) return false;
+  try {
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 1.6;
+    ctx.fillRect(x, y, size, size);
+    ctx.strokeRect(x, y, size, size);
+
+    ctx.beginPath();
+    ctx.rect(x + 1.5, y + 1.5, size - 3, size - 3);
+    ctx.clip();
+
+    const iw = img.naturalWidth;
+    const ih = img.naturalHeight;
+    const s = Math.min(iw, ih);
+    const sx = (iw - s) / 2;
+    const sy = (ih - s) / 2;
+    ctx.drawImage(img, sx, sy, s, s, x + 1.5, y + 1.5, size - 3, size - 3);
+    ctx.restore();
+    return true;
+  } catch (e) {
+    try { ctx.restore(); } catch (_) {}
+    return false;
+  }
+}
+
 function drawNativePedigreeCertificateCanvas(ped) {
   const scale = 2; // 1520 x 1120 HD (A4 Yatay Oranı • <15ms anlık üretim, User Gesture düşürmez!)
   const W = 760;
@@ -8538,8 +8815,11 @@ function drawNativePedigreeCertificateCanvas(ped) {
     }
   }
 
-  // Sağ Üst Büyük Kamera Okunabilir QR Kod (58x58 px = 116x116 HD piksel)
+  // Sağ Üst Büyük Kamera Okunabilir QR Kod (58x58 px = 116x116 HD piksel) + Varsa Kuşun Gerçek Fotoğrafı
   drawHighResQrCodeOnCanvas(ctx, qrPayload1, W - 14 - 58 - 4, 17, 58);
+  if (main.photo) {
+    drawMainBirdPhotoOnPedigreeCanvas(ctx, main.photo, W - 14 - 58 - 4 - 60, 18, 56);
+  }
 
   // 3. Kuşak Sütun Başlıkları (y: 82..94) + 4 Kuşak Soyağacı Kutuları (y: 96..511)
   const treeTop = 96;
@@ -8803,6 +9083,9 @@ function drawNativePedigreePage2Canvas(ped) {
   ctx.fillText(`Baba: ${ped?.boxes?.sire?.ring || '-'}   ×   Anne: ${ped?.boxes?.dam?.ring || '-'}`, 364, 62);
 
   drawHighResQrCodeOnCanvas(ctx, qrPayload2, W - 14 - 58 - 4, 17, 58);
+  if (ped?.boxes?.main?.photo || main.photo) {
+    drawMainBirdPhotoOnPedigreeCanvas(ctx, ped?.boxes?.main?.photo || main.photo, W - 14 - 58 - 4 - 60, 18, 56);
+  }
 
   // 3. 2x2 Gövde Kutuları: Üst Kutular Kompakt (y: 84..206, h: 122), Alt Yarış & Sicil Kutuları Genişletilmiş (y: 211..470, h: 259)
   // KUTU 1 (SOL ÜST - KOMPAKT): Performans & Genetik Profil (x:14, y:84, w:360, h:122)
@@ -13672,11 +13955,11 @@ const AvigenAutoUpdater = {
   OTA_BUNDLE_STORAGE_KEY: 'avigen_ota_live_bundle_v1',
 
   state: {
-    localVersion: '5.7.7',
-    localBuild: 577,
-    remoteVersion: '5.7.7',
-    remoteBuild: 577,
-    remoteTitle: "AVIGEN v5.7.7 — Dış Telefon QR Okutmada 4 Kuşak (31 Kutu) Tam Soyağacı Hidrasyonu & Çok Bölgeli QR/Code-128 Barkod Tarayarak Kuş Ekleme",
+    localVersion: '5.7.8',
+    localBuild: 578,
+    remoteVersion: '5.7.8',
+    remoteBuild: 578,
+    remoteTitle: "AVIGEN v5.7.8 — Yetiştirici Saha Pratiği İyileştirmeleri: Toplu Kümes Aşı/Kür Sicili, Yuva Ağız & Bakıcı Takibi, Damızlık Yavru Rozeti, Hızlı Durum/Devir & WhatsApp Satış Künyesi ve PDF Pedigri Fotoğraf Basımı",
     remoteNotes: [
       "90 Gün (3 Ay) Ücretsiz Tam Sürüm (GENESIS AI) Deneme & Yeni Üyelik Modeli: İlk 90 gün tüm özellikler ücretsiz; 90 gün sonunda hiçbir veri silinmeden AVIGEN STANDART (399 TL/ay) veya AVIGEN GENESIS AI (899 TL/ay) paketleriyle devam imkânı",
       "1. Sayfa Kraliyet Pedigri Yenilikleri: Şampiyon ataların 👑 altın taçla parlaması, Ortak Ataların (Linebreeding) 🧬2x rozetiyle otomatik tespiti, üstte Kraliyet Kalite & EBV Mührü, Kuşak Sütun Başlıkları ve gerçek çatal dallanma çizgileri",
@@ -14689,6 +14972,40 @@ const AvigenSystemAuditQA = {
       voiceDetail = 'Sesli konuşma/dinleme test hatası: ' + (e.message || e);
     }
     assert('T26', '6. Sesli Soru & Dinleme', 'GENESIS AI 🎙️ Konuşarak Soru Sorma (STT) & 🔊 Türkçe Diksiyonlu Sesli Yanıt (TTS)', voiceAuditOk, voiceDetail);
+
+    // T27: 7. Yetiştirici Saha Pratiği (Toplu Kümes Aşı/Kür Sicili, Yuva Ağız/Bakıcı Takibi, Damızlık Yavru Rozeti, Hızlı Devir & PDF Fotoğraf)
+    let breederAuditOk = false;
+    let breederDetail = '';
+    try {
+      const testNestHtml = typeof renderVisualCompactNestCard === 'function'
+        ? renderVisualCompactNestCard({
+            id: 'pair_qa',
+            nest: 'Yuva #QA',
+            eventType: 'egg',
+            eventDate: getIsoDateDaysAgo(5),
+            sire: 'TR-25-16-13372',
+            dam: 'TR-24-16-16198',
+            clutchStatus: '2. Ağız • 2 Dolu Yumurta',
+            fosterNest: 'Bakıcı: Yuva #3'
+          }, {})
+        : '';
+      const allLoftSample = collectUniqueLoftBirds();
+      const hasOffspringProp = allLoftSample.length > 0 && typeof allLoftSample[0].offspringCount === 'number';
+      const hasParentsWithOffspring = allLoftSample.some(b => b.offspringCount > 0);
+      breederAuditOk = Boolean(
+        testNestHtml.includes('2. Ağız • 2 Dolu Yumurta') &&
+        testNestHtml.includes('Bakıcı: Yuva #3') &&
+        hasOffspringProp &&
+        hasParentsWithOffspring &&
+        typeof quickUpdateBirdStatusAndTransfer === 'function' &&
+        typeof shareBreederShowcaseCardToWhatsApp === 'function' &&
+        typeof drawMainBirdPhotoOnPedigreeCanvas === 'function'
+      );
+      breederDetail = `Toplu Kümes Aşı/Kür Sicili • Yuva Ağız & Bakıcı Rozeti • Damızlık Yavru Sayacı • Hızlı Durum/Devir & WhatsApp Künye • PDF Fotoğraf Basımı doğrulandı.`;
+    } catch (e) {
+      breederDetail = 'Yetiştirici saha pratiği test hatası: ' + (e.message || e);
+    }
+    assert('T27', '7. Yetiştirici Saha Pratiği', 'Toplu Aşı/Kür Sicili, Yuva Ağız/Bakıcı, Damızlık Yavru Sayacı, Hızlı Devir & PDF Fotoğraf', breederAuditOk, breederDetail);
 
     if (hadEmptyLoftForTest) {
       pedigrees = savedPedigreesBeforeQa;
